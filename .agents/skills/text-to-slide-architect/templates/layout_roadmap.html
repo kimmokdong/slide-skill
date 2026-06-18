@@ -1,0 +1,16 @@
+<!-- 레이아웃: 로드맵/프로세스 (roadmap) -->
+<section>
+    <div class="slide-container">
+        <div class="slide-header" style="text-align: center;">
+            <h2>{{TITLE}}</h2>
+            {{#if SUBTITLE}}<p style="opacity: 0.7; margin-top: 0.2em;">{{SUBTITLE}}</p>{{/if}}
+        </div>
+        <div class="slide-body">
+            <div class="roadmap-track">
+                {{ROADMAP_ITEMS}}
+            </div>
+        </div>
+        {{BOTTOM_TAKEAWAY_HTML}}
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>

@@ -1,0 +1,3540 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>슬라이드 동적 테마 엔진 데모 (확장 프리셋 완비) 🎨</title>
+  <!-- SEO 메타 정보 -->
+  <meta name="description" content="슬라이드 아키텍처의 동적 테마(배경 패턴 6종, 장식 6종, 카드 프리셋 6종, 아이콘 5종, 글꼴 5종) 구동 상태를 실시간으로 직접 확인하고 편집할 수 있는 대화형 시뮬레이터입니다.">
+  
+  <!-- 구글 웹폰트 연동 (다양한 폰트 프리셋 시뮬레이션용) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&family=Montserrat:wght@300;400;700;900&family=Nanum+Myeongjo&family=Nanum+Pen+Script&family=Nanum+Square+Neo:wght@300;400;700;900&family=Noto+Sans+KR:wght@300;400;700;900&family=Orbitron:wght@400;700;900&family=Outfit:wght@300;400;600;800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* ==========================================================================
+       데모 페이지 공통 레이아웃 및 디자인 (Vanilla CSS)
+       ========================================================================== */
+    :root {
+      --dashboard-bg: #0b0f19;
+      --panel-bg: rgba(23, 29, 43, 0.75);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --accent-color: #6366f1;
+      --accent-hover: #4f46e5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--dashboard-bg);
+      color: #f1f5f9;
+      font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      padding: 20px;
+      gap: 20px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 25px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a5b4fc 0%, #ec4899 50%, #f59e0b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
+
+    /* 메인 스페이스 분할 */
+    .workspace {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+      height: calc(100vh - 130px);
+      min-height: 600px;
+    }
+
+    /* 조절판 컨트롤 패널 */
+    .control-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .control-panel::-webkit-scrollbar {
+      width: 6px;
+    }
+    .control-panel::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #c084fc;
+      border-left: 3px solid #c084fc;
+      padding-left: 8px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .group-box {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255,255,255,0.03);
+      padding: 15px;
+      border-radius: 12px;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .control-item:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+
+    /* 커스텀 셀렉트박스 */
+    select {
+      background: #0f172a;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      outline: none;
+      cursor: pointer;
+      width: 100%;
+      transition: border-color 0.2s;
+    }
+    select:focus {
+      border-color: var(--accent-color);
+    }
+
+    /* 컬러 그리드 패널 */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .color-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+
+    .color-input-wrapper input[type="color"] {
+      border: none;
+      background: none;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+    }
+
+    .color-input-wrapper span {
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: #cbd5e1;
+    }
+
+    /* 테마 빠른 적용 칩 */
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .chip:hover {
+      background: var(--accent-color);
+      color: white;
+      border-color: var(--accent-color);
+      transform: translateY(-1px);
+    }
+
+    /* ==========================================================================
+       실시간 슬라이드 프리뷰 컨테이너 (16:9 가상 캔버스)
+       ========================================================================== */
+    .preview-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #060913;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+    }
+
+    /* 가상 슬라이드 화면 (16:9 비율 유지) */
+    .slide-canvas {
+      aspect-ratio: 16 / 9;
+      width: 100%;
+      max-width: 960px;
+      background-color: var(--slide-bg, #f8fafc);
+      color: var(--slide-text, #1e293b);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 0; /* 슬라이드 트랙 배치를 위해 패딩 제거 */
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      
+      /* 동적 폰트 세팅 변수 */
+      font-family: var(--slide-font, 'Outfit', sans-serif);
+    }
+
+    /* 슬라이드 좌우 전환 트랙 및 페이지 */
+    .slide-track {
+      display: flex;
+      width: 300%;
+      height: 100%;
+      transition: var(--slide-transition, all 0.5s ease);
+    }
+
+    .slide-page {
+      width: 33.3333%;
+      height: 100%;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 40px; /* 기존 slide-canvas의 내부 패딩 이식 */
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    /* 슬라이더 컨트롤러 스타일 */
+    .slide-nav-controls {
+      position: absolute;
+      bottom: 8px; /* 하단 배너 위에 적합하게 정합 */
+      right: 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 50;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.12) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+      color: var(--slide-text) !important;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      outline: none;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.25) !important;
+      transform: scale(1.08);
+    }
+
+    .slide-indicator {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--slide-text);
+      opacity: 0.8;
+      font-family: monospace;
+      letter-spacing: 1px;
+    }
+
+    /* 탭 전환 제어 - 7열 그리드 레이아웃 */
+    .preview-tabs {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 20px;
+      width: 100%;
+      max-width: 960px;
+      align-self: center;
+      padding: 0 10px;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #94a3b8;
+      padding: 10px 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 8px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+      transform: translateY(-1px);
+    }
+
+    .tab-btn.active {
+      color: #0b0f19;
+      background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%);
+      border-color: #c084fc;
+      box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+    }
+
+    /* ==========================================================================
+       동적 테마 배경 패턴 정의 (총 6종)
+       ========================================================================== */
+    .pattern-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.12; /* 투명도 8% ~ 15% 가이드라인 준수 */
+      transition: all 0.3s;
+    }
+
+    /* 1. 모눈 격자 (grid) */
+    .pattern-grid {
+      background-size: 30px 30px;
+      background-image: 
+        linear-gradient(to right, var(--slide-text-secondary, #64748b) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--slide-text-secondary, #64748b) 1px, transparent 1px);
+    }
+
+    /* 2. 도트 무늬 (dots) */
+    .pattern-dots {
+      background-size: 20px 20px;
+      background-image: radial-gradient(var(--slide-text-secondary, #64748b) 1.5px, transparent 1.5px);
+    }
+
+    /* 3. 사선 빗금 (diagonal) */
+    .pattern-diagonal {
+      background-size: 40px 40px;
+      background-image: linear-gradient(45deg, 
+        var(--slide-text-secondary, #64748b) 1px, transparent 1px, 
+        transparent 19px, var(--slide-text-secondary, #64748b) 20px, 
+        transparent 20px, transparent 39px, var(--slide-text-secondary, #64748b) 40px
+      );
+    }
+
+    /* 4. 엔지니어 청사진 (blueprint)
+       배경색에 묻혀 보이지 않는 현상 보완: 강조색(accent)을 활용해 대비를 살려 은은하게 렌더링 */
+    .pattern-blueprint {
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, var(--slide-accent, #6366f1) 1.5px, transparent 1.5px),
+        linear-gradient(to bottom, var(--slide-accent, #6366f1) 1.5px, transparent 1.5px);
+      opacity: 0.25; /* 투명도를 조율하여 은은하면서도 뚜렷한 격자선 확보 */
+    }
+
+    /* 5. 감성 테라초 스톤 (terrazzo) */
+    .pattern-terrazzo {
+      background-size: 120px 120px;
+      background-image: 
+        radial-gradient(circle at 20% 30%, var(--slide-accent) 4px, transparent 8px),
+        radial-gradient(circle at 75% 15%, var(--slide-accent-secondary) 6px, transparent 12px),
+        radial-gradient(circle at 50% 80%, var(--slide-text-secondary) 5px, transparent 10px);
+      /* opacity: 0.08 삭제하여 부모 pattern-overlay의 0.12 투명도가 온전히 렌더링되도록 개선 */
+    }
+
+    /* ==========================================================================
+       배경 장식 레이어 정의 (총 6종)
+       ========================================================================== */
+    .decorations-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* A. 모서리 액센트 (corner_accent) */
+    .decor-corner {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      border: 4px solid transparent;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+    .decor-corner.active {
+      opacity: 0.3;
+    }
+    .decor-corner-tl { top: 20px; left: 20px; border-top-color: var(--slide-accent); border-left-color: var(--slide-accent); }
+    .decor-corner-tr { top: 20px; right: 20px; border-top-color: var(--slide-accent); border-right-color: var(--slide-accent); }
+    .decor-corner-bl { bottom: 20px; left: 20px; border-bottom-color: var(--slide-accent); border-left-color: var(--slide-accent); }
+    .decor-corner-br { bottom: 20px; right: 20px; border-bottom-color: var(--slide-accent); border-right-color: var(--slide-accent); }
+
+    /* B. 그라데이션 원형 버블 (circles) */
+    .decor-circle {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--slide-accent-secondary, #a5b4fc) 0%, transparent 70%);
+      opacity: 0;
+      transition: all 0.5s;
+    }
+    .decor-circle.active {
+      opacity: 0.18;
+    }
+    .decor-circle-1 { width: 300px; height: 300px; top: -100px; right: -100px; }
+    .decor-circle-2 { width: 200px; height: 200px; bottom: -50px; left: -50px; }
+
+    /* C. 테크 HUD 대괄호 (hud_brackets) */
+    .decor-hud {
+      position: absolute;
+      width: 16px;
+      height: 60%;
+      border-top: 2px solid var(--slide-accent);
+      border-bottom: 2px solid var(--slide-accent);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+    .decor-hud.active {
+      opacity: 0.4;
+    }
+    .decor-hud-left { left: 15px; top: 20%; border-left: 2px solid var(--slide-accent); }
+    .decor-hud-right { right: 15px; top: 20%; border-right: 2px solid var(--slide-accent); }
+
+    /* D. 물결 무늬선 (wavy_line) */
+    .decor-wavy {
+      position: absolute;
+      bottom: 60px;
+      left: 40px;
+      right: 40px;
+      height: 4px;
+      background-image: radial-gradient(circle, var(--slide-accent) 2px, transparent 2.5px);
+      background-size: 12px 4px;
+      background-repeat: repeat-x;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+    .decor-wavy.active {
+      opacity: 0.25;
+    }
+
+    /* E. 기하학 추상 도형들 (geometric_shapes)
+       가독성과 심미성을 고려하여 카드 뒷배경을 침범하지 않고 
+       여백인 '우상단'과 '좌하단'에 여러 개가 조화롭게 겹쳐 나타나도록 레이아웃 고도화 */
+    .decor-shape {
+      position: absolute;
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 11; /* 카드(z-index: 10)보다 위로 띄워 겹치는 입체 장식 효과 연출 */
+    }
+    .decor-shape.active {
+      opacity: 0.22; /* 투명도를 0.15에서 0.22로 높여 가시성 상향 */
+    }
+    /* 우상단 기하학 그룹 */
+    .decor-shape-1 {
+      width: 70px; height: 35px;
+      border-radius: 70px 70px 0 0; /* 반원 */
+      background: var(--slide-accent);
+      top: 30px; right: 100px;
+      transform: rotate(35deg);
+    }
+    .decor-shape-2 {
+      width: 0; height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 40px solid var(--slide-accent-secondary);
+      top: 20px; right: 180px;
+      transform: rotate(-15deg);
+    }
+    /* 좌하단 기하학 그룹 */
+    .decor-shape-3 {
+      width: 30px; height: 30px;
+      background: var(--slide-accent-secondary);
+      bottom: 80px; left: 80px;
+      transform: rotate(20deg);
+    }
+    .decor-shape-4 {
+      width: 45px; height: 45px;
+      border-radius: 50%; /* 동그라미 */
+      background: var(--slide-accent);
+      bottom: 100px; left: 35px;
+    }
+
+    /* F. 테크니컬 설계 가이드선 (tech_grid_lines) */
+    .decor-techlines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 1px dashed rgba(255, 255, 255, 0.05);
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1;
+    }
+    .decor-techlines.active {
+      opacity: 0.35;
+    }
+    .decor-techlines::before {
+      content: "SYS.GRID_MODE_v2.0";
+      position: absolute;
+      top: 10px;
+      left: 45%;
+      font-size: 0.6rem;
+      font-family: monospace;
+      color: var(--slide-accent);
+      letter-spacing: 2px;
+    }
+    .decor-techlines::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 80px; width: 1px; height: 100%;
+      background: linear-gradient(to bottom, var(--slide-accent), transparent);
+    }
+
+    /* ==========================================================================
+       이정표 영역 (Wayfinding UI)
+       ========================================================================== */
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      z-index: 10;
+    }
+
+    .section-header {
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--slide-accent);
+      transition: color 0.3s;
+    }
+
+    .slide-title {
+      font-size: 2.2rem;
+      font-weight: 800;
+      color: var(--slide-text);
+      z-index: 10;
+      margin-bottom: 25px;
+      transition: color 0.3s;
+    }
+
+    .bottom-takeaway-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      padding: 15px 180px 15px 40px; /* 우측에 네비게이션 컨트롤 가림 방지 패딩 확보 */
+      background: linear-gradient(90deg, var(--slide-accent), var(--slide-accent-secondary));
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 10;
+      box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s;
+    }
+
+    /* ==========================================================================
+       본문 카드 컨테이너 (Content Card) 프리셋 (총 6종)
+       ========================================================================== */
+    .content-box {
+      flex: 1;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin-bottom: 20px; /* 하단 띠 배너와 겹치지 않게 여백 확보 */
+      
+      /* 기본 CSS 변수 적용 (동적 렌더링용) */
+      background: var(--card-bg, transparent);
+      border: var(--card-border, none);
+      border-top: var(--card-border-top, var(--card-border, none));
+      border-bottom: var(--card-border-bottom, var(--card-border, none));
+      border-radius: var(--card-radius, 0px);
+      box-shadow: var(--card-shadow, none);
+      backdrop-filter: blur(var(--card-blur, 0px));
+      -webkit-backdrop-filter: blur(var(--card-blur, 0px));
+      padding: var(--card-padding, 0px);
+      
+      transition: all 0.3s ease;
+    }
+
+    /* 1. 아기자기 노트 (cute_note) */
+    .card-preset-cute_note {
+      --card-bg: #fffbf0;
+      --card-border: 2px dashed rgba(0, 0, 0, 0.12);
+      --card-radius: 20px;
+      --card-shadow: 5px 5px 0px rgba(0, 0, 0, 0.05);
+      --card-blur: 0px;
+      --card-padding: 24px;
+    }
+
+    /* 2. 네온 테크 (tech_neon) */
+    .card-preset-tech_neon {
+      --card-bg: rgba(15, 23, 42, 0.65);
+      --card-border: 1px solid var(--slide-accent);
+      --card-radius: 4px;
+      --card-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+      --card-blur: 8px;
+      --card-padding: 24px;
+    }
+
+    /* 3. 깔끔 비즈니스 (business_clean) */
+    .card-preset-business_clean {
+      --card-bg: var(--slide-bg-secondary);
+      --card-border: 1px solid rgba(0, 0, 0, 0.06);
+      --card-radius: 10px;
+      --card-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
+      --card-blur: 0px;
+      --card-padding: 24px;
+    }
+
+    /* 4. 에디토리얼 세리프 (editorial_serif) */
+    .card-preset-editorial_serif {
+      --card-bg: transparent;
+      --card-border: none;
+      --card-border-top: 2px solid var(--slide-text);
+      --card-border-bottom: 2px solid var(--slide-text);
+      --card-radius: 0px;
+      --card-shadow: none;
+      --card-blur: 0px;
+      --card-padding: 20px 0px;
+    }
+
+    /* 5. 레트로 볼드 (retro_bold) */
+    .card-preset-retro_bold {
+      --card-bg: #ffffff;
+      --card-border: 3px solid var(--slide-text);
+      --card-radius: 12px;
+      --card-shadow: 6px 6px 0px var(--slide-text);
+      --card-blur: 0px;
+      --card-padding: 24px;
+    }
+
+    /* 6. 배경 없음 투명 (transparent) */
+    .card-preset-transparent {
+      --card-bg: transparent;
+      --card-border: none;
+      --card-radius: 0px;
+      --card-shadow: none;
+      --card-blur: 0px;
+      --card-padding: 0px;
+    }
+
+    /* 전체화면/중앙정렬 레이아웃 전용 콘텐츠 박스 스타일 무력화 */
+    .content-box.center-layout-active {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      margin-bottom: 0 !important;
+      height: 100%;
+    }
+
+    /* ==========================================================================
+       본문 아이콘 불릿 프리셋 스타일 (Icon Bullets)
+       ========================================================================== */
+    .bullet-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .bullet-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--slide-text);
+      transition: all 0.2s;
+    }
+
+    .icon-badge {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.3s;
+    }
+
+    /* 1. cute (두껍고 동그란 파스텔) */
+    .icon-preset-cute .icon-badge {
+      width: 44px;
+      height: 44px;
+      background-color: var(--slide-bg-secondary);
+      border-radius: 50%;
+      border: 2px solid var(--slide-accent);
+      color: var(--slide-accent-secondary);
+      font-size: 1.1rem;
+    }
+    .icon-preset-cute i { stroke-width: 2.5px; }
+
+    /* 2. tech (얇고 빛나는 HUD 각진 네온) */
+    .icon-preset-tech .icon-badge {
+      width: 40px;
+      height: 40px;
+      background-color: rgba(99, 102, 241, 0.1);
+      border-radius: 4px;
+      border: 1px solid var(--slide-accent);
+      color: var(--slide-accent);
+      font-size: 1rem;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+    }
+    .icon-preset-tech i {
+      stroke-width: 1.2px;
+      filter: drop-shadow(0 0 2px var(--slide-accent));
+    }
+
+    /* 3. business (단정하고 모던한 미니멀 코너) */
+    .icon-preset-business .icon-badge {
+      width: 38px;
+      height: 38px;
+      background-color: var(--slide-bg-secondary);
+      border-radius: 8px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      color: var(--slide-text-secondary);
+      font-size: 0.95rem;
+    }
+    .icon-preset-business i { stroke-width: 2.0px; }
+
+    /* 4. minimal_raw (배지 없는 쌩 아이콘 강조) */
+    .icon-preset-minimal_raw .icon-badge {
+      width: auto;
+      height: auto;
+      background: none;
+      border: none;
+      box-shadow: none;
+      color: var(--slide-accent);
+      font-size: 1.5rem;
+    }
+    .icon-preset-minimal_raw i { stroke-width: 2.2px; }
+
+    /* 5. handdrawn (러프한 손그림 느낌 배지) */
+    .icon-preset-handdrawn .icon-badge {
+      width: 42px;
+      height: 42px;
+      background-color: #fef08a; /* 노랑 */
+      border: 2px solid #000;
+      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%; /* 찌그러진 원 */
+      color: #000;
+      font-size: 1.15rem;
+      transform: rotate(-3deg);
+    }
+    .icon-preset-handdrawn i { stroke-width: 2.5px; }
+
+    /* ==========================================================================
+       STATS (통계 수치) 레이아웃 스타일
+       ========================================================================== */
+    .stats-layout {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      height: 100%;
+      gap: 30px;
+    }
+
+    .stat-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      text-align: center;
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 4rem;
+      font-weight: 900;
+      color: var(--slide-accent-secondary);
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--slide-text-secondary);
+    }
+
+    /* ==========================================================================
+       실제 스킬의 base.html 내 레이아웃 디자인 시스템 CSS 이식
+       ========================================================================== */
+    .slide-page {
+      font-size: 18px; /* em 단위 호환을 위해 슬라이드 페이지 기준 폰트 크기 지정 */
+    }
+
+    /* [1] 퀴즈 레이아웃 (quiz) */
+    .quiz-options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6em;
+      width: 92%;
+      margin-top: 0.4em;
+      text-align: center;
+      box-sizing: border-box;
+      align-self: center;
+    }
+    .quiz-option.button-type {
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 0.3em;
+      padding: 0.6em 1em;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8em;
+      border-radius: 12px;
+      background: var(--card-bg, rgba(255, 255, 255, 0.4));
+      border: var(--card-border, 1px solid rgba(0, 0, 0, 0.1));
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      font-size: 0.8em;
+      color: var(--slide-text);
+      backdrop-filter: blur(var(--card-blur, 0px));
+      -webkit-backdrop-filter: blur(var(--card-blur, 0px));
+    }
+    .quiz-option.button-type:hover {
+      transform: translateY(-2px);
+      border-color: var(--slide-accent) !important;
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08) !important;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .quiz-option.button-type.quiz-correct {
+      background-color: rgba(34, 197, 94, 0.15) !important;
+      border-color: #22C55E !important;
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.3) !important;
+    }
+    .quiz-option.button-type.quiz-correct .option-marker {
+      background-color: #22C55E !important;
+      color: white !important;
+    }
+    .quiz-option.button-type.quiz-wrong {
+      background-color: rgba(239, 68, 68, 0.15) !important;
+      border-color: #EF4444 !important;
+      animation: quiz-shake 0.5s ease;
+    }
+    .quiz-option.button-type.quiz-wrong .option-marker {
+      background-color: #EF4444 !important;
+      color: white !important;
+    }
+    .option-marker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.8em;
+      height: 1.8em;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.05);
+      font-weight: 700;
+      font-size: 0.85em;
+      flex-shrink: 0;
+      transition: background 0.2s ease, color 0.2s ease;
+      color: var(--slide-text);
+    }
+    .option-text {
+      word-break: keep-all;
+      font-weight: 500;
+      line-height: 1.3;
+      text-align: center;
+    }
+    @keyframes quiz-shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+
+    /* [2] O/X 대비 레이아웃 (vs_ox) */
+    .ox-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.9em;
+      height: 100%;
+      width: 100%;
+      align-items: stretch;
+      box-sizing: border-box;
+    }
+    .ox-column {
+      display: flex;
+      flex-direction: column;
+      border: var(--card-border, 1px solid rgba(0, 0, 0, 0.1));
+      border-radius: 16px;
+      padding: 0.95em 1.05em;
+      background: var(--card-bg, rgba(255, 255, 255, 0.4));
+      box-shadow: var(--card-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.04));
+      box-sizing: border-box;
+      min-width: 0;
+      overflow: hidden;
+      backdrop-filter: blur(var(--card-blur, 12px));
+      -webkit-backdrop-filter: blur(var(--card-blur, 12px));
+    }
+    .ox-column-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4em;
+      font-size: 1.18em;
+      font-weight: 700;
+      min-height: 50px;
+      margin-bottom: 0.7em;
+      padding-bottom: 0.5em;
+      border-bottom: 1px solid var(--color-card-border, rgba(0, 0, 0, 0.05));
+      flex-shrink: 0;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      color: var(--slide-text);
+    }
+    .ox-column-header h3 {
+      white-space: nowrap;
+      line-height: 1.08;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      font-size: 1.1em;
+    }
+    .ox-column-header .ox-header-marker {
+      font-size: 1.3em;
+      font-weight: 900;
+    }
+    .ox-column-header.o-header .ox-header-marker { color: #22C55E; }
+    .ox-column-header.x-header .ox-header-marker { color: #EF4444; }
+    
+    .ox-column-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75em;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .ox-item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5em;
+      font-size: 1.05em;
+      line-height: 1.32;
+      text-align: center;
+      word-break: keep-all;
+      white-space: nowrap;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+      color: var(--slide-text);
+    }
+    .ox-text {
+      white-space: nowrap;
+      min-width: 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    .ox-marker {
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+    .marker-o { color: #22C55E; }
+    .marker-x { color: #EF4444; }
+
+    /* [3] 분류 매트릭스 레이아웃 (matrix) */
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 0.7em;
+      height: 100%;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .matrix-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0.8em;
+      background: var(--card-bg, rgba(255, 255, 255, 0.4));
+      border: var(--card-border, 1px solid rgba(0, 0, 0, 0.1));
+      border-radius: 16px;
+      backdrop-filter: blur(var(--card-blur, 12px));
+      -webkit-backdrop-filter: blur(var(--card-blur, 12px));
+      box-shadow: var(--card-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.06));
+    }
+    .matrix-icon {
+      font-size: 1.8em;
+      margin-bottom: 0.3em;
+    }
+    .matrix-label {
+      font-size: 1.05em;
+      font-weight: 700;
+      margin-bottom: 0.2em;
+      color: var(--slide-text);
+    }
+    .matrix-desc {
+      font-size: 0.75em;
+      opacity: 0.75;
+      line-height: 1.4;
+      word-break: keep-all;
+      color: var(--slide-text-secondary);
+    }
+
+    /* [4] 로드맵 순서 레이아웃 (roadmap) */
+    .roadmap-track {
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      gap: 0.2em;
+      width: 100%;
+      height: auto;
+      box-sizing: border-box;
+      padding: 0 0.5em;
+    }
+    .roadmap-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      max-width: 250px;
+      padding: 1.2em 0.8em;
+      background: var(--card-bg, rgba(255, 255, 255, 0.4));
+      border: var(--card-border, 1px solid rgba(0, 0, 0, 0.1));
+      border-radius: 16px;
+      box-shadow: var(--card-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.04));
+      backdrop-filter: blur(var(--card-blur, 12px));
+      -webkit-backdrop-filter: blur(var(--card-blur, 12px));
+      box-sizing: border-box;
+      transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+    }
+    .roadmap-step:hover {
+      transform: translateY(-6px);
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.08);
+    }
+    .roadmap-num {
+      width: 2.2em;
+      height: 2.2em;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--slide-accent), var(--slide-accent-secondary));
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.15em;
+      font-weight: 900;
+      margin-bottom: 0.6em;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      flex-shrink: 0;
+    }
+    .roadmap-label {
+      font-size: 0.95em;
+      font-weight: 700;
+      margin-bottom: 0.3em;
+      color: var(--slide-text);
+      word-break: keep-all;
+    }
+    .roadmap-desc {
+      font-size: 0.7em;
+      opacity: 0.7;
+      line-height: 1.4;
+      word-break: keep-all;
+      color: var(--slide-text-secondary);
+    }
+    .roadmap-connector {
+      width: 2rem;
+      height: 4px;
+      background: var(--slide-accent);
+      opacity: 0.6;
+      margin: 0 0.2rem;
+      position: relative;
+      flex-shrink: 0;
+      align-self: center;
+    }
+    .roadmap-connector::after {
+      content: '';
+      position: absolute;
+      right: -6px;
+      top: -5px;
+      width: 0;
+      height: 0;
+      border-top: 7px solid transparent;
+      border-bottom: 7px solid transparent;
+      border-left: 8px solid var(--slide-accent);
+    }
+
+    /* [5] 실습형/튜토리얼 레이아웃 (tutorial) */
+    .split-layout {
+      display: flex;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      gap: 1.2em;
+      align-items: stretch;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .split-layout .left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .split-layout .right {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-sizing: border-box;
+      height: 100%;
+    }
+    .screenshot-frame {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border-radius: var(--image-frame-radius, 12px);
+      overflow: hidden;
+      border: var(--image-frame-border, 1px solid rgba(0,0,0,0.1));
+      box-shadow: var(--image-frame-shadow, 0 8px 24px rgba(0,0,0,0.08));
+      background: var(--image-frame-bg, rgba(255,255,255,0.4));
+      box-sizing: border-box;
+    }
+    .browser-frame .frame-dots {
+      display: flex;
+      gap: 6px;
+      padding: 0.4em 0.8em;
+      background: rgba(0, 0, 0, 0.04);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
+    }
+    .browser-frame .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .browser-frame .dot.red { background: #ff5f57; }
+    .browser-frame .dot.yellow { background: #febc2e; }
+    .browser-frame .dot.green { background: #28c840; }
+    
+    .stepper-container {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+      margin-bottom: 15px;
+      width: 100%;
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+    .stepper-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 1.1em;
+      color: var(--slide-text-secondary);
+      opacity: 0.5;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    .stepper-step.active {
+      opacity: 1;
+      color: var(--slide-accent);
+      font-weight: 700;
+    }
+    .stepper-step.completed {
+      opacity: 0.85;
+      color: var(--slide-text);
+    }
+    .stepper-step .step-num {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.8em;
+      height: 1.8em;
+      border-radius: 50%;
+      border: 2px solid currentColor;
+      font-size: 0.9em;
+      font-weight: 800;
+    }
+    .stepper-step.active .step-num {
+      background: var(--slide-accent);
+      color: white;
+      border-color: var(--slide-accent);
+    }
+    .stepper-connector {
+      height: 2px;
+      background: var(--slide-text-secondary);
+      opacity: 0.3;
+      width: 40px;
+    }
+    .tutorial-tip {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.4em;
+      padding: 0.6em 0.8em;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.08);
+      border-left: 4px solid var(--slide-accent);
+      margin-top: 0.6em;
+      font-size: 0.75em;
+      line-height: 1.4;
+      word-break: keep-all;
+      box-sizing: border-box;
+      color: var(--slide-text);
+    }
+    .tutorial-tip .tip-icon {
+      font-size: 1.1em;
+      flex-shrink: 0;
+    }
+    .tutorial-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 0.78em !important;
+      margin: 0.15em 0 0 0 !important;
+      list-style: none;
+      padding: 0;
+    }
+    .tutorial-steps li {
+      font-size: 1.05em !important;
+      line-height: 1.42 !important;
+      color: var(--slide-text) !important;
+      word-break: keep-all !important;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6em;
+    }
+
+    /* [6] 통계/수치 레이아웃 (stats) */
+    .stats-body {
+      justify-content: center;
+    }
+    .stats-grid {
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      gap: 1.25em;
+      width: 100%;
+      box-sizing: border-box;
+      flex-wrap: wrap;
+    }
+    .stats-grid .stat-card-button {
+      padding: 1.2em 1em;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex: 1;
+      max-width: 350px;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg, rgba(255, 255, 255, 0.4));
+      border: var(--card-border, 1px solid rgba(0, 0, 0, 0.1));
+      border-radius: 16px;
+      box-shadow: var(--card-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.06));
+      backdrop-filter: blur(var(--card-blur, 12px));
+      -webkit-backdrop-filter: blur(var(--card-blur, 12px));
+      box-sizing: border-box;
+    }
+    .stats-grid .stat-card-button:hover {
+      transform: translateY(-4px);
+      border-color: var(--slide-accent) !important;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06) !important;
+      background: rgba(255, 255, 255, 0.15) !important;
+    }
+    .stats-grid .stat-number {
+      color: var(--slide-accent);
+      font-size: 2.2em;
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 0.1em;
+    }
+    .stats-grid .stat-label {
+      font-size: 0.8em;
+      color: var(--slide-text-secondary);
+      font-weight: 500;
+      margin-bottom: 0.6em;
+      word-break: keep-all;
+      text-align: center;
+    }
+    .stats-grid .stat-gauge-container {
+      background: rgba(0,0,0,0.05);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+      width: 100%;
+      margin-top: auto;
+    }
+    .stats-grid .stat-gauge-bar {
+      background: linear-gradient(135deg, var(--slide-accent), var(--slide-accent-secondary));
+      height: 100%;
+      width: 0%;
+      border-radius: 4px;
+      transition: width 1.2s cubic-bezier(0.1, 0.8, 0.3, 1);
+    }
+
+    /* 고대비(명도 대비) 토글 기능 스타일 */
+    .contrast-mode {
+      --slide-bg: #ffffff !important;
+      --slide-bg-secondary: #f1f5f9 !important;
+      --slide-text: #000000 !important;
+      --slide-text-secondary: #334155 !important;
+      --slide-accent: #1e3a8a !important;
+      --slide-accent-secondary: #b91c1c !important;
+      
+      --card-bg: #ffffff !important;
+      --card-border: 2px solid #000000 !important;
+      --card-border-top: 2px solid #000000 !important;
+      --card-border-bottom: 2px solid #000000 !important;
+      --card-shadow: none !important;
+      --card-blur: 0px !important;
+    }
+
+    .contrast-badge {
+      display: none;
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: #b91c1c;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      z-index: 100;
+      letter-spacing: 0.5px;
+    }
+
+    .contrast-mode .contrast-badge {
+      display: block;
+    }
+
+    /* --------------------------------------------------------------------------
+       [1] 강조 텍스트(strong) 테마별 스타일 (1번)
+       -------------------------------------------------------------------------- */
+    .highlight-friendly strong {
+      position: relative;
+      display: inline-block;
+      font-weight: 800;
+      color: inherit;
+      z-index: 1;
+    }
+    .highlight-friendly strong::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 2px;
+      width: 100%;
+      height: 35%;
+      background-color: var(--slide-accent-secondary, #a5b4fc);
+      opacity: 0.55;
+      z-index: -1;
+      border-radius: 4px;
+      transition: all 0.3s;
+    }
+
+    .highlight-cyber strong {
+      font-weight: 900;
+      color: var(--slide-accent-secondary, #a5b4fc);
+      text-shadow: 0 0 8px rgba(165, 180, 252, 0.4);
+      font-family: 'Orbitron', sans-serif;
+    }
+    .highlight-cyber strong::before {
+      content: "[";
+      color: var(--slide-accent);
+      margin-right: 2px;
+    }
+    .highlight-cyber strong::after {
+      content: "]";
+      color: var(--slide-accent);
+      margin-left: 2px;
+    }
+
+    .highlight-classic strong {
+      font-style: italic;
+      font-weight: 700;
+      color: var(--slide-accent);
+      border-bottom: 3px double var(--slide-accent, #6366f1);
+      padding-bottom: 1px;
+    }
+
+    .highlight-editorial strong {
+      font-weight: 800;
+      background: var(--slide-text);
+      color: var(--slide-bg);
+      padding: 0px 4px;
+      border-radius: 2px;
+    }
+
+    .highlight-chalkboard strong {
+      font-weight: 900;
+      color: #b91c1c; /* 필기형 채점 붉은 색 톤 */
+      text-decoration: underline wavy #b91c1c;
+      text-underline-offset: 4px;
+    }
+
+    /* --------------------------------------------------------------------------
+       [2] 모션 애니메이션 트랜지션 (2번) - 독립된 모션 클래스로 분리
+       -------------------------------------------------------------------------- */
+    .motion-friendly {
+      --slide-transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 바운스 모션 */
+    }
+    .motion-cyber {
+      --slide-transition: all 0.22s cubic-bezier(0.19, 1, 0.22, 1); /* 샤프하고 미래적인 반응 속도 */
+    }
+    .motion-classic {
+      --slide-transition: all 0.75s cubic-bezier(0.25, 1, 0.5, 1); /* 우아하고 부드러운 감속 */
+    }
+    .motion-editorial {
+      --slide-transition: all 0.45s cubic-bezier(0.77, 0, 0.175, 1); /* 페이지 플립같이 절도 있는 반응 */
+    }
+    .motion-chalkboard {
+      --slide-transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1); /* 자연스러운 감성 반응 */
+    }
+
+    /* 트랜지션 적용 요소 맵핑 (slide-track 및 실제 템플릿 컴포넌트 포함) */
+    .slide-canvas, 
+    .slide-track,
+    .content-box, 
+    .bullet-item, 
+    .stat-card-button, 
+    .quiz-option,
+    .ox-item,
+    .roadmap-step,
+    .stepper-step,
+    .icon-badge, 
+    .bottom-takeaway-bar, 
+    .decor-shape, 
+    strong,
+    strong::after {
+      transition: var(--slide-transition, all 0.3s ease);
+    }
+
+    /* --------------------------------------------------------------------------
+       [4] 하단 핵심 요약 배너(Takeaway Bar) 테마별 셰이프 (4번)
+       -------------------------------------------------------------------------- */
+    /* friendly: 둥글둥글한 구름 물결 모양 셰이프 */
+    .takeaway-friendly .bottom-takeaway-bar {
+      background: linear-gradient(90deg, var(--slide-accent), var(--slide-accent-secondary));
+      border-radius: 20px 20px 0 0;
+      margin: 0 15px;
+      width: calc(100% - 30px);
+      bottom: 5px;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.06);
+    }
+
+    /* cyber: 상단 네온 라인 및 사선 컷아웃 HUD 셰이프 */
+    .takeaway-cyber .bottom-takeaway-bar {
+      background: rgba(15, 23, 42, 0.9);
+      border-top: 2px solid var(--slide-accent);
+      clip-path: polygon(0 0, 93% 0, 100% 100%, 0% 100%);
+      color: var(--slide-accent-secondary);
+      text-shadow: 0 0 5px rgba(165, 180, 252, 0.4);
+    }
+
+    /* classic: 얇은 강조색 선과 명조체 이탤릭 감성 배너 */
+    .takeaway-classic .bottom-takeaway-bar {
+      background: var(--slide-bg-secondary);
+      border-top: 1px solid var(--slide-accent);
+      color: var(--slide-text);
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+    }
+
+    /* editorial: 미니멀한 라인 구분선 구조 */
+    .takeaway-editorial .bottom-takeaway-bar {
+      background: transparent;
+      border-top: 2px solid var(--slide-text);
+      color: var(--slide-text);
+      padding: 15px 0px;
+      margin: 0 40px;
+      width: calc(100% - 80px);
+      box-shadow: none;
+    }
+
+    /* chalkboard: 나무 칠판 분필 받침대 느낌 브라운 바 */
+    .takeaway-chalkboard .bottom-takeaway-bar {
+      background: #8b4513; /* 브라운 */
+      border-top: 4px solid #5c2c0c;
+      border-radius: 10px 10px 0 0;
+      color: #ffedd5;
+      font-family: 'Nanum Pen Script', cursive;
+      font-size: 1.3rem;
+    }
+
+  
+        /* === 모션 트랜지션 차별화 === */
+        /* 기본 트랜지션 초기화 */
+        .slide-track { transition: none; }
+        .motion-friendly .slide-track { transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .motion-cyber .slide-track { transition: transform 0.4s cubic-bezier(0.86, 0, 0.07, 1); filter: blur(0px); }
+        .motion-cyber .slide-track.moving { filter: blur(10px); }
+        .motion-classic .slide-track { transition: transform 0.8s ease-in-out, opacity 0.8s ease-in-out; }
+        .motion-editorial .slide-track { transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; perspective: 1000px; }
+        .motion-chalkboard .slide-track { transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1); }
+
+        /* === 추가 12종 레이아웃 CSS === */
+        /* 표지용 (Hero Layout) */
+        .center-layout {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            box-sizing: border-box;
+            padding: 2em;
+            font-size: 18px;
+        }
+
+        /* 섹션 타이틀용 (Title Layout) */
+        .center-layout.title-layout {
+            font-size: 18px;
+        }
+
+        .center-layout .hero-badge {
+            display: inline-block;
+            padding: 6px 20px;
+            border-radius: 20px;
+            background: var(--slide-accent);
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .center-layout h1 {
+            font-size: 2rem;
+            font-weight: 900;
+            line-height: 1.3;
+            margin: 0 0 0.5em 0;
+            color: var(--slide-text);
+            word-break: keep-all;
+        }
+
+        .center-layout h2 {
+            font-size: 1.2rem;
+            font-weight: 300;
+            line-height: 1.4;
+            opacity: 0.8;
+            margin: 0 0 1em 0;
+            color: var(--slide-text);
+            word-break: keep-all;
+        }
+
+        .center-layout .presenter {
+            font-size: 0.9rem;
+            opacity: 0.6;
+            margin: 0;
+        }
+
+        /* grid2x2 / summary 레이아웃 */
+        .grid-2x2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.7em;
+            height: 100%;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .grid-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 0.8em;
+            background: var(--card-bg, rgba(255, 255, 255, 0.4));
+            border: var(--card-border, 1px solid rgba(0, 0, 0, 0.1));
+            border-radius: 16px;
+            backdrop-filter: blur(var(--card-blur, 12px));
+            -webkit-backdrop-filter: blur(var(--card-blur, 12px));
+            box-shadow: var(--card-shadow, 0 8px 32px 0 rgba(0, 0, 0, 0.06));
+        }
+
+        .grid-cell p {
+            font-size: 0.85em;
+            line-height: 1.6;
+            font-weight: 400;
+            word-break: keep-all;
+        }
+
+        /* quote 레이아웃 */
+        .quote-box {
+            position: relative;
+            max-width: 85%;
+            text-align: left;
+            padding: 1.5em 2em;
+            box-sizing: border-box;
+            background: var(--card-bg, rgba(255,255,255,0.4));
+            border-left: 6px solid var(--slide-accent);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            margin: 0 auto;
+        }
+
+        .quote-text {
+            font-size: 1.25em;
+            font-style: italic;
+            line-height: 1.6;
+            font-weight: 300;
+            margin-bottom: 0.6em;
+            word-break: keep-all;
+            color: var(--slide-text);
+        }
+
+        .quote-author {
+            font-size: 0.9em;
+            opacity: 0.75;
+            font-weight: 500;
+            margin: 0;
+            color: var(--slide-text-secondary);
+        }
+
+        /* diagram 레이아웃 */
+        .layout-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            gap: 10px;
+        }
+
+        /* fullbleed 레이아웃 */
+        .layout-fullbleed {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            align-items: flex-end;
+            padding: 30px;
+            box-sizing: border-box;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+
+        /* timeline 레이아웃 */
+        .layout-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        /* hands-on 레이아웃 */
+        .hands-on-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            list-style: none;
+            padding: 0;
+            width: 100%;
+        }
+        .hands-on-steps li {
+            font-size: 1.1em;
+            line-height: 1.4;
+            color: var(--slide-text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @keyframes pulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
+          70% { transform: scale(1.03); box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+        }
+        .chip-shuffle {
+          background: linear-gradient(135deg, #f59e0b 0%, #ec4899 50%, #818cf8 100%) !important;
+          color: white !important;
+          border: none !important;
+          font-weight: 800 !important;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          animation: pulse 2.5s infinite;
+        }
+        .chip-shuffle:hover {
+          animation: none;
+          transform: scale(1.05) translateY(-2px) !important;
+          box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4) !important;
+        }
+
+    </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>슬라이드 동적 테마 시뮬레이터 (확장 프리셋)</h1>
+      <p>동적 테마의 4대 요소(카드 6종, 아이콘 5종, 패턴 6종/장식 6종, 글꼴 5종)가 실시간으로 조율되는 시뮬레이터입니다.</p>
+    </div>
+    <!-- 고대비 실시간 토글 -->
+    <button class="btn btn-primary" id="btnContrastToggle" style="background:#fbbf24; color:#0f172a; border:none; padding:10px 18px; border-radius:8px; font-weight:800; cursor:pointer;" onclick="toggleContrast()">
+      <i class="fa-solid fa-circle-half-stroke"></i> 빔프로젝터 고대비 모드 ON
+    </button>
+  </header>
+
+  <div class="workspace">
+    <!-- 왼쪽: 조절 컨트롤러 -->
+    <aside class="control-panel">
+      
+      <!-- 1. 테마 프리셋 칩스 (조합 데모 시뮬레이션용 빠른 적용 버튼) -->
+      <div>
+        <div class="section-title">조합 데모 프리셋</div>
+        <div class="preset-chips">
+          <div class="chip" onclick="applyColorPreset('#fffbf0', '#f4ebe1', '#1e293b', '#64748b', '#ec4899', '#818cf8', 'cute_note', 'cute', 'friendly', 'dots', ['corner_accent'])">파스텔 큐트</div>
+          <div class="chip" onclick="applyColorPreset('#0f172a', '#1e293b', '#f8fafc', '#94a3b8', '#6366f1', '#a5b4fc', 'tech_neon', 'tech', 'cyber', 'grid', ['hud_brackets', 'tech_grid_lines'])">네온 사이버</div>
+          <div class="chip" onclick="applyColorPreset('#ffffff', '#f1f5f9', '#0f172a', '#475569', '#2563eb', '#1d4ed8', 'business_clean', 'business', 'classic', 'none', [])">모던 비즈니스</div>
+          <div class="chip" onclick="applyColorPreset('#fbf7f0', '#ebd8c3', '#4a3319', '#7a5a3a', '#d97706', '#92400e', 'editorial_serif', 'minimal_raw', 'editorial', 'diagonal', ['corner_accent'])">에디토리얼 매거진</div>
+          <div class="chip" onclick="applyColorPreset('#fec2f2', '#fee2e2', '#450a0a', '#7f1d1d', '#ef4444', '#b91c1c', 'retro_bold', 'handdrawn', 'chalkboard', 'diagonal', ['circles', 'wavy_line', 'geometric_shapes'])">레트로 팝아트</div>
+          <div class="chip chip-shuffle" onclick="applyRandomPreset()"><i class="fa-solid fa-shuffle"></i> 🎲 무작위 셔플</div>
+        </div>
+      </div>
+
+      <!-- 2. 세부 컬러 피커 (60-30-10) -->
+      <div>
+        <div class="section-title">동적 컬러 조정 (60-30-10)</div>
+        <div class="group-box">
+          <div class="color-grid">
+            <div class="control-item">
+              <label>배경색 (60%)</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="colorBg" value="#f8fafc" onchange="updateColors()">
+                <span id="textBg">#f8fafc</span>
+              </div>
+            </div>
+            <div class="control-item">
+              <label>구조색 (30%)</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="colorBgSecondary" value="#e2e8f0" onchange="updateColors()">
+                <span id="textBgSecondary">#e2e8f0</span>
+              </div>
+            </div>
+            <div class="control-item">
+              <label>글자색</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="colorText" value="#1e293b" onchange="updateColors()">
+                <span id="textText">#1e293b</span>
+              </div>
+            </div>
+            <div class="control-item">
+              <label>서브글자색</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="colorTextSecondary" value="#64748b" onchange="updateColors()">
+                <span id="textTextSecondary">#64748b</span>
+              </div>
+            </div>
+            <div class="control-item">
+              <label>강조색 (10%)</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="colorAccent" value="#6366f1" onchange="updateColors()">
+                <span id="textAccent">#6366f1</span>
+              </div>
+            </div>
+            <div class="control-item">
+              <label>서브강조색</label>
+              <div class="color-input-wrapper">
+                <input type="color" id="colorAccentSecondary" value="#a5b4fc" onchange="updateColors()">
+                <span id="textAccentSecondary">#a5b4fc</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 카드 배경 프리셋 (6종 선택지 완비) -->
+      <div>
+        <div class="section-title">본문 카드 프리셋 (`card_style_preset`)</div>
+        <div class="control-item">
+          <select id="selectCardPreset" onchange="updateCardPreset()">
+            <option value="cute_note">아기자기 노트 (cute_note)</option>
+            <option value="tech_neon">네온 테크 (tech_neon)</option>
+            <option value="business_clean">깔끔 비즈니스 (business_clean)</option>
+            <option value="editorial_serif">에디토리얼 세리프 (editorial_serif)</option>
+            <option value="retro_bold">레트로 볼드 (retro_bold)</option>
+            <option value="transparent">배경 없음 (transparent)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 4. 아이콘 프리셋 (5종 선택지 완비) -->
+      <div>
+        <div class="section-title">아이콘 불릿 프리셋 (`icon_style_preset`)</div>
+        <div class="control-item">
+          <select id="selectIconPreset" onchange="updateIconPreset()">
+            <option value="cute">큐트 라운드 배지 (cute)</option>
+            <option value="tech">테크 네온 배지 (tech)</option>
+            <option value="business">비즈니스 모던 배지 (business)</option>
+            <option value="minimal_raw">배지 없음 쌩 강조 (minimal_raw)</option>
+            <option value="handdrawn">러프 손그림 배지 (handdrawn)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 5. 배경 패턴 및 장식 (6종/6종 완비) -->
+      <div>
+        <div class="section-title">배경 패턴 및 장식 (`bg_pattern_style`)</div>
+        <div class="control-item" style="margin-bottom: 15px;">
+          <label>배경 패턴</label>
+          <select id="selectPattern" onchange="updatePattern()">
+            <option value="grid">모눈 격자 (grid)</option>
+            <option value="dots">도트 무늬 (dots)</option>
+            <option value="diagonal">사선 빗금 (diagonal)</option>
+            <option value="blueprint">설계 도면 (blueprint)</option>
+            <option value="terrazzo">테라초 돌조각 (terrazzo)</option>
+            <option value="none" selected>패턴 없음 (none)</option>
+          </select>
+        </div>
+        <div class="control-item">
+          <label>배경 장식 레이어 (다중 선택)</label>
+          <div style="display:flex; flex-direction:column; gap:8px; background:rgba(0,0,0,0.25); padding:10px; border-radius:8px;">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="checkDecorCorner" value="corner_accent" onchange="updateDecorations()"> 모서리 꺾쇠 (corner_accent)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="checkDecorCircles" value="circles" onchange="updateDecorations()"> 버블 원형 (circles)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="checkDecorBrackets" value="hud_brackets" onchange="updateDecorations()"> 양옆 HUD 대괄호 (hud_brackets)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="checkDecorWavy" value="wavy_line" onchange="updateDecorations()"> 하단 점선 물결 (wavy_line)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="checkDecorShapes" value="geometric_shapes" onchange="updateDecorations()"> 추상 기하도형 (geometric_shapes)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <input type="checkbox" id="checkDecorTechlines" value="tech_grid_lines" onchange="updateDecorations()"> 테크 가이드선 (tech_grid_lines)
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. 타이포그래피 프리셋 (5종 완비) -->
+      <div>
+        <div class="section-title">글꼴 타이포그래피 프리셋</div>
+        <div class="control-item">
+          <select id="selectFont" onchange="updateFont()">
+            <option value="friendly">친근한 라운드 (Outfit + Noto Sans KR)</option>
+            <option value="cyber">사이버 테크 (Orbitron + 나눔스퀘어 네오)</option>
+            <option value="classic">신뢰있는 명조 (Playfair Display + 나눔명조)</option>
+            <option value="editorial">매거진 산세리프 (Montserrat + Pretendard)</option>
+            <option value="chalkboard">칠판 필기체 (Caveat + 나눔손글씨)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 7. 강조 텍스트 스타일 프리셋 (신규 분리) -->
+      <div>
+        <div class="section-title">강조 텍스트 스타일 (`strong_style`)</div>
+        <div class="control-item">
+          <select id="selectHighlight" onchange="updateHighlight()">
+            <option value="friendly">형광펜 언더 마커 (friendly)</option>
+            <option value="cyber">네온 뷰파인더 대괄호 (cyber)</option>
+            <option value="classic">이중 이탤릭 밑줄 (classic)</option>
+            <option value="editorial">반전 텍스트 패치 (editorial)</option>
+            <option value="chalkboard">빨간 펜 구불밑줄 (chalkboard)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 8. 하단 요약바 스타일 프리셋 (신규 분리) -->
+      <div>
+        <div class="section-title">하단 요약바 스타일 (`takeaway_style`)</div>
+        <div class="control-item">
+          <select id="selectTakeaway" onchange="updateTakeaway()">
+            <option value="friendly">둥글둥글 구름 라운드 (friendly)</option>
+            <option value="cyber">HUD 사선 네온 컷 (cyber)</option>
+            <option value="classic">슬림 보더 & 명조체 (classic)</option>
+            <option value="editorial">미니멀 에디토리얼 선 (editorial)</option>
+            <option value="chalkboard">나무 분필 받침대 (chalkboard)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 9. 화면 전환 모션 프리셋 (신규 분리) -->
+      <div>
+        <div class="section-title">화면 전환 모션 (`motion_preset`)</div>
+        <div class="control-item">
+          <select id="selectMotion" onchange="updateMotion()">
+            <option value="friendly">친근 바운스 모션 (friendly)</option>
+            <option value="cyber">미래 테크 고속 스캔 (cyber)</option>
+            <option value="classic">우아한 명조 슬로우 페이드 (classic)</option>
+            <option value="editorial">묵직한 플립 슬라이드 (editorial)</option>
+            <option value="chalkboard">내추럴 감성 슬라이드 (chalkboard)</option>
+          </select>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- 오른쪽: 가상 캔버스 프리뷰 -->
+    <main class="preview-container">
+      
+      <!-- 레이아웃 전환 탭 (19종 전원 확장) -->
+      <div class="preview-tabs">
+        <button class="tab-btn active" id="tabBullet" onclick="switchLayout('bullet')">목록형 (bullet)</button>
+        <button class="tab-btn" id="tabStats" onclick="switchLayout('stats')">통계형 (stats)</button>
+        <button class="tab-btn" id="tabQuiz" onclick="switchLayout('quiz')">퀴즈형 (quiz)</button>
+        <button class="tab-btn" id="tabVsOx" onclick="switchLayout('vs_ox')">O/X대비 (vs_ox)</button>
+        <button class="tab-btn" id="tabMatrix" onclick="switchLayout('matrix')">매트릭스 (matrix)</button>
+        <button class="tab-btn" id="tabRoadmap" onclick="switchLayout('roadmap')">로드맵 (roadmap)</button>
+        <button class="tab-btn" id="tabTutorial" onclick="switchLayout('tutorial')">실습형 (tutorial)</button>
+        <button class="tab-btn" id="tabTitle" onclick="switchLayout('title')">제목형 (title)</button>
+        <button class="tab-btn" id="tabHero" onclick="switchLayout('hero')">표지형 (hero)</button>
+        <button class="tab-btn" id="tabSummary" onclick="switchLayout('summary')">요약형 (summary)</button>
+        <button class="tab-btn" id="tabSplit" onclick="switchLayout('split')">분할형 (split)</button>
+        <button class="tab-btn" id="tabDiagram" onclick="switchLayout('diagram')">도해형 (diagram)</button>
+        <button class="tab-btn" id="tabQuote" onclick="switchLayout('quote')">인용형 (quote)</button>
+        <button class="tab-btn" id="tabFullbleed" onclick="switchLayout('fullbleed')">전체화면 (fullbleed)</button>
+        <button class="tab-btn" id="tabTextImage" onclick="switchLayout('text_image')">글+사진 (text_image)</button>
+        <button class="tab-btn" id="tabTimeline" onclick="switchLayout('timeline')">타임라인 (timeline)</button>
+        <button class="tab-btn" id="tabComparison" onclick="switchLayout('comparison')">비교형 (comparison)</button>
+        <button class="tab-btn" id="tabHandsOn" onclick="switchLayout('hands_on')">실습형 (hands_on)</button>
+        <button class="tab-btn" id="tabClosing" onclick="switchLayout('closing')">마무리 (closing)</button>
+      </div>
+
+      <!-- 16:9 슬라이드 본체 (Viewport) -->
+      <div id="slideCanvas" class="slide-canvas icon-preset-cute theme-friendly highlight-friendly takeaway-friendly">
+        
+        <!-- 고대비 활성화 뱃지 -->
+        <div class="contrast-badge">PROJECTOR HIGH CONTRAST ACTIVE</div>
+
+        <!-- 1. 배경 패턴 오버레이 -->
+        <div id="patternOverlay" class="pattern-overlay"></div>
+
+        <!-- 2. 배경 장식 레이어 -->
+        <div class="decorations-layer">
+          <div id="decorTL" class="decor-corner decor-corner-tl"></div>
+          <div id="decorTR" class="decor-corner decor-corner-tr"></div>
+          <div id="decorBL" class="decor-corner decor-corner-bl"></div>
+          <div id="decorBR" class="decor-corner decor-corner-br"></div>
+          
+          <div id="decorCircle1" class="decor-circle decor-circle-1"></div>
+          <div id="decorCircle2" class="decor-circle decor-circle-2"></div>
+          
+          <div id="decorHudL" class="decor-hud decor-hud-left"></div>
+          <div id="decorHudR" class="decor-hud decor-hud-right"></div>
+          
+          <div id="decorWavy" class="decor-wavy"></div>
+          
+          <!-- 다중 겹침 추상 기하도형 마크업 4종 -->
+          <div id="decorShape1" class="decor-shape decor-shape-1"></div>
+          <div id="decorShape2" class="decor-shape decor-shape-2"></div>
+          <div id="decorShape3" class="decor-shape decor-shape-3"></div>
+          <div id="decorShape4" class="decor-shape decor-shape-4"></div>
+          
+          <div id="decorTechlines" class="decor-techlines"></div>
+        </div>
+
+        <!-- 슬라이드 네비게이션 좌우 화살표 및 페이지 인디케이터 (신규) -->
+        <div class="slide-nav-controls">
+          <button class="nav-btn" onclick="prevSlide()" title="이전 슬라이드"><i class="fa-solid fa-chevron-left"></i></button>
+          <span id="slideIndicator" class="slide-indicator">1 / 3</span>
+          <button class="nav-btn" onclick="nextSlide()" title="다음 슬라이드"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+
+        <!-- 슬라이드 트랙 (가로 슬라이딩 애니메이션 체감용) -->
+        <div id="slideTrack" class="slide-track">
+          
+          <!-- 슬라이드 1: 업무 자동화 도입 배경 -->
+          <div class="slide-page">
+            <div class="slide-header">
+              <span class="section-header">Part 3. 데이터 중심 업무 혁신</span>
+            </div>
+            <h2 class="slide-title">자동화가 가져온 교실의 변화</h2>
+            <div class="content-box card-preset-cute_note">
+              
+              <!-- 1. 목록형 (bullet) -->
+              <ul class="bullet-list layout-bullet">
+                <li class="icon-bullet">
+                  <span class="bullet-icon">🎯</span>
+                  <span class="bullet-text">일주일 이상 걸리던 <strong>나이스 출결 취합 작업</strong>을 단 하루 만에 완료</span>
+                </li>
+                <li class="icon-bullet">
+                  <span class="bullet-icon">🚀</span>
+                  <span class="bullet-text">반복 업무가 줄어들어 학생들과 소통하는 <strong>실질적 교육 시간</strong> 확보</span>
+                </li>
+                <li class="icon-bullet">
+                  <span class="bullet-icon">⚠️</span>
+                  <span class="bullet-text">단, 매크로식 맹신에 의해 교사의 검토 감각이 약화되는 <strong>부작용 방지</strong></span>
+                </li>
+              </ul>
+              
+              <!-- 2. 통계형 (stats) -->
+              <div class="card-grid stats-grid layout-stats" style="display: none;">
+                <div class="card stat-card-button" onclick="clickStatCard(this, 95)">
+                  <div class="stat-number">95%</div>
+                  <div class="stat-label">교원 <strong>행정 효율성 개선</strong> 만족도</div>
+                  <div class="stat-gauge-container">
+                    <div class="stat-gauge-bar" data-target-width="95%"></div>
+                  </div>
+                </div>
+                <div class="card stat-card-button" onclick="clickStatCard(this, 80)">
+                  <div class="stat-number">12만 명</div>
+                  <div class="stat-label">자동화 수집 혜택 <strong>학생 수</strong></div>
+                  <div class="stat-gauge-container">
+                    <div class="stat-gauge-bar" data-target-width="80%"></div>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 3. 퀴즈형 (quiz) -->
+              <div class="layout-quiz" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                <div class="quiz-question" style="font-size: 1.0em; font-weight: 500; margin-bottom: 0.8em; color: var(--slide-text-secondary); text-align: center; line-height: 1.4;">Q. 행정 자동화 도입 시 교사가 가장 경계해야 할 <strong>부작용</strong>은?</div>
+                <div class="quiz-options">
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">A</span>
+                    <span class="option-text">행정 업무 시간의 증가</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, true)">
+                    <span class="option-marker">B</span>
+                    <span class="option-text">검토 감각 약화 및 매크로 맹신</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">C</span>
+                    <span class="option-text">학생들과의 상담 시간 증대</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">D</span>
+                    <span class="option-text">나이스 시스템 연동 오류</span>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 4. O/X대비 (vs_ox) -->
+              <div class="ox-layout ox-balanced layout-vs_ox" style="display: none;">
+                <div class="ox-column">
+                  <div class="ox-column-header o-header">
+                    <span class="ox-header-marker">⭕</span>
+                    <h3 style="margin: 0;">행정 자동화</h3>
+                  </div>
+                  <div class="ox-column-body">
+                    <div class="ox-item"><span class="ox-marker marker-o">O</span><span class="ox-text">반복 업무 <strong>획기적 단축</strong></span></div>
+                    <div class="ox-item"><span class="ox-marker marker-o">O</span><span class="ox-text">학생과의 <strong>대면 소통</strong> 확보</span></div>
+                  </div>
+                </div>
+                <div class="ox-column">
+                  <div class="ox-column-header x-header">
+                    <span class="ox-header-marker">❌</span>
+                    <h3 style="margin: 0;">기존 수동 작업</h3>
+                  </div>
+                  <div class="ox-column-body">
+                    <div class="ox-item"><span class="ox-marker marker-x">X</span><span class="ox-text">나이스 출결 취합에 <strong>일주일 소요</strong></span></div>
+                    <div class="ox-item"><span class="ox-marker marker-x">X</span><span class="ox-text">휴먼 에러 및 <strong>오기입 잦음</strong></span></div>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 5. 매트릭스 (matrix) -->
+              <div class="matrix-grid layout-matrix" style="display: none;">
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">⚙️</div>
+                  <div class="matrix-label">업무 압축</div>
+                  <div class="matrix-desc">나이스 출결 자동 합산으로 <strong>단순 타이핑 3초</strong> 완성</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">⏰</div>
+                  <div class="matrix-label">시간 확보</div>
+                  <div class="matrix-desc">여유 시간을 정서적 상담 및 <strong>개별 피드백 설계</strong>에 투입</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">🛡️</div>
+                  <div class="matrix-label">팩트 체크</div>
+                  <div class="matrix-desc">기계적 자동화의 오류를 방어하기 위한 <strong>2중 크로스 검증</strong></div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">😊</div>
+                  <div class="matrix-label">웰빙 교실</div>
+                  <div class="matrix-desc">행정 피로감 극단적 감소로 <strong>교사와 학생 만족도</strong> 향상</div>
+                </div>
+              </div>
+ 
+              <!-- 6. 로드맵 (roadmap) -->
+              <div class="roadmap-track layout-roadmap" style="display: none;">
+                <div class="roadmap-step">
+                  <div class="roadmap-num">1</div>
+                  <div class="roadmap-label">나이스 접속</div>
+                  <div class="roadmap-desc">출결 엑셀 원본 파일 다운로드</div>
+                </div>
+                <div class="roadmap-connector"></div>
+                <div class="roadmap-step">
+                  <div class="roadmap-num">2</div>
+                  <div class="roadmap-label">자동 취합</div>
+                  <div class="roadmap-desc">병합 스크립트로 3초 합산</div>
+                </div>
+                <div class="roadmap-connector"></div>
+                <div class="roadmap-step">
+                  <div class="roadmap-num">3</div>
+                  <div class="roadmap-label">최종 검증</div>
+                  <div class="roadmap-desc">교사의 육안 2중 체크 후 저장</div>
+                </div>
+              </div>
+ 
+              <!-- 7. 실습형 (tutorial) -->
+              <div class="layout-tutorial" style="display: none; flex-direction: column; width: 100%; height: 100%;">
+                <div class="stepper-container">
+                  <div class="stepper-step completed"><span class="step-num">1</span><span>로그인</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step active"><span class="step-num">2</span><span>출결 메뉴</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step inactive"><span class="step-num">3</span><span>학생 선택</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step inactive"><span class="step-num">4</span><span>저장</span></div>
+                </div>
+                <div class="split-layout tutorial-content">
+                  <div class="left tutorial-text">
+                    <div class="slide-body">
+                      <ul class="bullet-list tutorial-steps">
+                        <li class="icon-bullet">
+                          <span class="bullet-icon">👉</span>
+                          <span class="bullet-text">나이스 포털에 로그인하여 <strong>출결 관리 엑셀</strong>을 내려받습니다.</span>
+                        </li>
+                        <li class="icon-bullet">
+                          <span class="bullet-icon">👉</span>
+                          <span class="bullet-text"><strong>학급 고유 식별 코드</strong>가 누락되지 않게 확인합니다.</span>
+                        </li>
+                      </ul>
+                      <div class="tutorial-tip">
+                        <span class="tip-icon">💡</span>
+                        <span class="tip-text">한글 공백이 파일명에 있으면 에러가 발생할 수 있으니 다운로드 즉시 파일명을 단순화하는 것이 좋습니다.</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="right tutorial-screenshot">
+                    <div class="screenshot-frame browser-frame">
+                      <div class="frame-dots">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                      </div>
+                      <div class="placeholder-img-content" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.02); color: var(--slide-text-secondary); padding: 1.5em; text-align: center; height: 100%; min-height: 180px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image" style="opacity: 0.4; margin-bottom: 0.5em;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                        <span style="font-size: 0.75em; opacity: 0.6; font-weight: 500;">예상 결과 화면</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 8. 제목형 (title) -->
+              <div class="center-layout title-layout layout-title" style="display: none;">
+                <h2>01. 핵심 개념 이해</h2>
+                <h1>스킬 시뮬레이터의 동작 원리</h1>
+              </div>
+
+              <!-- 9. 표지형 (hero) -->
+              <div class="center-layout layout-hero" style="display: none;">
+                <span class="hero-badge">Day 1</span>
+                <h1>바이브코딩의 모든 것</h1>
+                <h2>생성형 AI를 활용한 생산성 혁명</h2>
+              </div>
+
+              <!-- 10. 요약형 (summary) -->
+              <div class="grid-2x2 layout-summary" style="display: none;">
+                <div class="grid-cell card"><p><b>속도 향상</b><br>작업 시간 70% 단축</p></div>
+                <div class="grid-cell card"><p><b>품질 개선</b><br>일관된 디자인 시스템 적용</p></div>
+                <div class="grid-cell card"><p><b>유지보수</b><br>단일 CSS 변수 제어</p></div>
+                <div class="grid-cell card"><p><b>확장성</b><br>19종 템플릿 무한 조합</p></div>
+              </div>
+
+              <!-- 11. 분할형 (split) -->
+              <div class="split-layout layout-split" style="display: none;">
+                <div class="left">
+                  <h3>이론적 배경</h3>
+                  <ul class="bullet-list">
+                    <li>시뮬레이터는 테마의 적합성을 미리 검증합니다.</li>
+                    <li>텍스트가 넘치는지 레이아웃이 겹치는지 파악.</li>
+                  </ul>
+                </div>
+                <div class="right card" style="display:flex;align-items:center;justify-content:center;">
+                  <b>(이미지 / 코드 블록 영역)</b>
+                </div>
+              </div>
+
+              <!-- 12. 도해형 (diagram) -->
+              <div class="layout-diagram layout-diagram" style="display: none;">
+                <div class="card" style="width:60%; text-align:center; margin-bottom:20px;">[Input] 텍스트</div>
+                <div>↓</div>
+                <div class="card" style="width:60%; text-align:center; margin-top:20px;">[Output] PPTX 슬라이드</div>
+              </div>
+
+              <!-- 13. 인용형 (quote) -->
+              <div class="layout-quote" style="display: none; width:100%; height:100%; align-items:center; justify-content:center;">
+                <div class="quote-box">
+                  <p class="quote-text">"디자인은 어떻게 보이고 느껴지느냐의 문제만은 아닙니다. 디자인은 어떻게 기능하느냐의 문제입니다."</p>
+                  <p class="quote-author">- 스티브 잡스</p>
+                </div>
+              </div>
+
+              <!-- 14. 전체화면 (fullbleed) -->
+              <div class="layout-fullbleed" style="display: none; width:100%; height:100%; background:rgba(0,0,0,0.1); border-radius:8px; align-items:flex-end; padding:20px; box-sizing:border-box;">
+                <div class="card" style="width:50%;">
+                  <h3>전체 화면 이미지</h3>
+                  <p>이미지가 꽉 차고 텍스트가 얹히는 구조입니다.</p>
+                </div>
+              </div>
+
+              <!-- 15. 글+사진 (text_image) -->
+              <div class="split-layout layout-text_image" style="display: none;">
+                <div class="left">
+                  <p>이미지와 텍스트를 병렬로 배치하여 시각적 이해도를 높이는 가장 표준적인 슬라이드 구조입니다.</p>
+                </div>
+                <div class="right card" style="background:rgba(0,0,0,0.05); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                  (사진 영역)
+                </div>
+              </div>
+
+              <!-- 16. 타임라인 (timeline) -->
+              <div class="layout-timeline" style="display: none;">
+                <div class="card"><b>2023:</b> ChatGPT 등장</div>
+                <div class="card"><b>2024:</b> 바이브코딩론 정립</div>
+                <div class="card"><b>2025:</b> 시뮬레이터 시스템 도입</div>
+              </div>
+
+              <!-- 17. 비교형 (comparison) -->
+              <div class="split-layout layout-comparison" style="display: none;">
+                <div class="left card" style="text-align:center;"><h3>기존 방식</h3><p>수동 레이아웃</p></div>
+                <div class="right card" style="text-align:center;"><h3>신규 방식</h3><p>자동 테마 시스템</p></div>
+              </div>
+
+              <!-- 18. 실습형 (hands_on) -->
+              <div class="layout-hands_on" style="display: none; width:100%;">
+                <ul class="hands-on-steps">
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 1</span> 테마를 선택합니다.</li>
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 2</span> 레이아웃을 확인합니다.</li>
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 3</span> 모션을 테스트합니다.</li>
+                </ul>
+                <div class="tutorial-warning" style="margin-top: 15px;">주의: 테마별 폰트 가독성을 꼭 확인하세요.</div>
+              </div>
+
+              <!-- 19. 마무리 (closing) -->
+              <div class="center-layout layout-closing" style="display: none;">
+                <h1>Q&A 및 마무리</h1>
+                <h2>질문이 있으신가요?</h2>
+                <p class="presenter">발표자: 김현승</p>
+              </div>
+ 
+            </div>
+            <div class="bottom-takeaway-bar">
+              <div class="takeaway-content">좋은 기술적 효율화는 교사의 판단 능력을 지켜줄 때 가치를 발휘합니다.</div>
+            </div>
+          </div>
+ 
+          <!-- 슬라이드 2: 파이썬 자동화 실무 -->
+          <div class="slide-page">
+            <div class="slide-header">
+              <span class="section-header">Part 4. 실전! 스크립팅 혁명</span>
+            </div>
+            <h2 class="slide-title">업무를 압축하는 3가지 자동화</h2>
+            <div class="content-box card-preset-cute_note">
+              
+              <!-- 1. 목록형 (bullet) -->
+              <ul class="bullet-list layout-bullet">
+                <li class="icon-bullet">
+                  <span class="bullet-icon">📊</span>
+                  <span class="bullet-text">흩어진 여러 학급 엑셀 파일을 <strong>단 3초 만에 병합</strong>하는 자동화 스크립트</span>
+                </li>
+                <li class="icon-bullet">
+                  <span class="bullet-icon">✉️</span>
+                  <span class="bullet-text">개별 맞춤 피드백을 학부모에게 <strong>원클릭 대량 발송</strong>하는 메일링 매크로</span>
+                </li>
+                <li class="icon-bullet">
+                  <span class="bullet-icon">📁</span>
+                  <span class="bullet-text">학번과 이름별로 과제 제출 폴더를 <strong>자동 생성 및 분류</strong>하는 시스템</span>
+                </li>
+              </ul>
+              
+              <!-- 2. 통계형 (stats) -->
+              <div class="card-grid stats-grid layout-stats" style="display: none;">
+                <div class="card stat-card-button" onclick="clickStatCard(this, 100)">
+                  <div class="stat-number">3초</div>
+                  <div class="stat-label">학급 데이터 <strong>엑셀 병합 시간</strong></div>
+                  <div class="stat-gauge-container">
+                    <div class="stat-gauge-bar" data-target-width="100%"></div>
+                  </div>
+                </div>
+                <div class="card stat-card-button" onclick="clickStatCard(this, 100)">
+                  <div class="stat-number">100%</div>
+                  <div class="stat-label">수동 작업 분류 실수 <strong>방지율</strong></div>
+                  <div class="stat-gauge-container">
+                    <div class="stat-gauge-bar" data-target-width="100%"></div>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 3. 퀴즈형 (quiz) -->
+              <div class="layout-quiz" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                <div class="quiz-question" style="font-size: 1.0em; font-weight: 500; margin-bottom: 0.8em; color: var(--slide-text-secondary); text-align: center; line-height: 1.4;">Q. 파이썬 자동화 스크립트로 얻을 수 있는 <strong>가장 큰 이점</strong>은?</div>
+                <div class="quiz-options">
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, true)">
+                    <span class="option-marker">A</span>
+                    <span class="option-text">수동 연타 대비 극적인 시간 압축</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">B</span>
+                    <span class="option-text">화려한 코드 출력 화면</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">C</span>
+                    <span class="option-text">인터넷 브라우저 속도 향상</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">D</span>
+                    <span class="option-text">데이터베이스 백업 용량 축소</span>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 4. O/X대비 (vs_ox) -->
+              <div class="ox-layout ox-balanced layout-vs_ox" style="display: none;">
+                <div class="ox-column">
+                  <div class="ox-column-header o-header">
+                    <span class="ox-header-marker">⭕</span>
+                    <h3 style="margin: 0;">코드기반 스크립트</h3>
+                  </div>
+                  <div class="ox-column-body">
+                    <div class="ox-item"><span class="ox-marker marker-o">O</span><span class="ox-text">원클릭 3초 <strong>일괄 병합</strong></span></div>
+                    <div class="ox-item"><span class="ox-marker marker-o">O</span><span class="ox-text">학번 순 자동 정렬 및 <strong>폴더링</strong></span></div>
+                  </div>
+                </div>
+                <div class="ox-column">
+                  <div class="ox-column-header x-header">
+                    <span class="ox-header-marker">❌</span>
+                    <h3 style="margin: 0;">단순 수동 복사</h3>
+                  </div>
+                  <div class="ox-column-body">
+                    <div class="ox-item"><span class="ox-marker marker-x">X</span><span class="ox-text">매번 열어서 <strong>복사 붙여넣기</strong></span></div>
+                    <div class="ox-item"><span class="ox-marker marker-x">X</span><span class="ox-text">정렬 오작동 시 <strong>수작업 찾기</strong></span></div>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 5. 매트릭스 (matrix) -->
+              <div class="matrix-grid layout-matrix" style="display: none;">
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">📁</div>
+                  <div class="matrix-label">엑셀 머지</div>
+                  <div class="matrix-desc">Pandas 데이터프레임을 활용하여 수십 개 시트를 일초만에 통합</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">✉️</div>
+                  <div class="matrix-label">메일링 스크립트</div>
+                  <div class="matrix-desc">SMTP 프로토콜을 이용해 학생 개별 피드백 내용을 학부모 이메일로 발송</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">🌳</div>
+                  <div class="matrix-label">정렬 분류기</div>
+                  <div class="matrix-desc">OS 모듈을 통해 무작위로 제출된 과제 파일을 학번 폴더별로 자동 적재</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">🔍</div>
+                  <div class="matrix-label">오류 검사기</div>
+                  <div class="matrix-desc">필드 유실, 중복 데이터, 기입 오차를 자동으로 탐지하여 알람 송출</div>
+                </div>
+              </div>
+ 
+              <!-- 6. 로드맵 (roadmap) -->
+              <div class="roadmap-track layout-roadmap" style="display: none;">
+                <div class="roadmap-step">
+                  <div class="roadmap-num">1</div>
+                  <div class="roadmap-label">라이브러리 로드</div>
+                  <div class="roadmap-desc">Pandas / OS 모듈 호출</div>
+                </div>
+                <div class="roadmap-connector"></div>
+                <div class="roadmap-step">
+                  <div class="roadmap-num">2</div>
+                  <div class="roadmap-label">알고리즘 연산</div>
+                  <div class="roadmap-desc">데이터 정렬 및 병합 실행</div>
+                </div>
+                <div class="roadmap-connector"></div>
+                <div class="roadmap-step">
+                  <div class="roadmap-num">3</div>
+                  <div class="roadmap-label">결과 CSV 저장</div>
+                  <div class="roadmap-desc">정합된 데이터 내보내기</div>
+                </div>
+              </div>
+ 
+              <!-- 7. 실습형 (tutorial) -->
+              <div class="layout-tutorial" style="display: none; flex-direction: column; width: 100%; height: 100%;">
+                <div class="stepper-container">
+                  <div class="stepper-step completed"><span class="step-num">1</span><span>로그인</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step completed"><span class="step-num">2</span><span>출결 메뉴</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step active"><span class="step-num">3</span><span>학생 선택</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step inactive"><span class="step-num">4</span><span>저장</span></div>
+                </div>
+                <div class="split-layout tutorial-content">
+                  <div class="left tutorial-text">
+                    <div class="slide-body">
+                      <ul class="bullet-list tutorial-steps">
+                        <li class="icon-bullet">
+                          <span class="bullet-icon">👉</span>
+                          <span class="bullet-text">Pandas 라이브러리로 학급 엑셀 파일을 읽어와 하나로 붙입니다.</span>
+                        </li>
+                        <li class="icon-bullet">
+                          <span class="bullet-icon">👉</span>
+                          <span class="bullet-text">`sort_values` API를 활용하여 <strong>학번 순서대로 데이터</strong>를 나열합니다.</span>
+                        </li>
+                      </ul>
+                      <div class="tutorial-tip">
+                        <span class="tip-icon">⚠️</span>
+                        <span class="tip-text">병합 대상 파일들의 헤더 열(Column) 이름이 완벽히 일치해야 오류 없이 작동합니다.</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="right tutorial-screenshot">
+                    <div class="screenshot-frame browser-frame">
+                      <div class="frame-dots">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                      </div>
+                      <div class="placeholder-img-content" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.02); color: var(--slide-text-secondary); padding: 1.5em; text-align: center; height: 100%; min-height: 180px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image" style="opacity: 0.4; margin-bottom: 0.5em;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                        <span style="font-size: 0.75em; opacity: 0.6; font-weight: 500;">예상 결과 화면</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 8. 제목형 (title) -->
+              <div class="center-layout title-layout layout-title" style="display: none;">
+                <h2>02. 실전 개발 방법론</h2>
+                <h1>자동화 코드로 구현하는 업무 효율화</h1>
+              </div>
+
+              <!-- 9. 표지형 (hero) -->
+              <div class="center-layout layout-hero" style="display: none;">
+                <span class="hero-badge">Day 2</span>
+                <h1>파이썬 스크립트 핵심 가이드</h1>
+                <h2>실무자도 3분 만에 마스터하는 RPA</h2>
+              </div>
+
+              <!-- 10. 요약형 (summary) -->
+              <div class="grid-2x2 layout-summary" style="display: none;">
+                <div class="grid-cell card"><p><b>Pandas</b><br>데이터 정제 및 수집</p></div>
+                <div class="grid-cell card"><p><b>OS 모듈</b><br>시스템 폴더 자동 컨트롤</p></div>
+                <div class="grid-cell card"><p><b>SMTP</b><br>대량 이메일 발송 관리</p></div>
+                <div class="grid-cell card"><p><b>Schedule</b><br>주기적 배치 자동화</p></div>
+              </div>
+
+              <!-- 11. 분할형 (split) -->
+              <div class="split-layout layout-split" style="display: none;">
+                <div class="left">
+                  <h3>스크립트 구조화</h3>
+                  <ul class="bullet-list">
+                    <li>폴더 내의 엑셀 파일을 감지하고 정합성을 체크합니다.</li>
+                    <li>이상치가 있을 경우 예외 처리를 진행합니다.</li>
+                  </ul>
+                </div>
+                <div class="right card" style="display:flex;align-items:center;justify-content:center;">
+                  <b>(파이썬 코드 블록 영역)</b>
+                </div>
+              </div>
+
+              <!-- 12. 도해형 (diagram) -->
+              <div class="layout-diagram layout-diagram" style="display: none;">
+                <div class="card" style="width:60%; text-align:center; margin-bottom:20px;">[Step 1] 엑셀 파일 스캔</div>
+                <div>↓</div>
+                <div class="card" style="width:60%; text-align:center; margin-top:20px;">[Step 2] 병합 및 로드</div>
+              </div>
+
+              <!-- 13. 인용형 (quote) -->
+              <div class="layout-quote" style="display: none; width:100%; height:100%; align-items:center; justify-content:center;">
+                <div class="quote-box">
+                  <p class="quote-text">"자동화는 단지 인간을 대체하는 기술이 아닙니다. 인간의 귀중한 시간을 더 창의적인 일에 투자할 수 있도록 돕는 도구입니다."</p>
+                  <p class="quote-author">- 업무 혁신 컨설턴트</p>
+                </div>
+              </div>
+
+              <!-- 14. 전체화면 (fullbleed) -->
+              <div class="layout-fullbleed" style="display: none; width:100%; height:100%; background:rgba(0,0,0,0.15); border-radius:8px; align-items:flex-end; padding:20px; box-sizing:border-box;">
+                <div class="card" style="width:50%;">
+                  <h3>대량 메일링 발송</h3>
+                  <p>실제 동작하는 발송 모듈의 UI 미리보기 화면.</p>
+                </div>
+              </div>
+
+              <!-- 15. 글+사진 (text_image) -->
+              <div class="split-layout layout-text_image" style="display: none;">
+                <div class="left">
+                  <p>파이썬 코드의 실행 결과와 터미널 출력 내용을 한눈에 비교할 수 있습니다.</p>
+                </div>
+                <div class="right card" style="background:rgba(0,0,0,0.05); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                  (코드 터미널 캡쳐)
+                </div>
+              </div>
+
+              <!-- 16. 타임라인 (timeline) -->
+              <div class="layout-timeline" style="display: none;">
+                <div class="card"><b>AM 09:00:</b> 나이스 엑셀 백업 자동 생성</div>
+                <div class="card"><b>AM 10:00:</b> 데이터 정제 및 이상치 탐지 알림</div>
+                <div class="card"><b>PM 05:00:</b> 일간 취합 보고서 PDF 자동 발송</div>
+              </div>
+
+              <!-- 17. 비교형 (comparison) -->
+              <div class="split-layout layout-comparison" style="display: none;">
+                <div class="left card" style="text-align:center;"><h3>수작업 Merging</h3><p>오류 15%, 2시간 소요</p></div>
+                <div class="right card" style="text-align:center;"><h3>스크립트 Merging</h3><p>오류 0%, 3초 소요</p></div>
+              </div>
+
+              <!-- 18. 실습형 (hands_on) -->
+              <div class="layout-hands_on" style="display: none; width:100%;">
+                <ul class="hands-on-steps">
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 1</span> pandas 라이브러리를 임포트합니다.</li>
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 2</span> `read_excel`로 데이터를 로드합니다.</li>
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 3</span> `concat`으로 하나로 병합합니다.</li>
+                </ul>
+                <div class="tutorial-warning" style="margin-top: 15px;">주의: 엑셀 파일 내 컬럼명이 다른 경우 병합이 정상적으로 작동하지 않습니다.</div>
+              </div>
+
+              <!-- 19. 마무리 (closing) -->
+              <div class="center-layout layout-closing" style="display: none;">
+                <h1>Q&A 및 질문</h1>
+                <h2>실습 스크립트에 관한 의문점을 해결합니다.</h2>
+                <p class="presenter">담당 강사: 김현승</p>
+              </div>
+ 
+            </div>
+            <div class="bottom-takeaway-bar">
+              <div class="takeaway-content">단 몇 줄의 파이썬 코드가 교사의 불필요한 일주일 업무를 압축합니다.</div>
+            </div>
+          </div>
+ 
+          <!-- 슬라이드 3: 결론 및 비전 -->
+          <div class="slide-page">
+            <div class="slide-header">
+              <span class="section-header">Part 5. 교실의 내일과 전망</span>
+            </div>
+            <h2 class="slide-title">인간적인 교실로의 회귀</h2>
+            <div class="content-box card-preset-cute_note">
+              
+              <!-- 1. 목록형 (bullet) -->
+              <ul class="bullet-list layout-bullet">
+                <li class="icon-bullet">
+                  <span class="bullet-icon">🤝</span>
+                  <span class="bullet-text">기계적인 서류 잡무는 컴퓨터에 넘기고 교사는 <strong>학생 맞춤형 케어</strong> 집중</span>
+                </li>
+                <li class="icon-bullet">
+                  <span class="bullet-icon">🎓</span>
+                  <span class="bullet-text">데이터 기반의 맞춤 분석을 통한 <strong>개인별 성장 중심 피드백</strong> 실현</span>
+                </li>
+                <li class="icon-bullet">
+                  <span class="bullet-icon">❤️</span>
+                  <span class="bullet-text">업무 피로도 감소로 교사와 학생 모두가 <strong>행복한 교실 환경</strong> 조성</span>
+                </li>
+              </ul>
+              
+              <!-- 2. 통계형 (stats) -->
+              <div class="card-grid stats-grid layout-stats" style="display: none;">
+                <div class="card stat-card-button" onclick="clickStatCard(this, 96)">
+                  <div class="stat-number">4.8점</div>
+                  <div class="stat-label">자동화 도입 후 교사 <strong>직무 만족도</strong></div>
+                  <div class="stat-gauge-container">
+                    <div class="stat-gauge-bar" data-target-width="96%"></div>
+                  </div>
+                </div>
+                <div class="card stat-card-button" onclick="clickStatCard(this, 80)">
+                  <div class="stat-number">+80분</div>
+                  <div class="stat-label">일평균 추가 확보되는 <strong>학생 면담 시간</strong></div>
+                  <div class="stat-gauge-container">
+                    <div class="stat-gauge-bar" data-target-width="80%"></div>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 3. 퀴즈형 (quiz) -->
+              <div class="layout-quiz" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                <div class="quiz-question" style="font-size: 1.0em; font-weight: 500; margin-bottom: 0.8em; color: var(--slide-text-secondary); text-align: center; line-height: 1.4;">Q. 교실 디지털 혁신의 <strong>가장 궁극적인 지향점</strong>은 무엇일까요?</div>
+                <div class="quiz-options">
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">A</span>
+                    <span class="option-text">더 비싼 교육 장비 도입</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, true)">
+                    <span class="option-marker">B</span>
+                    <span class="option-text">인간적 교육 대면 소통 시간 보존</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">C</span>
+                    <span class="option-text">이메일 발송량 극대화</span>
+                  </div>
+                  <div class="quiz-option card button-type" onclick="checkQuizAnswer(this, false)">
+                    <span class="option-marker">D</span>
+                    <span class="option-text">종이 없는 행정실 완성</span>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 4. O/X대비 (vs_ox) -->
+              <div class="ox-layout ox-balanced layout-vs_ox" style="display: none;">
+                <div class="ox-column">
+                  <div class="ox-column-header o-header">
+                    <span class="ox-header-marker">⭕</span>
+                    <h3 style="margin: 0;">인간 중심 교실</h3>
+                  </div>
+                  <div class="ox-column-body">
+                    <div class="ox-item"><span class="ox-marker marker-o">O</span><span class="ox-text">잡무 최소화로 학생 <strong>대면 80분 증가</strong></span></div>
+                    <div class="ox-item"><span class="ox-marker marker-o">O</span><span class="ox-text">기계 계산은 <strong>컴퓨터가 담당</strong></span></div>
+                  </div>
+                </div>
+                <div class="ox-column">
+                  <div class="ox-column-header x-header">
+                    <span class="ox-header-marker">❌</span>
+                    <h3 style="margin: 0;">행정 중심 교실</h3>
+                  </div>
+                  <div class="ox-column-body">
+                    <div class="ox-item"><span class="ox-marker marker-x">X</span><span class="ox-text">서류 기입에 밀려 <strong>정서 대화 지연</strong></span></div>
+                    <div class="ox-item"><span class="ox-marker marker-x">X</span><span class="ox-text">매일 엑셀 노무로 인한 <strong>피로 축적</strong></span></div>
+                  </div>
+                </div>
+              </div>
+ 
+              <!-- 5. 매트릭스 (matrix) -->
+              <div class="matrix-grid layout-matrix" style="display: none;">
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">❤️</div>
+                  <div class="matrix-label">정서 지지</div>
+                  <div class="matrix-desc">행정이 비워낸 시간을 학생들의 심리적 케어와 1:1 상담에 전폭 투자</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">🎓</div>
+                  <div class="matrix-label">데이터 분석</div>
+                  <div class="matrix-desc">수치화된 데이터를 기반으로 객관적이고 체계적인 성장 피드백 전달</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">😁</div>
+                  <div class="matrix-label">행복 지수</div>
+                  <div class="matrix-desc">단순 수기 입력의 해방으로 교실 전반의 직무 행복과 사기 진작</div>
+                </div>
+                <div class="matrix-cell card">
+                  <div class="matrix-icon">💡</div>
+                  <div class="matrix-label">교육 본질 회귀</div>
+                  <div class="matrix-desc">수업 구성과 진로 지도 등 교육의 아날로그 가치 보존</div>
+                </div>
+              </div>
+ 
+              <!-- 6. 로드맵 (roadmap) -->
+              <div class="roadmap-track layout-roadmap" style="display: none;">
+                <div class="roadmap-step">
+                  <div class="roadmap-num">1</div>
+                  <div class="roadmap-label">잡무 위임</div>
+                  <div class="roadmap-desc">수기 연산에서 100% 해방</div>
+                </div>
+                <div class="roadmap-connector"></div>
+                <div class="roadmap-step">
+                  <div class="roadmap-num">2</div>
+                  <div class="roadmap-label">대면 상담</div>
+                  <div class="roadmap-desc">밀도 높은 학생 면담 확보</div>
+                </div>
+                <div class="roadmap-connector"></div>
+                <div class="roadmap-step">
+                  <div class="roadmap-num">3</div>
+                  <div class="roadmap-label">맞춤 성장</div>
+                  <div class="roadmap-desc">풍부한 정서 교감 중심 설계</div>
+                </div>
+              </div>
+ 
+              <!-- 7. 실습형 (tutorial) -->
+              <div class="layout-tutorial" style="display: none; flex-direction: column; width: 100%; height: 100%;">
+                <div class="stepper-container">
+                  <div class="stepper-step completed"><span class="step-num">1</span><span>로그인</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step completed"><span class="step-num">2</span><span>출결 메뉴</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step completed"><span class="step-num">3</span><span>학생 선택</span></div>
+                  <div class="stepper-connector"></div>
+                  <div class="stepper-step active"><span class="step-num">4</span><span>저장</span></div>
+                </div>
+                <div class="split-layout tutorial-content">
+                  <div class="left tutorial-text">
+                    <div class="slide-body">
+                      <ul class="bullet-list tutorial-steps">
+                        <li class="icon-bullet">
+                          <span class="bullet-icon">👉</span>
+                          <span class="bullet-text">잡무 자동화 솔루션 정착을 완수합니다.</span>
+                        </li>
+                        <li class="icon-bullet">
+                          <span class="bullet-icon">👉</span>
+                          <span class="bullet-text">확보된 시간 동안 <strong>학생 개별 밀착 면담</strong>을 수행합니다.</span>
+                        </li>
+                      </ul>
+                      <div class="tutorial-tip">
+                        <span class="tip-icon">🌱</span>
+                        <span class="tip-text">기술 혁신의 종착지는 교육의 정서적 연결성과 따뜻함을 보존하는 데 목적이 있습니다.</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="right tutorial-screenshot">
+                    <div class="screenshot-frame browser-frame">
+                      <div class="frame-dots">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                      </div>
+                      <div class="placeholder-img-content" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.02); color: var(--slide-text-secondary); padding: 1.5em; text-align: center; height: 100%; min-height: 180px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image" style="opacity: 0.4; margin-bottom: 0.5em;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                        <span style="font-size: 0.75em; opacity: 0.6; font-weight: 500;">예상 결과 화면</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 8. 제목형 (title) -->
+              <div class="center-layout title-layout layout-title" style="display: none;">
+                <h2>03. 교육의 본질과 가치</h2>
+                <h1>디지털 전환을 넘어서 인간적인 배움으로</h1>
+              </div>
+
+              <!-- 9. 표지형 (hero) -->
+              <div class="center-layout layout-hero" style="display: none;">
+                <span class="hero-badge">Vision</span>
+                <h1>인공지능 시대의 참된 교육</h1>
+                <h2>인간 중심의 교실을 향한 혁신</h2>
+              </div>
+
+              <!-- 10. 요약형 (summary) -->
+              <div class="grid-2x2 layout-summary" style="display: none;">
+                <div class="grid-cell card"><p><b>정서 연결</b><br>학생 개별 밀착 정서 상담</p></div>
+                <div class="grid-cell card"><p><b>개인화 피드백</b><br>성장 궤적 데이터 기반 분석</p></div>
+                <div class="grid-cell card"><p><b>교사 만족도</b><br>직무 소진 감소 및 업무 몰입</p></div>
+                <div class="grid-cell card"><p><b>교육 본질</b><br>학생과 소통하는 아날로그 교류</p></div>
+              </div>
+
+              <!-- 11. 분할형 (split) -->
+              <div class="split-layout layout-split" style="display: none;">
+                <div class="left">
+                  <h3>미래 교실의 설계</h3>
+                  <ul class="bullet-list">
+                    <li>행정 노무는 자동화에 위임합니다.</li>
+                    <li>교사는 수업 기획 및 인간적 소통에 전념.</li>
+                  </ul>
+                </div>
+                <div class="right card" style="display:flex;align-items:center;justify-content:center;">
+                  <b>(미래 교실 인포그래픽 영역)</b>
+                </div>
+              </div>
+
+              <!-- 12. 도해형 (diagram) -->
+              <div class="layout-diagram layout-diagram" style="display: none;">
+                <div class="card" style="width:60%; text-align:center; margin-bottom:20px;">디지털 기술 혁신</div>
+                <div>↓</div>
+                <div class="card" style="width:60%; text-align:center; margin-top:20px;">인간적 대면 시간 극대화</div>
+              </div>
+
+              <!-- 13. 인용형 (quote) -->
+              <div class="layout-quote" style="display: none; width:100%; height:100%; align-items:center; justify-content:center;">
+                <div class="quote-box">
+                  <p class="quote-text">"가장 훌륭한 교육은 지식을 전달하는 것이 아니라, 배움에 대한 열망을 일깨우고 올바른 성장을 이끄는 정서적 연결입니다."</p>
+                  <p class="quote-author">- 현대 교육철학자</p>
+                </div>
+              </div>
+
+              <!-- 14. 전체화면 (fullbleed) -->
+              <div class="layout-fullbleed" style="display: none; width:100%; height:100%; background:rgba(0,0,0,0.1); border-radius:8px; align-items:flex-end; padding:20px; box-sizing:border-box;">
+                <div class="card" style="width:50%;">
+                  <h3>인간적인 교실의 미래</h3>
+                  <p>학생들과 교사가 둘러앉아 따뜻한 배움을 나누는 공간의 전경.</p>
+                </div>
+              </div>
+
+              <!-- 15. 글+사진 (text_image) -->
+              <div class="split-layout layout-text_image" style="display: none;">
+                <div class="left">
+                  <p>기술이 대체할 수 없는 따뜻한 정서적 유대감은 오직 교실의 현장에서만 꽃피울 수 있습니다.</p>
+                </div>
+                <div class="right card" style="background:rgba(0,0,0,0.05); border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                  (활동 중심 수업 장면)
+                </div>
+              </div>
+
+              <!-- 16. 타임라인 (timeline) -->
+              <div class="layout-timeline" style="display: none;">
+                <div class="card"><b>1단계:</b> 행정 업무의 90% 자동화 달성</div>
+                <div class="card"><b>2단계:</b> 주당 대면 상담 시간 2시간 확보</div>
+                <div class="card"><b>3단계:</b> 전인적 성장을 돕는 교육 혁명 실현</div>
+              </div>
+
+              <!-- 17. 비교형 (comparison) -->
+              <div class="split-layout layout-comparison" style="display: none;">
+                <div class="left card" style="text-align:center;"><h3>기존 지식 주입</h3><p>단방향, 평가 위주</p></div>
+                <div class="right card" style="text-align:center;"><h3>성장 중심 조력</h3><p>쌍방향, 피드백 위주</p></div>
+              </div>
+
+              <!-- 18. 실습형 (hands_on) -->
+              <div class="layout-hands_on" style="display: none; width:100%;">
+                <ul class="hands-on-steps">
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 1</span> 자동화로 확보된 80분의 가치를 정의합니다.</li>
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 2</span> 맞춤형 정서 케어 상담지를 작성합니다.</li>
+                  <li><span class="step-badge" style="font-size: 1rem; padding: 4px 10px;">Step 3</span> 1:1 대화식 밀도 높은 면담을 진행합니다.</li>
+                </ul>
+                <div class="tutorial-warning" style="margin-top: 15px;">주의: 단순 기술 편의주의에 매몰되어 소통을 게을리해선 안 됩니다.</div>
+              </div>
+
+              <!-- 19. 마무리 (closing) -->
+              <div class="center-layout layout-closing" style="display: none;">
+                <h1>경청해 주셔서 감사합니다.</h1>
+                <h2>더 풍요로운 교실을 향해 함께 나아갑니다.</h2>
+                <p class="presenter">발표자: 김현승 (현승쌤)</p>
+              </div>
+ 
+            </div>
+            <div class="bottom-takeaway-bar">
+              <div class="takeaway-content">기술이 발전할수록, 교육은 더욱 더 인간적인 소통으로 채워져야 합니다.</div>
+            </div>
+          </div>
+        </div></main>
+  </div>
+
+  <script>
+    let currentLayout = 'bullet';
+    let isContrastMode = false;
+
+    // 1. 실시간 컬러 인풋 맵핑
+    function updateColors() {
+      if (isContrastMode) return;
+      
+      const bg = document.getElementById('colorBg').value;
+      const bgSec = document.getElementById('colorBgSecondary').value;
+      const text = document.getElementById('colorText').value;
+      const textSec = document.getElementById('colorTextSecondary').value;
+      const accent = document.getElementById('colorAccent').value;
+      const accentSec = document.getElementById('colorAccentSecondary').value;
+
+      document.getElementById('textBg').textContent = bg.toUpperCase();
+      document.getElementById('textBgSecondary').textContent = bgSec.toUpperCase();
+      document.getElementById('textText').textContent = text.toUpperCase();
+      document.getElementById('textTextSecondary').textContent = textSec.toUpperCase();
+      document.getElementById('textAccent').textContent = accent.toUpperCase();
+      document.getElementById('textAccentSecondary').textContent = accentSec.toUpperCase();
+
+      const canvas = document.getElementById('slideCanvas');
+      canvas.style.setProperty('--slide-bg', bg);
+      canvas.style.setProperty('--slide-bg-secondary', bgSec);
+      canvas.style.setProperty('--slide-text', text);
+      canvas.style.setProperty('--slide-text-secondary', textSec);
+      canvas.style.setProperty('--slide-accent', accent);
+      canvas.style.setProperty('--slide-accent-secondary', accentSec);
+    }
+
+    // 2. 조합 데모 적용 함수
+    function applyColorPreset(bg, bgSec, text, textSec, accent, accentSec, cardPreset, iconPreset, fontPreset, patternStyle, decors) {
+      if (isContrastMode) {
+        toggleContrast();
+      }
+
+      document.getElementById('colorBg').value = bg;
+      document.getElementById('colorBgSecondary').value = bgSec;
+      document.getElementById('colorText').value = text;
+      document.getElementById('colorTextSecondary').value = textSec;
+      document.getElementById('colorAccent').value = accent;
+      document.getElementById('colorAccentSecondary').value = accentSec;
+
+      document.getElementById('selectCardPreset').value = cardPreset;
+      document.getElementById('selectIconPreset').value = iconPreset;
+      document.getElementById('selectFont').value = fontPreset;
+      document.getElementById('selectPattern').value = patternStyle;
+
+      // 조합 프리셋 적용 시 강조 스타일, 하단바 스타일, 전환 모션도 해당 계열로 자동 동기화 설정
+      document.getElementById('selectHighlight').value = fontPreset;
+      document.getElementById('selectTakeaway').value = fontPreset;
+      document.getElementById('selectMotion').value = fontPreset;
+
+      const checkboxes = [
+        'checkDecorCorner', 'checkDecorCircles', 'checkDecorBrackets', 
+        'checkDecorWavy', 'checkDecorShapes', 'checkDecorTechlines'
+      ];
+      checkboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        checkbox.checked = decors.includes(checkbox.value);
+      });
+
+      updateColors();
+      updateCardPreset();
+      updateIconPreset();
+      updateFont();
+      updateHighlight();
+      updateTakeaway();
+      updateMotion();
+      updatePattern();
+      updateDecorations();
+    }
+
+    // 2-1. 모든 테마 요소를 무작위로 조합하는 셔플 함수
+    function applyRandomPreset() {
+      if (isContrastMode) {
+        toggleContrast();
+      }
+
+      // 조화로운 색 조합 (60-30-10) 팔레트 정의
+      const palettes = [
+        { bg: '#fffbf0', bgSec: '#f4ebe1', text: '#1e293b', textSec: '#64748b', accent: '#ec4899', accentSec: '#818cf8' }, // 큐트
+        { bg: '#0f172a', bgSec: '#1e293b', text: '#f8fafc', textSec: '#94a3b8', accent: '#6366f1', accentSec: '#a5b4fc' }, // 테크
+        { bg: '#ffffff', bgSec: '#f1f5f9', text: '#0f172a', textSec: '#475569', accent: '#2563eb', accentSec: '#1d4ed8' }, // 모던
+        { bg: '#fbf7f0', bgSec: '#ebd8c3', text: '#4a3319', textSec: '#7a5a3a', accent: '#d97706', accentSec: '#92400e' }, // 매거진
+        { bg: '#fec2f2', bgSec: '#fee2e2', text: '#450a0a', textSec: '#7f1d1d', accent: '#ef4444', accentSec: '#b91c1c' }, // 레트로
+        { bg: '#f2f4f2', bgSec: '#e2e8e2', text: '#1c2e1c', textSec: '#4a614a', accent: '#10b981', accentSec: '#6ee7b7' }, // 오가닉 그린
+        { bg: '#18181b', bgSec: '#27272a', text: '#fafafa', textSec: '#a1a1aa', accent: '#f43f5e', accentSec: '#fda4af' }, // 다크 로즈
+        { bg: '#fff7ed', bgSec: '#ffedd5', text: '#431407', textSec: '#7c2d12', accent: '#ea580c', accentSec: '#fdba74' }  // 선셋 오렌지
+      ];
+
+      const cards = ['cute_note', 'tech_neon', 'business_clean', 'editorial_serif', 'retro_bold', 'transparent'];
+      const icons = ['cute', 'tech', 'business', 'minimal_raw', 'handdrawn'];
+      const fonts = ['friendly', 'cyber', 'classic', 'editorial', 'chalkboard'];
+      const patterns = ['grid', 'dots', 'diagonal', 'blueprint', 'terrazzo', 'none'];
+      const highlights = ['friendly', 'cyber', 'classic', 'editorial', 'chalkboard'];
+      const takeaways = ['friendly', 'cyber', 'classic', 'editorial', 'chalkboard'];
+      const motions = ['friendly', 'cyber', 'classic', 'editorial', 'chalkboard'];
+      const decors = ['corner_accent', 'circles', 'hud_brackets', 'wavy_line', 'geometric_shapes', 'tech_grid_lines'];
+
+      // 무작위 선택
+      const palette = palettes[Math.floor(Math.random() * palettes.length)];
+      const card = cards[Math.floor(Math.random() * cards.length)];
+      const icon = icons[Math.floor(Math.random() * icons.length)];
+      const font = fonts[Math.floor(Math.random() * fonts.length)];
+      const pattern = patterns[Math.floor(Math.random() * patterns.length)];
+      const highlight = highlights[Math.floor(Math.random() * highlights.length)];
+      const takeaway = takeaways[Math.floor(Math.random() * takeaways.length)];
+      const motion = motions[Math.floor(Math.random() * motions.length)];
+      
+      // 장식 다중 선택 (각 데코레이션 별로 40% 확률로 활성화)
+      const chosenDecors = decors.filter(() => Math.random() < 0.4);
+
+      // 값 주입
+      document.getElementById('colorBg').value = palette.bg;
+      document.getElementById('colorBgSecondary').value = palette.bgSec;
+      document.getElementById('colorText').value = palette.text;
+      document.getElementById('colorTextSecondary').value = palette.textSec;
+      document.getElementById('colorAccent').value = palette.accent;
+      document.getElementById('colorAccentSecondary').value = palette.accentSec;
+
+      document.getElementById('selectCardPreset').value = card;
+      document.getElementById('selectIconPreset').value = icon;
+      document.getElementById('selectFont').value = font;
+      document.getElementById('selectPattern').value = pattern;
+      document.getElementById('selectHighlight').value = highlight;
+      document.getElementById('selectTakeaway').value = takeaway;
+      document.getElementById('selectMotion').value = motion;
+
+      // 데코레이션 체크박스 상태 갱신
+      const checkboxes = [
+        'checkDecorCorner', 'checkDecorCircles', 'checkDecorBrackets', 
+        'checkDecorWavy', 'checkDecorShapes', 'checkDecorTechlines'
+      ];
+      checkboxes.forEach(id => {
+        const checkbox = document.getElementById(id);
+        checkbox.checked = chosenDecors.includes(checkbox.value);
+      });
+
+      // 테마 상태 일괄 업데이트
+      updateColors();
+      updateCardPreset();
+      updateIconPreset();
+      updateFont();
+      updateHighlight();
+      updateTakeaway();
+      updateMotion();
+      updatePattern();
+      updateDecorations();
+    }
+
+    // 2-2. 화면 전환 모션 프리셋 업데이트
+    function updateMotion() {
+      const select = document.getElementById('selectMotion');
+      const canvas = document.getElementById('slideCanvas');
+      canvas.classList.remove('motion-friendly', 'motion-cyber', 'motion-classic', 'motion-editorial', 'motion-chalkboard');
+      canvas.classList.add(`motion-${select.value}`);
+    }
+
+    // 3. 카드 프리셋 클래스 매치 (6종) - 모든 슬라이드 페이지 카드 일괄 제어
+    function updateCardPreset() {
+      const select = document.getElementById('selectCardPreset');
+      const boxes = document.querySelectorAll('.content-box');
+      const centerLayouts = ['title', 'hero', 'closing', 'quote', 'fullbleed'];
+      const isCenter = centerLayouts.includes(currentLayout);
+
+      boxes.forEach(box => {
+        box.className = 'content-box';
+        if (isCenter) {
+          box.classList.add('center-layout-active');
+        } else {
+          box.classList.add(`card-preset-${select.value}`);
+        }
+      });
+    }
+
+    // 4. 아이콘 프리셋 클래스 매치 (5종)
+    function updateIconPreset() {
+      const select = document.getElementById('selectIconPreset');
+      const canvas = document.getElementById('slideCanvas');
+      canvas.classList.remove(
+        'icon-preset-cute', 'icon-preset-tech', 'icon-preset-business', 
+        'icon-preset-minimal_raw', 'icon-preset-handdrawn'
+      );
+      canvas.classList.add(`icon-preset-${select.value}`);
+    }
+
+    // 5. 글꼴 타이포그래피 매치 (5종) 및 동적 테마 클래스 연동
+    function updateFont() {
+      const select = document.getElementById('selectFont');
+      const canvas = document.getElementById('slideCanvas');
+      
+      // 기존 테마 클래스 일괄 제거
+      canvas.classList.remove('theme-friendly', 'theme-cyber', 'theme-classic', 'theme-editorial', 'theme-chalkboard');
+      // 새로운 테마 클래스 부여 (1, 2, 4번 기획 연동)
+      canvas.classList.add(`theme-${select.value}`);
+      
+      let fontStack = '';
+      if (select.value === 'friendly') {
+        fontStack = "'Outfit', 'Noto Sans KR', sans-serif";
+      } else if (select.value === 'cyber') {
+        fontStack = "'Orbitron', 'Nanum Square Neo', sans-serif";
+      } else if (select.value === 'classic') {
+        fontStack = "'Playfair Display', 'Nanum Myeongjo', serif";
+      } else if (select.value === 'editorial') {
+        fontStack = "'Montserrat', 'Pretendard', sans-serif";
+      } else if (select.value === 'chalkboard') {
+        fontStack = "'Caveat', 'Nanum Pen Script', cursive";
+      }
+      
+      canvas.style.setProperty('--slide-font', fontStack);
+
+      const activePage = document.querySelectorAll('.slide-page')[currentSlide];
+      if (activePage) {
+        autoFitDemoContainer(activePage);
+      }
+    }
+
+    // 5-2. 강조 텍스트 스타일 프리셋 업데이트 (신규 분리)
+    function updateHighlight() {
+      const select = document.getElementById('selectHighlight');
+      const canvas = document.getElementById('slideCanvas');
+      canvas.classList.remove('highlight-friendly', 'highlight-cyber', 'highlight-classic', 'highlight-editorial', 'highlight-chalkboard');
+      canvas.classList.add(`highlight-${select.value}`);
+    }
+
+    // 5-3. 하단 요약바 스타일 프리셋 업데이트 (신규 분리)
+    function updateTakeaway() {
+      const select = document.getElementById('selectTakeaway');
+      const canvas = document.getElementById('slideCanvas');
+      canvas.classList.remove('takeaway-friendly', 'takeaway-cyber', 'takeaway-classic', 'takeaway-editorial', 'takeaway-chalkboard');
+      canvas.classList.add(`takeaway-${select.value}`);
+    }
+
+    // 6. 배경 패턴 적용 (6종)
+    function updatePattern() {
+      const select = document.getElementById('selectPattern');
+      const overlay = document.getElementById('patternOverlay');
+      overlay.className = 'pattern-overlay';
+      
+      if (select.value !== 'none') {
+        overlay.classList.add(`pattern-${select.value}`);
+      }
+    }
+
+    // 7. 다중 데코레이션 레이어 켜기/끄기 (6종)
+    function updateDecorations() {
+      // corner_accent
+      const checkCorner = document.getElementById('checkDecorCorner').checked;
+      const cornerIds = ['decorTL', 'decorTR', 'decorBL', 'decorBR'];
+      cornerIds.forEach(id => {
+        document.getElementById(id).classList.toggle('active', checkCorner);
+      });
+
+      // circles
+      const checkCircles = document.getElementById('checkDecorCircles').checked;
+      const circleIds = ['decorCircle1', 'decorCircle2'];
+      circleIds.forEach(id => {
+        document.getElementById(id).classList.toggle('active', checkCircles);
+      });
+
+      // hud_brackets
+      const checkBrackets = document.getElementById('checkDecorBrackets').checked;
+      const hudIds = ['decorHudL', 'decorHudR'];
+      hudIds.forEach(id => {
+        document.getElementById(id).classList.toggle('active', checkBrackets);
+      });
+
+      // wavy_line
+      const checkWavy = document.getElementById('checkDecorWavy').checked;
+      document.getElementById('decorWavy').classList.toggle('active', checkWavy);
+
+      // geometric_shapes (4개의 흩뿌려진 조형물 매핑 수정 완료)
+      const checkShapes = document.getElementById('checkDecorShapes').checked;
+      const shapeIds = ['decorShape1', 'decorShape2', 'decorShape3', 'decorShape4'];
+      shapeIds.forEach(id => {
+        document.getElementById(id).classList.toggle('active', checkShapes);
+      });
+
+      // tech_grid_lines
+      const checkTechlines = document.getElementById('checkDecorTechlines').checked;
+      document.getElementById('decorTechlines').classList.toggle('active', checkTechlines);
+    }
+
+    // 8. 프리뷰 레이아웃 전환 - 모든 슬라이드 페이지 동시 연동 (19종 전체 정합)
+    function switchLayout(layout) {
+      currentLayout = layout;
+      
+      const layoutMap = {
+        'bullet': { tabId: 'tabBullet', display: 'flex' },
+        'stats': { tabId: 'tabStats', display: 'flex' },
+        'quiz': { tabId: 'tabQuiz', display: 'flex' },
+        'vs_ox': { tabId: 'tabVsOx', display: 'flex' },
+        'matrix': { tabId: 'tabMatrix', display: 'grid' },
+        'roadmap': { tabId: 'tabRoadmap', display: 'flex' },
+        'tutorial': { tabId: 'tabTutorial', display: 'flex' },
+        'title': { tabId: 'tabTitle', display: 'flex' },
+        'hero': { tabId: 'tabHero', display: 'flex' },
+        'summary': { tabId: 'tabSummary', display: 'grid' },
+        'split': { tabId: 'tabSplit', display: 'flex' },
+        'diagram': { tabId: 'tabDiagram', display: 'flex' },
+        'quote': { tabId: 'tabQuote', display: 'flex' },
+        'fullbleed': { tabId: 'tabFullbleed', display: 'flex' },
+        'text_image': { tabId: 'tabTextImage', display: 'flex' },
+        'timeline': { tabId: 'tabTimeline', display: 'flex' },
+        'comparison': { tabId: 'tabComparison', display: 'flex' },
+        'hands_on': { tabId: 'tabHandsOn', display: 'flex' },
+        'closing': { tabId: 'tabClosing', display: 'flex' }
+      };
+
+      Object.keys(layoutMap).forEach(key => {
+        const config = layoutMap[key];
+        const tab = document.getElementById(config.tabId);
+        if (tab) {
+          tab.classList.toggle('active', key === layout);
+        }
+        
+        // layout 클래스 매치 선택자
+        const selectorMap = {
+          'bullet': '.layout-bullet',
+          'stats': '.layout-stats',
+          'quiz': '.layout-quiz',
+          'vs_ox': '.layout-vs_ox',
+          'matrix': '.layout-matrix',
+          'roadmap': '.layout-roadmap',
+          'tutorial': '.layout-tutorial',
+          'title': '.layout-title',
+          'hero': '.layout-hero',
+          'summary': '.layout-summary',
+          'split': '.layout-split',
+          'diagram': '.layout-diagram',
+          'quote': '.layout-quote',
+          'fullbleed': '.layout-fullbleed',
+          'text_image': '.layout-text_image',
+          'timeline': '.layout-timeline',
+          'comparison': '.layout-comparison',
+          'hands_on': '.layout-hands_on',
+          'closing': '.layout-closing'
+        };
+
+        const elements = document.querySelectorAll(selectorMap[key]);
+        elements.forEach(el => {
+          el.style.display = (key === layout) ? config.display : 'none';
+        });
+      });
+
+      // center-layout 계열 화면 구성 토글
+      const centerLayouts = ['title', 'hero', 'closing', 'quote', 'fullbleed'];
+      const isCenter = centerLayouts.includes(layout);
+      
+      const headers = document.querySelectorAll('.slide-header');
+      const slideTitles = document.querySelectorAll('.slide-title');
+      const takeawayBars = document.querySelectorAll('.bottom-takeaway-bar');
+      
+      headers.forEach(h => h.style.display = isCenter ? 'none' : 'flex');
+      slideTitles.forEach(t => t.style.display = isCenter ? 'none' : 'block');
+      takeawayBars.forEach(b => b.style.display = isCenter ? 'none' : 'flex');
+      
+      // 카드 배경 및 마진 무력화 업데이트
+      updateCardPreset();
+
+      const activePage = document.querySelectorAll('.slide-page')[currentSlide];
+      
+      // 레이아웃이 바뀌었으므로 폰트 오토핏 재계산 트리거
+      if (activePage) {
+        autoFitDemoContainer(activePage);
+      }
+
+      // 통계형 레이아웃의 경우 게이지 바 애니메이션 트리거
+      if (layout === 'stats') {
+        triggerGaugeAnimation(activePage);
+      }
+    }
+
+    // 8-2. 퀴즈 정답/오답 확인 함수 (인터랙션 추가)
+    function checkQuizAnswer(element, isCorrect) {
+      if (element.classList.contains('quiz-correct') || element.classList.contains('quiz-wrong')) {
+        return;
+      }
+      const parent = element.parentElement;
+      if (parent && parent.querySelector('.quiz-correct')) {
+        return; // 이미 정답을 맞췄으면 클릭 불가
+      }
+
+      if (isCorrect) {
+        element.classList.add('quiz-correct');
+      } else {
+        element.classList.add('quiz-wrong');
+      }
+    }
+
+    // 8-3. 성과지표 가로형 게이지 바 애니메이션 구동 함수
+    function triggerGaugeAnimation(slideElement) {
+      if (!slideElement) return;
+
+      // 게이지 초기화
+      slideElement.querySelectorAll('.stat-gauge-bar').forEach(bar => {
+        bar.style.width = '0%';
+      });
+
+      // 게이지 활성화
+      slideElement.querySelectorAll('.stat-gauge-bar').forEach(bar => {
+        const card = bar.closest('.stat-card-button');
+        if (card) {
+          // target percent 파싱
+          const numText = card.querySelector('.stat-number').textContent;
+          const percentage = parseInt(numText) || 100;
+          setTimeout(() => {
+            bar.style.width = percentage + '%';
+          }, 150);
+        }
+      });
+    }
+
+    // 8-4. 성과지표 카드 클릭 시 게이지 토글
+    function clickStatCard(element, targetPercent) {
+      const bar = element.querySelector('.stat-gauge-bar');
+      if (!bar) return;
+      
+      const currentWidth = bar.style.width;
+      const targetWidthStr = targetPercent + '%';
+      
+      if (currentWidth === targetWidthStr) {
+        bar.style.width = '0%';
+      } else {
+        bar.style.width = targetWidthStr;
+      }
+    }
+    
+    
+    // 9. 빔프로젝터 고대비 모드 토글
+    function toggleContrast() {
+      isContrastMode = !isContrastMode;
+      const canvas = document.getElementById('slideCanvas');
+      const btn = document.getElementById('btnContrastToggle');
+
+      if (isContrastMode) {
+        canvas.classList.add('contrast-mode');
+        btn.innerHTML = '<i class="fa-solid fa-circle-half-stroke"></i> 일반 테마 모드 복원';
+        btn.style.background = '#10b981';
+        btn.style.color = '#ffffff';
+      } else {
+        canvas.classList.remove('contrast-mode');
+        btn.innerHTML = '<i class="fa-solid fa-circle-half-stroke"></i> 빔프로젝터 고대비 모드 ON';
+        btn.style.background = '#fbbf24';
+        btn.style.color = '#0f172a';
+        updateColors();
+      }
+    }
+
+    // 10. 슬라이더 네비게이션 제어 (2번 전환 모션 체감용)
+    let currentSlide = 0;
+    const totalSlides = 3;
+
+    // 슬라이드 내 실제 텍스트 데이터를 표지, 타이틀, 인용, 풀블리드 레이아웃 등으로 실시간 동적 동기화
+    function syncSlideDataToCustomLayouts(slidePage) {
+      if (!slidePage) return;
+      
+      const secHeaderEl = slidePage.querySelector('.section-header');
+      const slideTitleEl = slidePage.querySelector('.slide-title');
+      const takeawayEl = slidePage.querySelector('.takeaway-content');
+      
+      const secHeader = secHeaderEl ? secHeaderEl.textContent.trim() : '';
+      const slideTitle = slideTitleEl ? slideTitleEl.textContent.trim() : '';
+      const takeaway = takeawayEl ? takeawayEl.textContent.trim() : '';
+      
+      // 1. title 레이아웃 동기화
+      const titleLayout = slidePage.querySelector('.layout-title');
+      if (titleLayout) {
+        const h1 = titleLayout.querySelector('h1');
+        const h2 = titleLayout.querySelector('h2');
+        if (h1) h1.innerHTML = slideTitle;
+        if (h2) h2.innerHTML = secHeader;
+      }
+      
+      // 2. hero 레이아웃 동기화
+      const heroLayout = slidePage.querySelector('.layout-hero');
+      if (heroLayout) {
+        const h1 = heroLayout.querySelector('h1');
+        const h2 = heroLayout.querySelector('h2');
+        if (h1) h1.innerHTML = slideTitle;
+        if (h2) h2.innerHTML = secHeader;
+      }
+      
+      // 3. closing 레이아웃 동기화
+      const closingLayout = slidePage.querySelector('.layout-closing');
+      if (closingLayout) {
+        const h1 = closingLayout.querySelector('h1');
+        const h2 = closingLayout.querySelector('h2');
+        if (h1) h1.innerHTML = slideTitle;
+        if (h2) h2.innerHTML = '더 풍요로운 교실을 향해 함께 나아갑니다.';
+      }
+      
+      // 4. quote 레이아웃 동기화
+      const quoteLayout = slidePage.querySelector('.layout-quote');
+      if (quoteLayout) {
+        const qText = quoteLayout.querySelector('.quote-text');
+        if (qText) qText.innerHTML = `"${takeaway}"`;
+      }
+      
+      // 5. fullbleed 레이아웃 동기화
+      const fullbleedLayout = slidePage.querySelector('.layout-fullbleed');
+      if (fullbleedLayout) {
+        const h3 = fullbleedLayout.querySelector('h3');
+        const p = fullbleedLayout.querySelector('p');
+        if (h3) h3.innerHTML = slideTitle;
+        if (p) p.innerHTML = takeaway;
+      }
+    }
+
+    // PowerPoint식 텍스트 자동 맞춤 (Auto-Fit) 데모 이식
+    function autoFitDemoContainer(slidePage) {
+      if (!slidePage) return;
+      
+      const container = slidePage;
+      
+      // 1. 제목 축소 (nowrap 오버플로우 방지)
+      const h2 = container.querySelector('.slide-title');
+      if (h2) {
+        h2.style.fontSize = ''; // 초기화
+        h2.style.whiteSpace = 'nowrap';
+        let headerSize = parseFloat(getComputedStyle(h2).fontSize) || 36;
+        const minHeaderSize = 20;
+
+        for (let i = 0; i < 45 && headerSize > minHeaderSize; i++) {
+          if (h2.scrollWidth <= h2.clientWidth + 2) break;
+          headerSize -= 0.5;
+          h2.style.fontSize = headerSize + 'px';
+        }
+      }
+
+      // 2. 전체 폰트 크기 초기화
+      container.style.fontSize = '';
+
+      // O/X 대비 등 nowrap 엘리먼트들 개별 피팅
+      function fitNowrapElements(selector, minPx) {
+        container.querySelectorAll(selector).forEach(el => {
+          el.style.fontSize = ''; // 초기화
+          let size = parseFloat(getComputedStyle(el).fontSize);
+          if (!size) return;
+          for (let i = 0; i < 60 && size > minPx; i++) {
+            if (el.scrollWidth <= el.clientWidth + 2) break;
+            size -= 0.5;
+            el.style.fontSize = size + 'px';
+          }
+        });
+      }
+
+      fitNowrapElements('.ox-column-header', 16);
+      fitNowrapElements('.ox-item', 14);
+
+      let currentSize = 18; // slide-page 기본 폰트 크기 기준
+      const minSize = 9; 
+      const maxIterations = 60; 
+
+      const body = container.querySelector('.content-box');
+
+      // 오버플로우 감지
+      function hasOverflow() {
+        // 1. 하단 요약바와 겹치는지 체크
+        const takeawayBar = container.querySelector('.bottom-takeaway-bar');
+        const centerLayouts = ['title', 'hero', 'closing', 'quote', 'fullbleed'];
+        const isCenter = centerLayouts.includes(currentLayout);
+        
+        if (takeawayBar && !isCenter && takeawayBar.style.display !== 'none') {
+          const takeawayRect = takeawayBar.getBoundingClientRect();
+          if (body) {
+            const bodyRect = body.getBoundingClientRect();
+            if (bodyRect.bottom > takeawayRect.top + 2) {
+              return true;
+            }
+          }
+        }
+
+        // 2. 캔버스 바닥 침범 체크
+        const containerRect = container.getBoundingClientRect();
+        if (body) {
+          const bodyRect = body.getBoundingClientRect();
+          if (bodyRect.bottom > containerRect.bottom - 20) {
+            return true;
+          }
+        }
+
+        // 3. scrollHeight 방식 백업
+        if (body && body.scrollHeight > body.clientHeight + 4) {
+          return true;
+        }
+        
+        return false;
+      }
+
+      let iterations = 0;
+      while (hasOverflow() && currentSize > minSize && iterations < maxIterations) {
+        currentSize -= 0.5;
+        container.style.fontSize = currentSize + 'px';
+        iterations++;
+      }
+    }
+
+    function updateSlidePosition() {
+      const track = document.getElementById('slideTrack');
+      
+      // 화면 전환 효과 중 추가 시각 효과(예: 사이버 테크 스캔 블러 등) 적용을 위해 moving 클래스 부여
+      track.classList.add('moving');
+      track.style.transform = `translateX(-${currentSlide * 33.3333}%)`;
+      document.getElementById('slideIndicator').textContent = `${currentSlide + 1} / ${totalSlides}`;
+      
+      // 트랜지션이 끝나면 moving 클래스 걷어내기
+      const cleanupMoving = () => {
+        track.classList.remove('moving');
+        track.removeEventListener('transitionend', cleanupMoving);
+      };
+      track.addEventListener('transitionend', cleanupMoving);
+      
+      const activePage = document.querySelectorAll('.slide-page')[currentSlide];
+      
+      // 현재 슬라이드의 데이터를 타이틀/표지/인용구 레이아웃 등에 동적 동기화
+      syncSlideDataToCustomLayouts(activePage);
+      
+      // 현재 슬라이드의 실시간 폰트 오토피팅(Auto-Fit) 계산 트리거
+      autoFitDemoContainer(activePage);
+
+      // 현재 슬라이드의 게이지 바 애니메이션 트리거
+      if (currentLayout === 'stats') {
+        triggerGaugeAnimation(activePage);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlidePosition();
+      } else {
+        currentSlide = totalSlides - 1; // 마지막 슬라이드로 루프
+        updateSlidePosition();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlidePosition();
+      } else {
+        currentSlide = 0; // 첫 번째 슬라이드로 루프
+        updateSlidePosition();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateColors();
+      updateCardPreset();
+      updateIconPreset();
+      updateFont();
+      updateHighlight();
+      updateTakeaway();
+      updateMotion();
+      updatePattern();
+      updateDecorations();
+      updateSlidePosition();
+    });
+  </script>
+</body>
+</html>

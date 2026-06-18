@@ -1,0 +1,18 @@
+<!-- 레이아웃: 풀 블리드 이미지 (동기부여/결과물 임팩트) -->
+<section data-background-image="{{IMAGE_SRC}}" data-background-size="cover" data-background-position="center">
+    <div class="center-layout" style="background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(2px); height: 100%; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white;">
+        {{#if STEPPER_ITEMS}}
+        <div class="stepper-container" style="position: absolute; top: 40px; margin-bottom: 0; justify-content: center; width: 100%;">
+            {{STEPPER_ITEMS}}
+        </div>
+        {{/if}}
+        {{#if BADGE}}
+        <div class="hero-badge" style="background: var(--color-accent); color: white; display: inline-block; padding: 0.3em 1em; border-radius: 20px; font-weight: 700; margin-bottom: 1em;">{{BADGE}}</div>
+        {{/if}}
+        <h1 style="color: white !important; background: none !important; -webkit-text-fill-color: white !important; text-shadow: 0 4px 16px rgba(0,0,0,0.8); font-size: 2.1em; font-weight: 900; line-height: 1.3; margin: 0 0 0.5em 0; word-break: keep-all;">{{TITLE}}</h1>
+        {{#if SUBTITLE}}
+        <h2 style="color: rgba(255,255,255,0.9) !important; text-shadow: 0 2px 12px rgba(0,0,0,0.8); font-size: 1.25em; line-height: 1.4; margin: 0; word-break: keep-all;">{{SUBTITLE}}</h2>
+        {{/if}}
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>

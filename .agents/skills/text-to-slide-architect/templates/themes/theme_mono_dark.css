@@ -1,0 +1,82 @@
+/* ===== 모노 다크 테마 ===== */
+/* 적합: 범용, 격식, 공식 발표, 학회 */
+
+:root {
+    --color-bg: #111827;
+    --color-bg-secondary: #1F2937;
+    --color-text: #F9FAFB;
+    --color-text-secondary: #9CA3AF;
+    --color-accent: #6B7280;
+    --color-accent-secondary: #D1D5DB;
+    --color-gradient: linear-gradient(135deg, #4B5563 0%, #9CA3AF 100%);
+    --color-card-bg: rgba(31, 41, 55, 0.8);
+    --color-card-border: rgba(107, 114, 128, 0.3);
+}
+
+.reveal {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.reveal h1, .reveal h2, .reveal h3 {
+    color: var(--color-text);
+}
+
+.reveal h1 {
+    color: #F9FAFB;
+    -webkit-text-fill-color: #F9FAFB;
+    border-bottom: 3px solid var(--color-accent-secondary);
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}
+
+.reveal p, .reveal li {
+    color: var(--color-text-secondary);
+}
+
+.card {
+    background: var(--color-card-bg);
+    border-color: var(--color-card-border);
+}
+
+.quiz-option {
+    background: var(--color-bg-secondary);
+    color: var(--color-text);
+    border: 1px solid var(--color-card-border);
+}
+
+.quiz-option:hover {
+    background: rgba(107, 114, 128, 0.2);
+    border-color: var(--color-accent-secondary);
+}
+
+.stat-number {
+    color: #F9FAFB;
+}
+
+.bullet-list li::before {
+    background: var(--color-accent-secondary);
+}
+
+.timeline::before {
+    background: var(--color-accent-secondary);
+    opacity: 0.3;
+}
+
+.timeline-item::before {
+    background: var(--color-accent-secondary);
+}
+
+.quote-block::before {
+    color: var(--color-accent-secondary);
+    opacity: 0.2;
+}
+
+.summary-list li::before {
+    background: var(--color-accent-secondary);
+}
+
+.vs-badge {
+    background: var(--color-accent-secondary) !important;
+    color: var(--color-bg) !important;
+}

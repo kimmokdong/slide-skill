@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucide Icons 테마별 스타일 데모</title>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600;800&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --font-display: 'Outfit', 'Inter', sans-serif;
+            --font-hand: 'Nanum Pen Script', cursive;
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+        }
+
+        p.desc {
+            color: #94a3b8;
+            font-size: 1rem;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.5;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* 테마별 카드 구조 */
+        .theme-card {
+            background-color: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px 32px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .theme-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .theme-title {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .theme-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+
+        .icons-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            width: 120px;
+        }
+
+        .icon-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        /* ------------------------------------------------------------- */
+        /* 🎨 STYLE 1: 아날로그 / 교육용 큐트노트 테마 스타일 */
+        /* ------------------------------------------------------------- */
+        .theme-cute {
+            background-color: #fdfbf7; /* 부드러운 상아색 */
+            border: 2px solid #e7e5e4;
+            color: #44403c;
+            box-shadow: 0 10px 0px #f5f5f4, 0 10px 20px rgba(0,0,0,0.05); /* 노란색 그림자 연출 */
+            
+            /* ✍️ 아날로그 큐트노트 배경 패턴: 연한 오렌지빛 손그림 모눈 격자 */
+            background-image: 
+                radial-gradient(rgba(217, 119, 6, 0.12) 1.5px, transparent 1.5px),
+                linear-gradient(to right, rgba(217, 119, 6, 0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(217, 119, 6, 0.04) 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: center;
+        }
+
+        .theme-cute .theme-header {
+            border-bottom: 2px dashed #e7e5e4;
+        }
+
+        .theme-cute .theme-title {
+            font-family: var(--font-hand);
+            font-size: 2.2rem;
+            color: #d97706; /* 따뜻한 주황색 */
+        }
+
+        .theme-cute .theme-badge {
+            background-color: #fef3c7;
+            color: #d97706;
+            font-family: var(--font-hand);
+            font-size: 1.1rem;
+        }
+
+        /* 큐트노트 전용 아이콘 스타일 데코레이터 */
+        .cute-wrapper {
+            background-color: #fef3c7; /* 부드러운 노란 배지 */
+            padding: 16px;
+            border-radius: 50% 40% 45% 50% / 40% 45% 50% 50%; /* 비정형 수제 느낌 */
+            border: 2px solid #d97706;
+            box-shadow: 2px 3px 0px #f59e0b;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cute-wrapper svg {
+            color: #d97706;
+            stroke-width: 2.5px; /* 두껍고 둥글둥글한 선 */
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* ------------------------------------------------------------- */
+        /* 🎨 STYLE 2: 미래지향적 테크/사이버네틱 테마 스타일 */
+        /* ------------------------------------------------------------- */
+        .theme-tech {
+            background-color: #030712; /* 완전 어두운 네이비 */
+            border: 1px solid #1e1b4b;
+            color: #e0e7ff;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+
+            /* 🖥️ 미래형 테크 배경 패턴: 정밀 디지털 격자 + 우측 하단 레이더/HUD 원형 오버레이 */
+            background-image: 
+                linear-gradient(to right, rgba(6, 182, 212, 0.08) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(6, 182, 212, 0.08) 1px, transparent 1px),
+                radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0.15) 30%, transparent 31%, transparent 35%, rgba(6, 182, 212, 0.1) 36%, rgba(6, 182, 212, 0.1) 50%, transparent 51%, transparent 55%, rgba(6, 182, 212, 0.08) 56%, rgba(6, 182, 212, 0.08) 70%, transparent 71%);
+            background-size: 24px 24px, 24px 24px, 240px 240px;
+            background-repeat: repeat, repeat, no-repeat;
+        }
+
+        /* 구석 눈금선 데코레이션 */
+        .theme-tech::before {
+            content: "[ SYSTEM ACTIVE ]";
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-family: monospace;
+            font-size: 0.65rem;
+            color: #6366f1;
+            opacity: 0.7;
+        }
+
+        .theme-tech .theme-header {
+            border-bottom: 1px solid #1e1b4b;
+        }
+
+        .theme-tech .theme-title {
+            color: #38bdf8;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+        }
+
+        .theme-tech .theme-badge {
+            background-color: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            font-family: monospace;
+        }
+
+        /* 테크 전용 아이콘 스타일 데코레이터 */
+        .tech-wrapper {
+            background-color: rgba(6, 182, 212, 0.05); /* 투명한 사이언 그린 */
+            padding: 16px;
+            border-radius: 4px; /* 각진 구조 */
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            position: relative;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            background-image: radial-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px);
+            background-size: 4px 4px;
+        }
+
+        /* 조준선 데코레이션 꺾쇠 추가 */
+        .tech-wrapper::after {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-top: 1px solid #06b6d4;
+            border-left: 1px solid #06b6d4;
+            top: -1px;
+            left: -1px;
+        }
+        .tech-wrapper::before {
+            content: '';
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-bottom: 1px solid #06b6d4;
+            border-right: 1px solid #06b6d4;
+            bottom: -1px;
+            right: -1px;
+        }
+
+        .tech-wrapper svg {
+            color: #06b6d4;
+            stroke-width: 1.2px; /* 아주 얇은 첨단 라인 두께 */
+            filter: drop-shadow(0 0 5px rgba(6, 182, 212, 0.8)); /* 네온 광채 */
+        }
+
+        /* ------------------------------------------------------------- */
+        /* 🎨 STYLE 3: 클래식 / 미니멀 비즈니스 보고서 테마 스타일 */
+        /* ------------------------------------------------------------- */
+        .theme-business {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            color: #1e293b;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+
+            /* 📊 비즈니스 클래식 배경 패턴: 차분한 우하향 대각선 핀 스트라이프 가이드라인 */
+            background-image: linear-gradient(135deg, rgba(15, 23, 42, 0.05) 10%, transparent 10%, transparent 50%, rgba(15, 23, 42, 0.05) 50%, rgba(15, 23, 42, 0.05) 60%, transparent 60%, transparent);
+            background-size: 20px 20px;
+        }
+
+        .theme-business .theme-header {
+            border-bottom: 2px solid #1e293b;
+        }
+
+        .theme-business .theme-title {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .theme-business .theme-badge {
+            background-color: #0f172a;
+            color: #ffffff;
+            border-radius: 4px;
+        }
+
+        /* 비즈니스 전용 아이콘 스타일 데코레이터 */
+        .business-wrapper {
+            background-color: #f1f5f9; /* 차분한 그레이 */
+            padding: 16px;
+            border-radius: 8px; /* 정제된 둥글기 */
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .business-wrapper svg {
+            color: #1e293b; /* 메인 텍스트 색상과 통일 */
+            stroke-width: 2px; /* 표준 두께 */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Lucide Icons 테마별 렌더링 데모</h1>
+    <p class="desc">
+        동일한 Lucide 아이콘(Target, Brain, Lightbulb)이 CSS 속성(두께, 네온 효과, 배경 배지, 보더 둥글기 등)과 결합하여 각 테마에서 어떻게 다르게 렌더링되는지 확인해 보세요.
+    </p>
+
+    <div class="container">
+
+        <!-- 1. 아날로그 큐트노트 테마 -->
+        <div class="theme-card theme-cute">
+            <div class="theme-header">
+                <span class="theme-title">아날로그 / 교육용 큐트노트 테마</span>
+                <span class="theme-badge">cute_note</span>
+            </div>
+            <div class="icons-row">
+                <div class="icon-item">
+                    <div class="cute-wrapper">
+                        <i data-lucide="target" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label" style="color: #78716c;">목표 (Target)</span>
+                </div>
+                <div class="icon-item">
+                    <div class="cute-wrapper">
+                        <i data-lucide="brain" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label" style="color: #78716c;">생각 (Brain)</span>
+                </div>
+                <div class="icon-item">
+                    <div class="cute-wrapper">
+                        <i data-lucide="lightbulb" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label" style="color: #78716c;">아이디어 (Idea)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 미래지향적 사이버 테크 테마 -->
+        <div class="theme-card theme-tech">
+            <div class="theme-header">
+                <span class="theme-title">미래지향적 사이버 테크 테마</span>
+                <span class="theme-badge">tech_blue</span>
+            </div>
+            <div class="icons-row">
+                <div class="icon-item">
+                    <div class="tech-wrapper">
+                        <i data-lucide="target" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label" style="color: #64748b;">Target</span>
+                </div>
+                <div class="icon-item">
+                    <div class="tech-wrapper">
+                        <i data-lucide="brain" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label" style="color: #64748b;">Brain System</span>
+                </div>
+                <div class="icon-item">
+                    <div class="tech-wrapper">
+                        <i data-lucide="lightbulb" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label" style="color: #64748b;">Logic Flow</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 클래식 비즈니스 보고서 테마 -->
+        <div class="theme-card theme-business">
+            <div class="theme-header">
+                <span class="theme-title">클래식 비즈니스 보고서 테마</span>
+                <span class="theme-badge">classy_report</span>
+            </div>
+            <div class="icons-row">
+                <div class="icon-item">
+                    <div class="business-wrapper">
+                        <i data-lucide="target" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label">핵심 목표</span>
+                </div>
+                <div class="icon-item">
+                    <div class="business-wrapper">
+                        <i data-lucide="brain" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label">지식 자산</span>
+                </div>
+                <div class="icon-item">
+                    <div class="business-wrapper">
+                        <i data-lucide="lightbulb" style="width: 32px; height: 32px;"></i>
+                    </div>
+                    <span class="icon-label">핵심 가치</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Lucide Icons 초기화 실행
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!-- 레이아웃: 퀴즈/질문 (인터랙션) -->
+<section>
+    <div class="center-layout" style="padding: 1.0em; justify-content: center; height: 100%; box-sizing: border-box;">
+        <div class="hero-badge" style="margin-bottom: 0.4em; background: var(--color-accent-secondary); font-size: 0.75em; padding: 0.3em 0.9em;">🎯 QUIZ</div>
+        <h1 style="font-size: 1.6em; margin-bottom: 0.3em; line-height: 1.2;">{{TITLE}}</h1>
+        {{#if QUESTION}}
+        <h2 style="font-size: 1.0em; font-weight: 500; margin-bottom: 0.8em; color: var(--color-text-secondary); text-align: center; line-height: 1.4;">{{QUESTION}}</h2>
+        {{/if}}
+        <div class="quiz-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6em; width: 92%; margin-top: 0.4em; text-align: center; box-sizing: border-box;">
+            {{QUIZ_OPTIONS}}
+        </div>
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>

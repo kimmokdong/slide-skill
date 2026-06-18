@@ -1,0 +1,30 @@
+<!-- 레이아웃: 비교 (좌우 대비) -->
+<section>
+    <div class="slide-container">
+        <div class="slide-header">
+            <h2>{{TITLE}}</h2>
+        </div>
+        <div class="slide-body">
+            <div class="card-grid cols-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8em; width: 100%; height: 100%; box-sizing: border-box;">
+                <div class="card" style="display: flex; flex-direction: column; gap: 0.4em;">
+                    <div class="comparison-card-title" style="font-size: 0.9em; font-weight: 700; color: var(--color-accent); border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 0.3em; margin-bottom: 0.3em; display: flex; align-items: center; gap: 0.3em;">
+                        {{LEFT_TITLE}}
+                    </div>
+                    <ul class="bullet-list">
+                        {{LEFT_ITEMS}}
+                    </ul>
+                </div>
+                <div class="card" style="display: flex; flex-direction: column; gap: 0.4em;">
+                    <div class="comparison-card-title" style="font-size: 0.9em; font-weight: 700; color: var(--color-accent-secondary); border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 0.3em; margin-bottom: 0.3em; display: flex; align-items: center; gap: 0.3em;">
+                        {{RIGHT_TITLE}}
+                    </div>
+                    <ul class="bullet-list">
+                        {{RIGHT_ITEMS}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {{BOTTOM_TAKEAWAY_HTML}}
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>
