@@ -1,9 +1,5 @@
-# 결과물 폴더 제외 (5개)
-/260616_gambling_prevention/
-/260616_startup_class/
-/260616_startup_class_v2/
-/260617_korean_war_experience/
-/260617_music_pitch_class/
+# 결과물 폴더 제외 (날짜 패턴: YYMMDD_이름)
+/[0-9][0-9][0-9][0-9][0-9][0-9]_*/
 
 # OS/IDE 메타데이터
 .DS_Store
