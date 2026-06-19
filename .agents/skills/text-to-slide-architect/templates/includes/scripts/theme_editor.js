@@ -63,7 +63,13 @@
                 { bg: '#fec2f2', bgSec: '#fee2e2', text: '#450a0a', textSec: '#7f1d1d', accent: '#ef4444', accentSec: '#b91c1c' },
                 { bg: '#f2f4f2', bgSec: '#e2e8e2', text: '#1c2e1c', textSec: '#4a614a', accent: '#10b981', accentSec: '#6ee7b7' },
                 { bg: '#18181b', bgSec: '#27272a', text: '#fafafa', textSec: '#a1a1aa', accent: '#f43f5e', accentSec: '#fda4af' },
-                { bg: '#fff7ed', bgSec: '#ffedd5', text: '#431407', textSec: '#7c2d12', accent: '#ea580c', accentSec: '#fdba74' }
+                { bg: '#fff7ed', bgSec: '#ffedd5', text: '#431407', textSec: '#7c2d12', accent: '#ea580c', accentSec: '#fdba74' },
+                // 9. 머스타드 옐로우 계열
+                { bg: '#fefce8', bgSec: '#fef08a', text: '#422006', textSec: '#713f12', accent: '#eab308', accentSec: '#facc15' },
+                // 10. 딥 퍼플 계열
+                { bg: '#faf5ff', bgSec: '#f3e8ff', text: '#3b0764', textSec: '#581c87', accent: '#9333ea', accentSec: '#a855f7' },
+                // 11. 포레스트 다크그린 계열 (자연 다크모드)
+                { bg: '#052e16', bgSec: '#064e3b', text: '#ecfdf5', textSec: '#a7f3d0', accent: '#10b981', accentSec: '#34d399' }
             ];
 
             const cards = ['cute_note', 'tech_neon', 'business_clean', 'editorial_serif', 'retro_bold', 'transparent'];
