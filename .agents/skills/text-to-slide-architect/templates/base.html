@@ -17,1310 +17,13 @@
 
     <!-- 공통 레이아웃 및 디자인 시스템 (CSS) -->
     <style>
-        /* ===== 기본 CSS 변수 및 레이아웃 강제 규칙 ===== */
-        :root {
-            --slide-width: 1280px;
-            --slide-height: 720px;
-            --font-primary: 'Noto Sans KR', sans-serif;
-
-            /* 테마 컬러 기본값 (build_html.py에서 덮어씌움) */
-            --color-bg: #F8FAFF;
-            --color-bg-secondary: #EEF2FF;
-            --color-text: #1E293B;
-            --color-text-secondary: #64748B;
-            --color-accent: #4F46E5;
-            --color-accent-secondary: #7C3AED;
-            --color-gradient: linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary));
-            --color-card-bg: rgba(255, 255, 255, 0.4);
-            --color-muted: var(--color-text-secondary);
-
-            /* 이미지 프레임 (테마 요소) */
-            --image-frame-bg: rgba(255, 255, 255, 0.4);
-            --image-frame-border: 1px solid rgba(0, 0, 0, 0.1);
-            --image-frame-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            --image-frame-radius: 12px;
-            --image-frame-dots-display: flex;
-        }
-
-        /* Reveal.js 리셋 및 강제 크기 지정 */
-        .reveal {
-            font-family: var(--font-primary);
-            background-color: var(--color-bg);
-            color: var(--color-text);
-        }
-
-        .reveal .slides {
-            text-align: left;
-        }
-
-        /* Reveal.js의 section 자체 스타일 충돌 방지 */
-        .reveal .slides section {
-            padding: 0 !important;
-            margin: 0 !important;
-            width: var(--slide-width) !important;
-            height: var(--slide-height) !important;
-            box-sizing: border-box;
-            overflow: hidden !important;
-            display: block !important;
-            /* Reveal.js 내부 레이아웃을 1280x720로 절대화 */
-        }
-
-        /* ===== 와이어프레임 구조화 컨테이너 ===== */
-        .slide-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            padding: 40px 56px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            overflow: hidden !important;
-            font-size: 48px;
-            /* 기준 폰트 크기: 30% 증가 (44px -> 57px) */
-        }
-
-        /* 위치 꼬리표 (SECTION_HEADER) */
-        .section-header-tag {
-            position: absolute;
-            top: 20px;
-            left: 36px;
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--color-accent);
-            opacity: 0.7;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            z-index: 5;
-        }
-
-        /* 2. TITLE (슬라이드 메인 제목 영역) */
-        .slide-header {
-            flex-shrink: 0;
-            margin-bottom: 28px;
-            text-align: left;
-            width: 100%;
-            height: 92px;
-            min-height: 92px;
-            max-height: 92px;
-            border-bottom: 1px solid var(--color-card-border, rgba(0, 0, 0, 0.05));
-            padding-bottom: 8px;
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        .slide-header h2 {
-            font-size: 64px; /* 제목 영역은 고정, 제목은 가로로 넘칠 때만 축소 */
-            font-weight: 900;
-            line-height: 1.08;
-            margin: 0;
-            color: var(--color-text);
-            word-break: keep-all;
-            white-space: nowrap;
-            overflow: visible;
-            max-width: 100%;
-        }
-
-        .slide-title-row {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            width: 100%;
-            min-width: 0;
-        }
-
-        .slide-title-row h2 {
-            flex: 1;
-            min-width: 0;
-        }
-
-        /* 3. BODY (12-Grid 템플릿 운동장) */
-        .slide-body {
-            flex: 1;
-            min-height: 0;
-            /* 넘침 방지 핵심 */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            /* 기본은 상하 중앙 정렬 */
-            width: 100%;
-            box-sizing: border-box;
-            overflow: hidden !important;
-        }
-
-        /* 4. BOTTOM_TAKEAWAY (하단 펀치라인 요약 - 약 10% 고정 바) */
-        .bottom-takeaway-bar {
-            flex-shrink: 0;
-            margin-top: 28px;
-            width: 100%;
-            height: auto;
-            min-height: 75px;
-            border-radius: 12px;
-            padding: 14px 42px;
-            background: var(--color-gradient);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-            box-sizing: border-box;
-            z-index: 10;
-        }
-
-        .bottom-takeaway-bar .takeaway-content {
-            color: white;
-            font-size: 32px;
-            font-weight: 700;
-            text-align: center;
-            line-height: 1.3;
-            white-space: normal;
-            width: 100%;
-            letter-spacing: 0.02em;
-            word-break: keep-all;
-        }
-
-        /* ===== 디자인 시스템 카드 ===== */
-        .card {
-            background: var(--color-card-bg);
-            border-radius: 16px;
-            padding: 0.8em 1.2em;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--color-card-border, rgba(255, 255, 255, 0.25));
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.06);
-            box-sizing: border-box;
-        }
-
-        /* ===== 타이포그래피 (em 기반) ===== */
-        p {
-            font-size: 0.9em;
-            line-height: 1.7;
-            font-weight: 400;
-            margin: 0;
-            word-break: keep-all;
-        }
-
-        /* 표지용 (Hero Layout) */
-        .center-layout {
-            height: 100%;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            box-sizing: border-box;
-            padding: 2em;
-            font-size: 48px;
-            /* 표지 전용 기준 폰트: 48px로 조정 */
-        }
-
-        /* 섹션 타이틀용 (Title Layout) */
-        .center-layout.title-layout {
-            font-size: 36px; /* hero(48px)보다 작은 36px로 조정 */
-        }
-
-        .center-layout .hero-badge {
-            display: inline-block;
-            padding: 10px 36px;
-            border-radius: 20px;
-            background: var(--color-accent);
-            color: white;
-            font-weight: 700;
-            font-size: 28px;
-            margin-bottom: 28px;
-        }
-
-        .center-layout h1 {
-            font-size: 2.1em;
-            font-weight: 900;
-            line-height: 1.3;
-            margin: 0 0 0.5em 0;
-            color: var(--color-text);
-            word-break: keep-all;
-        }
-
-        .center-layout h2 {
-            font-size: 1.25em;
-            font-weight: 300;
-            line-height: 1.4;
-            opacity: 0.8;
-            margin: 0 0 1em 0;
-            color: var(--color-text);
-            word-break: keep-all;
-        }
-
-        .center-layout .presenter {
-            font-size: 0.8em;
-            opacity: 0.6;
-            margin: 0;
-        }
-
-        /* ===== 7가지 레이아웃별 상세 CSS ===== */
-
-        /* 1. bullet 레이아웃 */
-        .bullet-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0.8em;
-            width: 100%;
-        }
-
-        .bullet-list li {
-            font-size: 0.95em;
-            line-height: 1.6;
-            font-weight: 400;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.6em;
-            word-break: keep-all;
-        }
-
-        .bullet-list li.icon-bullet {
-            padding-left: 0;
-        }
-
-        .bullet-list li .bullet-icon {
-            font-size: 1.15em;
-            flex-shrink: 0;
-            width: 1.5em;
-            text-align: center;
-        }
-
-        .bullet-list li .bullet-text {
-            flex: 1;
-        }
-
-        /* 2. matrix 레이아웃 */
-        .matrix-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 0.7em;
-            height: 100%;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .matrix-cell {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 0.8em;
-        }
-
-        .matrix-icon {
-            font-size: 1.8em;
-            margin-bottom: 0.3em;
-        }
-
-        .matrix-label {
-            font-size: 1.05em;
-            font-weight: 700;
-            margin-bottom: 0.2em;
-            color: var(--color-text);
-        }
-
-        .matrix-desc {
-            font-size: 0.75em;
-            opacity: 0.75;
-            line-height: 1.4;
-            word-break: keep-all;
-        }
-
-        /* 3. vs_ox 레이아웃 */
-        .ox-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-            gap: 0.9em;
-            height: 100%;
-            width: 100%;
-            align-items: stretch;
-            box-sizing: border-box;
-        }
-
-        .ox-column {
-            display: flex;
-            flex-direction: column;
-            border: 1px solid var(--color-card-border);
-            border-radius: 16px;
-            padding: 0.95em 1.05em;
-            background: var(--color-card-bg);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.04);
-            box-sizing: border-box;
-            min-width: 0;
-            overflow: hidden;
-        }
-
-        .ox-column-header {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4em;
-            font-size: 1.18em;
-            font-weight: 700;
-            min-height: 74px;
-            margin-bottom: 0.7em;
-            padding-bottom: 0.5em;
-            border-bottom: 1px solid var(--color-card-border, rgba(0, 0, 0, 0.05));
-            flex-shrink: 0;
-            min-width: 0;
-            max-width: 100%;
-            overflow: hidden;
-        }
-
-        .ox-column-header h3 {
-            white-space: nowrap;
-            line-height: 1.08;
-            min-width: 0;
-            max-width: 100%;
-            overflow: hidden;
-        }
-
-        .ox-column-header .ox-header-marker {
-            font-size: 1.3em;
-            font-weight: 900;
-        }
-
-        .ox-column-header.o-header .ox-header-marker {
-            color: #22C55E;
-        }
-
-        .ox-column-header.x-header .ox-header-marker {
-            color: #EF4444;
-        }
-
-        .ox-column-body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center; /* 세로 중앙 정렬 추가 */
-            align-items: center;
-            gap: 0.75em;
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
-            min-width: 0;
-        }
-
-        .ox-layout.ox-roomy .ox-column-header {
-            font-size: 2.43em;
-            min-height: 118px;
-        }
-
-        .ox-layout.ox-roomy .ox-item {
-            font-size: 2.37em;
-        }
-
-        .ox-layout.ox-balanced .ox-column-header {
-            font-size: 2.13em;
-            min-height: 109px;
-        }
-
-        .ox-layout.ox-balanced .ox-item {
-            font-size: 1.98em;
-        }
-
-        /* 📝 실습 및 튜토리얼 리스트 폰트/간격 강화 */
-        .hands-on-steps, .tutorial-steps {
-            display: flex;
-            flex-direction: column;
-            gap: 0.78em !important;
-            margin: 0.15em 0 0 0 !important;
-        }
-
-        .hands-on-steps li, .tutorial-steps li {
-            font-size: 1.22em !important;
-            line-height: 1.42 !important;
-            color: var(--color-text) !important;
-            word-break: keep-all !important;
-        }
-
-        .ox-item {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5em;
-            font-size: 1.05em;
-            line-height: 1.32;
-            text-align: center;
-            word-break: keep-all;
-            white-space: nowrap;
-            width: 100%;
-            min-width: 0;
-            max-width: 100%;
-            overflow: hidden;
-        }
-
-        .ox-text {
-            white-space: nowrap;
-            min-width: 0;
-            max-width: 100%;
-            overflow: hidden;
-        }
-
-        .ox-marker {
-            font-weight: 900;
-            flex-shrink: 0;
-        }
-
-        .marker-o {
-            color: #22C55E;
-        }
-
-        .marker-x {
-            color: #EF4444;
-        }
-
-        /* 4. roadmap 레이아웃 */
-        .roadmap-track {
-            display: flex;
-            align-items: stretch;
-            justify-content: center;
-            gap: 0.2em;
-            width: 100%;
-            height: auto;
-            min-height: 330px;
-            box-sizing: border-box;
-            padding: 0 0.5em;
-        }
-
-        .roadmap-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            flex: 1;
-            max-width: 250px;
-            min-height: 330px;
-            padding: 1.2em 0.8em;
-            background: var(--color-card-bg);
-            border: 1px solid var(--color-card-border);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-sizing: border-box;
-            transition: transform 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .roadmap-step:hover {
-            transform: translateY(-6px);
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.08);
-        }
-
-        .roadmap-num {
-            width: 2.2em;
-            height: 2.2em;
-            border-radius: 50%;
-            background: var(--color-gradient);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.15em;
-            font-weight: 900;
-            margin-bottom: 0.6em;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            flex-shrink: 0;
-        }
-
-        .roadmap-label {
-            font-size: 0.95em;
-            font-weight: 700;
-            margin-bottom: 0.3em;
-            color: var(--color-text);
-            word-break: keep-all;
-        }
-
-        .roadmap-desc {
-            font-size: 0.7em;
-            opacity: 0.7;
-            line-height: 1.4;
-            word-break: keep-all;
-        }
-
-        .roadmap-connector {
-            width: 2rem;
-            height: 4px;
-            background: var(--color-accent);
-            opacity: 0.6;
-            margin: 0 0.2rem;
-            position: relative;
-            flex-shrink: 0;
-            align-self: center;
-        }
-
-        .roadmap-connector::after {
-            content: '';
-            position: absolute;
-            right: -6px;
-            top: -5px;
-            width: 0;
-            height: 0;
-            border-top: 7px solid transparent;
-            border-bottom: 7px solid transparent;
-            border-left: 8px solid var(--color-accent);
-        }
-
-        /* 5. split / tutorial 레이아웃 */
-        .split-layout {
-            display: flex;
-            width: 100%;
-            flex: 1;
-            min-height: 0;
-            gap: 1.2em;
-            align-items: stretch;
-            box-sizing: border-box;
-            overflow: hidden;
-        }
-
-        .split-layout .left {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            overflow: hidden;
-            box-sizing: border-box;
-        }
-
-        .split-layout .right {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            box-sizing: border-box;
-            height: 100%;
-        }
-
-        /* 브라우저/스크린샷 프레임 */
-        .screenshot-frame {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            border-radius: var(--image-frame-radius);
-            overflow: hidden;
-            border: var(--image-frame-border);
-            box-shadow: var(--image-frame-shadow);
-            background: var(--image-frame-bg);
-            box-sizing: border-box;
-        }
-
-        .browser-frame .frame-dots {
-            display: var(--image-frame-dots-display);
-            gap: 6px;
-            padding: 0.4em 0.8em;
-            background: rgba(0, 0, 0, 0.04);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-            flex-shrink: 0;
-        }
-
-        .browser-frame .dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-        }
-
-        .browser-frame .dot.red {
-            background: #ff5f57;
-        }
-
-        .browser-frame .dot.yellow {
-            background: #febc2e;
-        }
-
-        .browser-frame .dot.green {
-            background: #28c840;
-        }
-
-        .stepper-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            margin-bottom: 36px;
-            width: 100%;
-            flex-shrink: 0;
-            box-sizing: border-box;
-        }
-
-        .stepper-step {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            font-size: 28px;
-            color: var(--color-text-secondary);
-            opacity: 0.5;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .stepper-step.active {
-            opacity: 1;
-            color: var(--color-accent);
-            font-weight: 700;
-        }
-
-        .stepper-step.completed {
-            opacity: 0.85;
-            color: var(--color-text);
-        }
-
-        .stepper-step .step-num {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 2px solid currentColor;
-            font-size: 24px;
-            font-weight: 800;
-        }
-
-        .stepper-step.active .step-num {
-            background: var(--color-accent);
-            color: white;
-            border-color: var(--color-accent);
-        }
-
-        .stepper-connector {
-            height: 2px;
-            background: var(--color-text-secondary);
-            opacity: 0.3;
-            width: 40px;
-            max-width: 100px;
-        }
-
-        .screenshot-img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            /* 잘림 없이 비율 유지하며 전체 맞춤 */
-            background-color: rgba(0, 0, 0, 0.01);
-            /* 여백 발생 시 자연스럽게 처리 */
-            flex: 1;
-            min-height: 0;
-        }
-
-        .tutorial-tip {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.4em;
-            padding: 0.6em 0.8em;
-            border-radius: 8px;
-            background: rgba(59, 130, 246, 0.08);
-            border-left: 4px solid var(--color-accent);
-            margin-top: 0.6em;
-            font-size: 0.75em;
-            line-height: 1.4;
-            word-break: keep-all;
-            box-sizing: border-box;
-        }
-
-        .tutorial-warning {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.4em;
-            padding: 0.6em 0.8em;
-            border-radius: 8px;
-            background: rgba(239, 68, 68, 0.08);
-            border-left: 4px solid #EF4444;
-            margin-top: 0.6em;
-            font-size: 0.75em;
-            line-height: 1.4;
-            word-break: keep-all;
-            box-sizing: border-box;
-        }
-
-        .tutorial-tip .tip-icon {
-            font-size: 1.1em;
-            flex-shrink: 0;
-        }
-
-        /* 6. grid2x2 / summary 레이아웃 */
-        .grid-2x2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.7em;
-            height: 100%;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .grid-cell {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 0.8em;
-        }
-
-        .grid-cell p {
-            font-size: 0.85em;
-            line-height: 1.6;
-            font-weight: 400;
-            word-break: keep-all;
-        }
-
-        /* 7. quote 레이아웃 */
-        .quote-box {
-            position: relative;
-            max-width: 85%;
-            text-align: left;
-            padding: 1.5em 2em;
-            box-sizing: border-box;
-            background: var(--color-card-bg);
-            border-left: 6px solid var(--color-accent);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-            margin-top: 50px;
-        }
-
-        .quote-text {
-            font-size: 1.25em;
-            font-style: italic;
-            line-height: 1.6;
-            font-weight: 300;
-            margin-bottom: 0.6em;
-            word-break: keep-all;
-        }
-
-        .quote-author {
-            font-size: 0.9em;
-            opacity: 0.75;
-            font-weight: 500;
-            margin: 0;
-        }
-
-        /* ===== 기타 전용 스타일 ===== */
-        .step-badge {
-            display: inline-flex;
-            background: var(--color-accent);
-            color: white;
-            padding: 6px 14px;
-            border-radius: 12px;
-            font-size: 24px;
-            font-weight: 800;
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            vertical-align: middle;
-        }
-
-        .tutorial-title-box {
-            height: 104px;
-            min-height: 104px;
-            max-height: 104px;
-            margin-bottom: 20px;
-            padding-bottom: 12px;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .tutorial-title-row {
-            gap: 16px;
-        }
-
-        .tutorial-title-box h2 {
-            font-size: 60px;
-            line-height: 1.08;
-            white-space: nowrap;
-        }
-
-        .tutorial-step-badge {
-            flex-shrink: 0;
-            font-size: 24px;
-            padding: 8px 16px;
-            white-space: nowrap;
-        }
-
-        .hands-on-header .hands-on-badge {
-            background: var(--color-accent-secondary);
-            margin-bottom: 0;
-            flex: 0 0 auto;
-            white-space: nowrap;
-            font-size: 22px;
-            padding: 8px 16px;
-        }
-
-        .hands-on-slide .instruction-label {
-            font-size: 42px !important;
-            margin-bottom: 24px !important;
-        }
-
-        .hands-on-slide .hands-on-steps {
-            gap: 0.62em !important;
-            padding-left: 46px !important;
-        }
-
-        .hands-on-slide .hands-on-steps li {
-            font-size: 2em !important;
-            line-height: 1.3 !important;
-        }
-
-        .hands-on-content .left {
-            flex: 1.12 !important;
-        }
-
-        .hands-on-content .right {
-            flex: 1.12 !important;
-        }
-
-        .stats-body {
-            justify-content: center;
-        }
-
-        .stats-grid {
-            display: flex;
-            justify-content: center;
-            align-items: stretch;
-            gap: 1.25em;
-            width: 100%;
-            min-height: 210px;
-            box-sizing: border-box;
-            flex-wrap: wrap;
-        }
-
-        .stats-grid .stat-card-button {
-            min-height: 190px !important;
-            max-width: 410px !important;
-            min-width: 260px !important;
-            padding: 1.35em 1.15em !important;
-        }
-
-        .stats-grid .stat-number {
-            font-size: 2.05em !important;
-        }
-
-        .stats-grid .stat-label {
-            font-size: 0.92em !important;
-            line-height: 1.3 !important;
-        }
-
-        .stats-grid .stat-gauge-container {
-            height: 12px !important;
-        }
-
-        /* 슬라이드 번호 */
-        .slide-number {
-            position: absolute;
-            bottom: 0.8rem;
-            right: 1.2rem;
-            font-size: 0.6em;
-            opacity: 0.4;
-            z-index: 5;
-        }
-
-        /* 발표자 노트 숨김 */
-        aside.notes {
-            display: none;
-        }
-
-        /* ===== 리뷰 모드 (Review Mode) CSS ===== */
-        body {
-            transition: background-color 0.4s ease;
-            overflow: hidden;
-        }
-
-        body.review-active {
-            background-color: #1e293b;
-        }
-
-        .reveal-container-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: 100%;
-            transition: width 0.4s cubic-bezier(0.2, 0, 0, 1);
-        }
-
-        body.review-active .reveal-container-wrapper {
-            width: calc(100% - 400px);
-        }
-
-        .review-sidebar {
-            position: fixed;
-            top: 0;
-            right: -400px;
-            width: 400px;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            transition: right 0.4s cubic-bezier(0.2, 0, 0, 1);
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
-            font-size: 16px;
-        }
-
-        /* 리뷰 모드 텍스트 섀도우 겹침 버그 방지 및 Noto Sans 고정 */
-        .review-sidebar, .review-sidebar * {
-            text-shadow: none !important;
-            font-family: 'Noto Sans KR', sans-serif !important;
-        }
-
-        body.review-active .review-sidebar {
-            right: 0;
-        }
-
-        .review-header {
-            padding: 1.2rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .review-header h2 {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: white;
-        }
-
-        .close-review-btn {
-            background: none;
-            border: none;
-            color: #94a3b8;
-            font-size: 1.3rem;
-            cursor: pointer;
-        }
-
-        .close-review-btn:hover {
-            color: white;
-        }
-
-        .review-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1.2rem;
-        }
-
-        .review-section {
-            margin-bottom: 1.5rem;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .review-section h3 {
-            font-size: 0.95rem;
-            margin: 0 0 0.8rem 0;
-            color: #cbd5e1;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .review-textarea {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            color: white;
-            padding: 0.6rem;
-            font-size: 0.85rem;
-            resize: vertical;
-            min-height: 80px;
-            outline: none;
-            box-sizing: border-box;
-        }
-
-        .review-textarea:focus {
-            border-color: #3b82f6;
-        }
-
-        .slide-sorter-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            max-height: 220px;
-            overflow-y: auto;
-        }
-
-        .slide-sorter-item {
-            background: rgba(255, 255, 255, 0.05);
-            margin-bottom: 4px;
-            padding: 0.5rem 0.7rem;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: grab;
-            font-size: 0.8rem;
-        }
-
-        .slide-sorter-item.sortable-ghost {
-            opacity: 0.4;
-        }
-
-        .slide-sorter-item.deleted {
-            opacity: 0.5;
-            text-decoration: line-through;
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        .slide-sorter-item .slide-num {
-            background: rgba(255, 255, 255, 0.1);
-            color: #cbd5e1;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 4px;
-            min-width: 20px;
-            text-align: center;
-        }
-
-        .slide-sorter-item .slide-title-preview {
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .slide-action-btn {
-            background: none;
-            border: none;
-            color: #94a3b8;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .slide-action-btn:hover {
-            color: #ef4444;
-        }
-
-        .review-footer {
-            padding: 1.2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .copy-prompt-btn {
-            width: 100%;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 0.8rem;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .copy-prompt-btn:hover {
-            background: #2563eb;
-        }
-
-        .review-toggle-fab {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 46px;
-            height: 46px;
-            border-radius: 23px;
-            background: rgba(15, 23, 42, 0.6);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            cursor: pointer;
-            z-index: 9998;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-            transition: all 0.2s;
-        }
-
-        .review-toggle-fab:hover {
-            background: rgba(15, 23, 42, 0.85);
-            transform: scale(1.05);
-        }
-
-        body.review-active .review-toggle-fab {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        /* ===== 라이트박스(Lightbox) 이미지 확대 모달 ===== */
-        .lightbox-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10010;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .lightbox-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .lightbox-wrapper {
-            position: relative;
-            max-width: 90%;
-            max-height: 85%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transform: scale(0.9);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .lightbox-overlay.active .lightbox-wrapper {
-            transform: scale(1);
-        }
-
-        .lightbox-img {
-            max-width: 100%;
-            max-height: 75vh;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .lightbox-caption {
-            margin-top: 15px;
-            color: #f8fafc;
-            font-size: 0.9em;
-            font-weight: 500;
-            background: rgba(15, 23, 42, 0.6);
-            padding: 8px 16px;
-            border-radius: 20px;
-            backdrop-filter: blur(5px);
-            text-align: center;
-            max-width: 80%;
-            word-break: keep-all;
-        }
-
-        .lightbox-close-btn {
-            position: absolute;
-            top: -45px;
-            right: 0;
-            background: none;
-            border: none;
-            color: #cbd5e1;
-            font-size: 2rem;
-            cursor: pointer;
-            transition: color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-        }
-
-        .lightbox-close-btn:hover {
-            color: #ffffff;
-        }
-
-        /* 확대 가능한 이미지들에 돋보기 스타일 적용 */
-        .screenshot-img,
-        .slide-body img,
-        .slide-container img {
-            cursor: zoom-in;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-
-        .screenshot-img:hover,
-        .slide-body img:hover,
-        .slide-container img:hover {
-            transform: scale(1.02);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        /* 퀴즈 버튼형 피드백 효과 */
-        .quiz-option.button-type:hover {
-            transform: translateY(-2px);
-            border-color: var(--color-accent) !important;
-            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08) !important;
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .quiz-option.button-type.quiz-correct {
-            background-color: rgba(34, 197, 94, 0.15) !important;
-            border-color: #22C55E !important;
-            box-shadow: 0 0 15px rgba(34, 197, 94, 0.3) !important;
-        }
-
-        .quiz-option.button-type.quiz-correct .option-marker {
-            background-color: #22C55E !important;
-            color: white !important;
-        }
-
-        .quiz-option.button-type.quiz-wrong {
-            background-color: rgba(239, 68, 68, 0.15) !important;
-            border-color: #EF4444 !important;
-            animation: quiz-shake 0.5s ease;
-        }
-
-        .quiz-option.button-type.quiz-wrong .option-marker {
-            background-color: #EF4444 !important;
-            color: white !important;
-        }
-
-        @keyframes quiz-shake {
-
-            0%,
-            100% {
-                transform: translateX(0);
-            }
-
-            20%,
-            60% {
-                transform: translateX(-6px);
-            }
-
-            40%,
-            80% {
-                transform: translateX(6px);
-            }
-        }
-        /* 성과지표 카드 클릭형 호버 효과 */
-        .stat-card-button:hover {
-            transform: translateY(-4px);
-            border-color: var(--color-accent) !important;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06) !important;
-            background: rgba(255, 255, 255, 0.15) !important;
-        }
+{{INCLUDE:includes/styles/core.css}}
+{{INCLUDE:includes/styles/layouts.css}}
+{{INCLUDE:includes/styles/review_mode.css}}
+{{INCLUDE:includes/styles/interactions.css}}
+{{INCLUDE:includes/styles/theme_presets_editor.css}}
     </style>
+
 
     <!-- 테마 CSS (동적으로 주입되는 컬러 변수 및 특정 스타일) -->
     {{THEME_CSS}}
@@ -1341,6 +44,31 @@
 
     <div class="reveal-container-wrapper" id="reveal-wrapper">
         <div class="reveal">
+            <!-- 배경 패턴 레이어 -->
+            <div id="patternOverlay" class="pattern-overlay"></div>
+            <!-- 배경 장식 레이어 -->
+            <div class="decorations-layer">
+                <div id="decorTL" class="decor-corner decor-corner-tl"></div>
+                <div id="decorTR" class="decor-corner decor-corner-tr"></div>
+                <div id="decorBL" class="decor-corner decor-corner-bl"></div>
+                <div id="decorBR" class="decor-corner decor-corner-br"></div>
+                
+                <div id="decorCircle1" class="decor-circle decor-circle-1"></div>
+                <div id="decorCircle2" class="decor-circle decor-circle-2"></div>
+                
+                <div id="decorHudL" class="decor-hud decor-hud-left"></div>
+                <div id="decorHudR" class="decor-hud decor-hud-right"></div>
+                
+                <div id="decorWavy" class="decor-wavy"></div>
+                
+                <div id="decorShape1" class="decor-shape decor-shape-1"></div>
+                <div id="decorShape2" class="decor-shape decor-shape-2"></div>
+                <div id="decorShape3" class="decor-shape decor-shape-3"></div>
+                <div id="decorShape4" class="decor-shape decor-shape-4"></div>
+                
+                <div id="decorTechlines" class="decor-techlines"></div>
+            </div>
+
             <div class="slides">
                 {{SLIDES_CONTENT}}
             </div>
@@ -1353,33 +81,212 @@
             <h2>✍️ 리뷰 모드</h2>
             <button class="close-review-btn" onclick="toggleReviewMode()">✕</button>
         </div>
+        
+        <div class="review-tab-nav">
+            <button id="tab-btn-feedback" class="review-tab-btn active" onclick="switchReviewTab('feedback')">📝 피드백 작성</button>
+            <button id="tab-btn-theme" class="review-tab-btn" onclick="switchReviewTab('theme')">🎨 테마 에디터</button>
+        </div>
 
         <div class="review-content">
-            <div class="review-section">
-                <h3>🌐 전체 수정 요청 (Global)</h3>
-                <textarea id="global-feedback" class="review-textarea"
-                    placeholder="전체 테마, 톤앤매너, 공통 수정 사항을 적어주세요."></textarea>
-            </div>
+            <!-- 1. 피드백 탭 패널 -->
+            <div id="pane-feedback" class="review-tab-pane active">
+                <div class="review-section">
+                    <h3>🌐 전체 수정 요청 (Global)</h3>
+                    <textarea id="global-feedback" class="review-textarea"
+                        placeholder="전체 테마, 톤앤매너, 공통 수정 사항을 적어주세요."></textarea>
+                </div>
 
-            <div class="review-section">
-                <h3>↕️ 슬라이드 구성 관리</h3>
-                <ul id="slide-sorter" class="slide-sorter-list">
-                    <!-- JS로 동적 생성됨 -->
-                </ul>
-                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px; text-align: right;">* 드래그 앤 드롭으로 순서 변경
+                <div class="review-section">
+                    <h3>↕️ 슬라이드 구성 관리</h3>
+                    <ul id="slide-sorter" class="slide-sorter-list">
+                        <!-- JS로 동적 생성됨 -->
+                    </ul>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px; text-align: right;">* 드래그 앤 드롭으로 순서 변경
+                    </div>
+                </div>
+
+                <div class="review-section"
+                    style="border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.05);">
+                    <h3>📝 <span id="current-slide-label">1번</span> 슬라이드 수정</h3>
+                    <textarea id="local-feedback" class="review-textarea"
+                        placeholder="현재 보고 있는 슬라이드에 대한 구체적인 수정/추가 요청을 적어주세요."></textarea>
                 </div>
             </div>
 
-            <div class="review-section"
-                style="border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.05);">
-                <h3>📝 <span id="current-slide-label">1번</span> 슬라이드 수정</h3>
-                <textarea id="local-feedback" class="review-textarea"
-                    placeholder="현재 보고 있는 슬라이드에 대한 구체적인 수정/추가 요청을 적어주세요."></textarea>
+            <!-- 2. 테마 에디터 탭 패널 -->
+            <div id="pane-theme" class="review-tab-pane">
+                <!-- A. 조합 데모 프리셋 -->
+                <div class="editor-form-group">
+                    <label>조합 프리셋 데모</label>
+                    <div class="editor-preset-chips">
+                        <div class="editor-chip" onclick="applyPresetToEditor('#fffbf0', '#f4ebe1', '#1e293b', '#64748b', '#ec4899', '#818cf8', 'cute_note', 'cute', 'friendly', 'dots', ['corner_accent'], 'cute')">파스텔 큐트</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#0f172a', '#1e293b', '#f8fafc', '#94a3b8', '#6366f1', '#a5b4fc', 'tech_neon', 'tech', 'cyber', 'grid', ['hud_brackets', 'tech_grid_lines'], 'tech')">네온 사이버</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#ffffff', '#f1f5f9', '#0f172a', '#475569', '#2563eb', '#1d4ed8', 'business_clean', 'business', 'classic', 'none', [], 'business')">모던 비즈니스</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#fbf7f0', '#ebd8c3', '#4a3319', '#7a5a3a', '#d97706', '#92400e', 'editorial_serif', 'minimal_raw', 'editorial', 'diagonal', ['corner_accent'], 'minimal')">에디토리얼 매거진</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#fec2f2', '#fee2e2', '#450a0a', '#7f1d1d', '#ef4444', '#b91c1c', 'retro_bold', 'handdrawn', 'chalkboard', 'diagonal', ['circles', 'wavy_line', 'geometric_shapes'], 'retro')">레트로 팝아트</div>
+                        <div class="editor-chip editor-chip-shuffle" onclick="applyRandomPresetToEditor()"><i class="fa-solid fa-shuffle"></i> 🎲 무작위 셔플</div>
+                    </div>
+                </div>
+
+                <!-- B. 60-30-10 컬러 피커 -->
+                <div class="editor-form-group">
+                    <label>동적 컬러 조정 (60-30-10)</label>
+                    <div class="editor-color-grid">
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-bg" value="#f8fafc">
+                            <span>배경(60%)</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-bg-secondary" value="#e2e8f0">
+                            <span>구조(30%)</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-text" value="#1e293b">
+                            <span>글자색</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-text-secondary" value="#64748b">
+                            <span>보조글자</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-accent" value="#4f46e5">
+                            <span>강조(10%)</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-accent-secondary" value="#7c3aed">
+                            <span>보조강조</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- C. 테마 요소 셀렉트 박스 -->
+                <div class="editor-form-group">
+                    <label>카드 스타일 프리셋</label>
+                    <select id="editor-select-card" class="editor-select">
+                        <option value="cute_note">아기자기 노트 (cute_note)</option>
+                        <option value="tech_neon">네온 테크 (tech_neon)</option>
+                        <option value="business_clean" selected>깔끔 비즈니스 (business_clean)</option>
+                        <option value="editorial_serif">에디토리얼 세리프 (editorial_serif)</option>
+                        <option value="retro_bold">레트로 볼드 (retro_bold)</option>
+                        <option value="transparent">배경 없음 투명 (transparent)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>아이콘 프리셋</label>
+                    <select id="editor-select-icon" class="editor-select">
+                        <option value="cute">cute (둥근 파스텔)</option>
+                        <option value="tech">tech (각진 HUD 네온)</option>
+                        <option value="business" selected>business (미니멀 코너)</option>
+                        <option value="minimal_raw">minimal_raw (쌩 아이콘)</option>
+                        <option value="handdrawn">handdrawn (손그림 원형)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>글꼴 타이포</label>
+                    <select id="editor-select-font" class="editor-select">
+                        <option value="friendly" selected>friendly (Outfit/Noto Sans)</option>
+                        <option value="cyber">cyber (Orbitron/SquareNeo)</option>
+                        <option value="classic">classic (Playfair/Myeongjo)</option>
+                        <option value="editorial">editorial (Montserrat/Pretendard)</option>
+                        <option value="chalkboard">chalkboard (Caveat/PenScript)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>강조 텍스트 스타일</label>
+                    <select id="editor-select-highlight" class="editor-select">
+                        <option value="friendly" selected>friendly (파스텔 형광펜)</option>
+                        <option value="cyber">cyber (HUD 꺾쇠괄호)</option>
+                        <option value="classic">classic (이탤릭 언더라인)</option>
+                        <option value="editorial">editorial (반전 블록)</option>
+                        <option value="chalkboard">chalkboard (손글씨 물결빨강)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>하단 요약바 스타일</label>
+                    <select id="editor-select-takeaway" class="editor-select">
+                        <option value="friendly" selected>friendly (둥글둥글 구름형)</option>
+                        <option value="cyber">cyber (HUD 사선 컷아웃)</option>
+                        <option value="classic">classic (우아한 구분선형)</option>
+                        <option value="editorial">editorial (미니멀 상단라인)</option>
+                        <option value="chalkboard">chalkboard (칠판 분필받침대)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>화면 전환 모션</label>
+                    <select id="editor-select-motion" class="editor-select">
+                        <option value="friendly" selected>friendly (바운시 팝)</option>
+                        <option value="cyber">cyber (글리치 샤프)</option>
+                        <option value="classic">classic (부드러운 페이드아웃)</option>
+                        <option value="editorial">editorial (프레스 플립)</option>
+                        <option value="chalkboard">chalkboard (내추럴 리스폰스)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>이미지 프레임 프리셋</label>
+                    <select id="editor-select-frame" class="editor-select">
+                        <option value="cute">cute (마스킹테이프 노트)</option>
+                        <option value="tech">tech (CLI 터미널창)</option>
+                        <option value="business" selected>business (깔끔 윈도우)</option>
+                        <option value="retro">retro (폴라로이드 사진틀)</option>
+                        <option value="minimal">minimal (무테 에어플로팅)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>배경 패턴</label>
+                    <select id="editor-select-pattern" class="editor-select">
+                        <option value="none" selected>none (패턴 없음)</option>
+                        <option value="grid">grid (모눈 종이)</option>
+                        <option value="dots">dots (도트 그리드)</option>
+                        <option value="diagonal">diagonal (사선 빗금)</option>
+                        <option value="blueprint">blueprint (청사진 설계)</option>
+                        <option value="terrazzo">terrazzo (스톤 테라초)</option>
+                    </select>
+                </div>
+
+                <!-- D. 배경 장식 체크박스 -->
+                <div class="editor-form-group">
+                    <label>배경 장식 레이어</label>
+                    <div class="editor-checkbox-grid">
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-corner" value="corner_accent"> 모서리 액센트
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-circles" value="circles"> 원형 버블
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-brackets" value="hud_brackets"> HUD 대괄호
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-wavy" value="wavy_line"> 물결 무늬선
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-shapes" value="geometric_shapes"> 기하학 도형
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-techlines" value="tech_grid_lines"> 설계 가이드선
+                        </label>
+                    </div>
+                </div>
+
+                <!-- E. 고대비 토글 버튼 -->
+                <div class="editor-form-group" style="text-align: center; margin-top: 15px;">
+                    <button class="editor-chip" id="editor-btn-contrast" style="background:#fbbf24; color:#0f172a; font-weight:800; border:none; padding:8px 14px; width:100%;" onclick="toggleEditorContrast()">
+                        <i class="fa-solid fa-circle-half-stroke"></i> 빔프로젝터 고대비 모드 ON
+                    </button>
+                </div>
             </div>
         </div>
 
         <div class="review-footer">
-            <button class="copy-prompt-btn" onclick="generateAndCopyPrompt()">🤖 AI 프롬프트 복사하기</button>
+            <button id="btn-copy-prompt" class="copy-prompt-btn" onclick="generateAndCopyPrompt()">🤖 AI 프롬프트 복사하기</button>
+            <button id="btn-apply-theme" class="apply-theme-btn" style="display:none;" onclick="applyThemeEditorSettings()">🎨 테마 실시간 적용</button>
         </div>
     </aside>
 
@@ -1389,550 +296,11 @@
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
 
     <script>
-        // 퀴즈 정답/오답 확인 함수
-        function checkQuizAnswer(element, isCorrect) {
-            if (element.classList.contains('quiz-correct') || element.classList.contains('quiz-wrong')) {
-                return;
-            }
-            const parent = element.parentElement;
-            if (parent && parent.querySelector('.quiz-correct')) {
-                return; // 이미 정답을 맞췄으면 추가 선택 차단
-            }
-
-            if (isCorrect) {
-                element.classList.add('quiz-correct');
-            } else {
-                element.classList.add('quiz-wrong');
-            }
-        }
-
-        // 성과지표 가로형 게이지 바 애니메이션 구동 함수
-        function triggerGaugeAnimation(slideElement) {
-            if (!slideElement) return;
-
-            // 다른 슬라이드 게이지 리셋
-            document.querySelectorAll('.stat-gauge-bar').forEach(bar => {
-                if (!slideElement.contains(bar)) {
-                    bar.style.width = '0%';
-                }
-            });
-
-            // 현재 슬라이드 게이지 활성화
-            slideElement.querySelectorAll('.stat-gauge-bar').forEach(bar => {
-                const targetWidth = bar.getAttribute('data-target-width') || '0%';
-                setTimeout(() => {
-                    bar.style.width = targetWidth;
-                }, 100);
-            });
-        }
-
-        // 성과지표 카드 클릭 시 게이지 채우기/비우기 토글 함수
-        function clickStatCard(element, targetPercent) {
-            const bar = element.querySelector('.stat-gauge-bar');
-            if (!bar) return;
-            
-            // 현재 차있는 상태(targetPercent%)면 0%로 토글 리셋, 아니면 타겟으로 채움
-            const currentWidth = bar.style.width;
-            const targetWidthStr = targetPercent + '%';
-            
-            if (currentWidth === targetWidthStr) {
-                bar.style.width = '0%';
-            } else {
-                bar.style.width = targetWidthStr;
-            }
-        }
-
-        // Reveal.js 초기화
-        Reveal.initialize({
-            hash: true,
-            slideNumber: 'c/t',
-            showSlideNumber: 'all',
-            transition: 'slide',
-            transitionSpeed: 'default',
-            backgroundTransition: 'fade',
-            center: false,
-            width: 1280,
-            height: 720,
-            margin: 0,
-            minScale: 0.2,
-            maxScale: 2.0,
-        });
-
-        // ===== PowerPoint식 텍스트 자동 맞춤 (Auto-Fit) =====
-        function autoFitAllSlides() {
-            // slide-container 단위로 폰트 스케일링 체크
-            document.querySelectorAll('.slide-container, .center-layout').forEach(container => {
-                autoFitContainer(container);
-            });
-        }
-
-        function autoFitContainer(container) {
-            if (container.dataset.autofitDone === "true") return;
-
-            // 제목 구역은 높이/위치를 고정하고, 가로로 넘칠 때만 h2 글자를 줄입니다.
-            function fitTitleInHeader(header) {
-                const h2 = header.querySelector('h2');
-                if (!h2) return;
-
-                h2.style.whiteSpace = 'nowrap';
-                let headerSize = parseFloat(getComputedStyle(h2).fontSize) || 48;
-                const minHeaderSize = header.classList.contains('tutorial-title-box') ? 28 : 32;
-
-                for (let i = 0; i < 45 && headerSize > minHeaderSize; i++) {
-                    const tooWide = h2.scrollWidth > h2.clientWidth + 2;
-                    if (!tooWide) break;
-                    headerSize -= 1.0;
-                    h2.style.fontSize = headerSize + 'px';
-                }
-            }
-
-            container.querySelectorAll('.slide-header').forEach(fitTitleInHeader);
-
-            // 폰트 초기화 (CSS 기본값으로 복원)
-            container.style.fontSize = '';
-
-            // O/X 표는 좌우 컬럼 폭을 먼저 고정하고, 각 컬럼 내부 글자만 폭에 맞춰 줄입니다.
-            function fitNowrapElements(selector, minPx) {
-                container.querySelectorAll(selector).forEach(el => {
-                    let size = parseFloat(getComputedStyle(el).fontSize);
-                    if (!size) return;
-                    for (let i = 0; i < 60 && size > minPx; i++) {
-                        if (el.scrollWidth <= el.clientWidth + 2) break;
-                        size -= 1;
-                        el.style.fontSize = size + 'px';
-                    }
-                });
-            }
-
-            function overflowsHorizontally(el) {
-                if (!el || el.clientWidth <= 0) return false;
-                if (el.scrollWidth > el.clientWidth + 2) return true;
-                const parentRect = el.getBoundingClientRect();
-                for (let child of el.children) {
-                    const rect = child.getBoundingClientRect();
-                    if (rect.left < parentRect.left - 2 || rect.right > parentRect.right + 2) {
-                        return true;
-                    }
-                    if (child.scrollWidth > child.clientWidth + 2) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-            function clipsOwnContent(el) {
-                if (!el || el.clientWidth <= 0 || el.clientHeight <= 0) return false;
-                return el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 2;
-            }
-
-            function oxItemClips(item) {
-                const text = item.querySelector('.ox-text');
-                return overflowsHorizontally(item) || clipsOwnContent(item) || clipsOwnContent(text);
-            }
-
-            function fitOxContent() {
-                container.querySelectorAll('.ox-column-header').forEach(header => {
-                    let size = parseFloat(getComputedStyle(header).fontSize);
-                    if (!size) return;
-                    for (let i = 0; i < 80 && size > 28; i++) {
-                        const title = header.querySelector('h3');
-                        if (!overflowsHorizontally(header) && !clipsOwnContent(title)) break;
-                        size -= 1;
-                        header.style.fontSize = size + 'px';
-                    }
-                });
-
-                container.querySelectorAll('.ox-item').forEach(item => {
-                    let size = parseFloat(getComputedStyle(item).fontSize);
-                    if (!size) return;
-                    for (let i = 0; i < 90 && size > 22; i++) {
-                        if (!oxItemClips(item)) break;
-                        size -= 1;
-                        item.style.fontSize = size + 'px';
-                    }
-                });
-
-                container.querySelectorAll('.ox-column-body').forEach(body => {
-                    const items = Array.from(body.querySelectorAll('.ox-item'));
-                    if (!items.length) return;
-                    let size = Math.min(...items.map(item => parseFloat(getComputedStyle(item).fontSize)).filter(Boolean));
-                    if (!size) return;
-                    for (let i = 0; i < 120 && size > 18; i++) {
-                        const bodyClips = clipsOwnContent(body);
-                        const itemClips = items.some(item => oxItemClips(item));
-                        if (!bodyClips && !itemClips) break;
-                        size -= 1;
-                        items.forEach(item => item.style.fontSize = size + 'px');
-                    }
-                });
-            }
-
-            fitOxContent();
-
-            let currentSize = parseFloat(getComputedStyle(container).fontSize);
-            const minSize = 11; // 원본의 약 50% 수준 이하로 축소 허용 (기존 13)
-            const maxIterations = 60; // 반복 한계치 확장 (기존 35)
-
-            const body = container.querySelector('.slide-body');
-
-            // 컨테이너나 내부 슬라이드 바디 영역이 한도를 넘어서면 넘침으로 판정
-            function hasOverflow() {
-                // 1. 기하학적 겹침 감지 (마지막 핵심 콘텐츠 요소와 하단 요약 바의 경계 체크)
-                const takeawayBar = container.querySelector('.bottom-takeaway-bar');
-                if (takeawayBar) {
-                    const takeawayRect = takeawayBar.getBoundingClientRect();
-                    // 하단 바보다 위에 있어야 하는 콘텐츠 요소들을 조사
-                    const contentElements = container.querySelectorAll('.slide-body, .tutorial-tip, .tutorial-warning, .bullet-list, .hands-on-steps, .ox-layout');
-                    for (let el of contentElements) {
-                        const elRect = el.getBoundingClientRect();
-                        // 콘텐츠 요소의 바텀이 하단 바의 탑보다 아래로 넘어가면 오버플로우로 판정
-                        if (elRect.bottom > takeawayRect.top + 2) {
-                            console.log("[AutoFit Debug] Geometrical overflow with takeaway bar detected:", el, "bottom:", elRect.bottom, "bar top:", takeawayRect.top);
-                            return true;
-                        }
-                    }
-                }
-
-                // 2. 전체 컨테이너 높이 대비 경계 체크 (기하학적 캔버스 바텀 영역 체크)
-                const containerRect = container.getBoundingClientRect();
-                const allElements = container.querySelectorAll('*');
-                for (let el of allElements) {
-                    const style = getComputedStyle(el);
-                    if (el.closest('.slide-header')) {
-                        continue;
-                    }
-                    const clipper = el.closest('.slide-body, .split-layout .left, .tutorial-text, .ox-column-body, .roadmap-step');
-                    if (clipper && clipper !== el) {
-                        const clippedRect = el.getBoundingClientRect();
-                        const clipRect = clipper.getBoundingClientRect();
-                        if (clippedRect.bottom > clipRect.bottom + 2 || clippedRect.top < clipRect.top - 2) {
-                            console.log("[AutoFit Debug] Clipped by parent:", el, "clipper:", clipper);
-                            return true;
-                        }
-                    }
-                    if (style.position === 'absolute' || el.clientHeight === 0) {
-                        continue;
-                    }
-                    const elRect = el.getBoundingClientRect();
-                    // 요소의 바텀이 컨테이너의 바텀보다 아래로 내려갔는지 체크 (패딩 영역 감안하여 12px 버퍼)
-                    if (elRect.bottom > containerRect.bottom - 12) {
-                        // 하단 요약 바 자체는 컨테이너 안에 깔리므로 예외 처리
-                        if (el.classList.contains('bottom-takeaway-bar') || el.closest('.bottom-takeaway-bar')) {
-                            continue;
-                        }
-                        console.log("[AutoFit Debug] Geometrical container overflow detected:", el, "bottom:", elRect.bottom, "container bottom:", containerRect.bottom);
-                        return true;
-                    }
-                }
-
-                // 3. 본문 영역 scrollHeight 방식 백업 적용 (제목 영역은 제외)
-                if (body && body.scrollHeight > body.clientHeight + 4) {
-                    return true;
-                }
-                for (let el of allElements) {
-                    const style = getComputedStyle(el);
-                    if (el.closest('.slide-header')) {
-                        continue;
-                    }
-                    if (style.position === 'absolute') {
-                        continue;
-                    }
-                    if (el.clientHeight > 0 && el.scrollHeight > el.clientHeight + 6) {
-                        return true;
-                    }
-                    if (style.whiteSpace === 'nowrap' && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 8) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-            let iterations = 0;
-            while (hasOverflow() && currentSize > minSize && iterations < maxIterations) {
-                currentSize -= 0.5; // 정밀하게 0.5px 단위로 줄임
-                container.style.fontSize = currentSize + 'px';
-                iterations++;
-            }
-            container.dataset.autofitDone = "true";
-        }
-
-        // 모든 이미지에 onload 이벤트 리스너를 달아, 이미지가 늦게 다운로드 로드되더라도 완료 시점에 autoFitContainer를 재정합합니다.
-        function setupImageLoadListeners() {
-            document.querySelectorAll('.reveal img').forEach(img => {
-                // 이미 로딩이 완료된 경우
-                if (img.complete) {
-                    return;
-                }
-                
-                // 로딩이 진행 중인 경우 onload 리스너 등록
-                img.addEventListener('load', () => {
-                    console.log("[AutoFit] Image load completed, refitting slide container:", img.src);
-                    const container = img.closest('.slide-container, .center-layout');
-                    if (container) {
-                        autoFitContainer(container);
-                        Reveal.layout();
-                    }
-                });
-            });
-        }
-
-        // Reveal.js 준비 완료 후 자동 실행
-        Reveal.on('ready', () => {
-            // 레이아웃 높이 계산을 위해 비활성 슬라이드도 잠시 강제 노출
-            const sections = document.querySelectorAll('.reveal .slides section');
-            sections.forEach(s => {
-                s.style.display = 'block';
-                s.style.visibility = 'hidden';
-            });
-
-            setTimeout(() => {
-                autoFitAllSlides();
-                setupImageLoadListeners(); // 이미지 onload 리스너 세팅
-                initLightbox(); // 라이트박스 초기화
-
-                // 원래 상태로 복구
-                sections.forEach(s => {
-                    s.style.display = '';
-                    s.style.visibility = '';
-                });
-                triggerGaugeAnimation(Reveal.getCurrentSlide()); // 첫 슬라이드 게이지바 구동
-                Reveal.layout();
-            }, 150);
-        });
-
-        // 리소스가 완전히 다운로드 완료된 window load 시점에 최종 확인 사격
-        window.addEventListener('load', () => {
-            setTimeout(() => {
-                console.log("[AutoFit] Window onload triggered, performing final fit synchronization");
-                autoFitAllSlides();
-                Reveal.layout();
-            }, 50);
-        });
-
-        // 웹 폰트(Noto Sans KR 등) 로딩 완료 시점에 폰트 축소 강제 재정합
-        if (document.fonts && document.fonts.ready) {
-            document.fonts.ready.then(() => {
-                console.log("[AutoFit] Fonts loaded, refitting slides");
-                autoFitAllSlides();
-                Reveal.layout();
-            });
-        }
-
-        // ===== 라이트박스 이미지 확대 기능 =====
-        function initLightbox() {
-            const images = document.querySelectorAll('.screenshot-img, .slide-body img, .slide-container img');
-            images.forEach(img => {
-                if (img.dataset.lightboxBound) return;
-                img.dataset.lightboxBound = "true";
-
-                img.addEventListener('click', (e) => {
-                    // Reveal.js 슬라이드 전환 차단
-                    e.stopPropagation();
-
-                    const src = img.getAttribute('src');
-                    const alt = img.getAttribute('alt') || img.getAttribute('title') || '이미지 확대 보기';
-
-                    openLightbox(src, alt);
-                });
-            });
-        }
-
-        function openLightbox(src, captionText) {
-            const lightbox = document.getElementById('image-lightbox');
-            const targetImg = document.getElementById('lightbox-target-img');
-            const caption = document.getElementById('lightbox-caption');
-
-            targetImg.src = src;
-            caption.textContent = captionText;
-            lightbox.classList.add('active');
-
-            // ESC 키 닫기 이벤트 등록
-            document.addEventListener('keydown', handleLightboxEsc);
-        }
-
-        function closeLightbox() {
-            const lightbox = document.getElementById('image-lightbox');
-            lightbox.classList.remove('active');
-
-            // ESC 키 닫기 이벤트 해제
-            document.removeEventListener('keydown', handleLightboxEsc);
-        }
-
-        function handleLightboxEsc(e) {
-            if (e.key === 'Escape') {
-                closeLightbox();
-            }
-        }
-
-        // ===== 리뷰 모드 관련 로직 (Review Mode Logic) =====
-        const reviewState = {
-            global: "",
-            local: {},
-            order: [],
-        };
-
-        let currentSlideIndex = 0;
-
-        function toggleReviewMode() {
-            document.body.classList.toggle('review-active');
-            setTimeout(() => {
-                Reveal.layout(); // 스크롤 레이아웃 갱신
-            }, 400);
-
-            if (document.body.classList.contains('review-active')) {
-                initSlideSorter();
-                updateCurrentSlideFeedbackView();
-            }
-        }
-
-        // 'E' 키 토글
-        document.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'e' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
-                toggleReviewMode();
-            }
-        });
-
-        Reveal.on('slidechanged', event => {
-            currentSlideIndex = event.indexh;
-            // 활성화된 슬라이드에만 폰트 피팅 적용 (display:none 상태 회피)
-            const container = event.currentSlide.querySelector('.slide-container, .center-layout');
-            if (container && container.dataset.autofitDone !== "true") {
-                autoFitContainer(container);
-            }
-            triggerGaugeAnimation(event.currentSlide); // 슬라이드 전환 시 게이지바 애니메이션 구동
-            if (document.body.classList.contains('review-active')) {
-                updateCurrentSlideFeedbackView();
-            }
-            Reveal.layout();
-        });
-
-        function updateCurrentSlideFeedbackView() {
-            const label = document.getElementById('current-slide-label');
-            const textarea = document.getElementById('local-feedback');
-
-            label.textContent = `${currentSlideIndex + 1}번`;
-            textarea.value = reviewState.local[currentSlideIndex] || "";
-
-            textarea.oninput = (e) => {
-                reviewState.local[currentSlideIndex] = e.target.value;
-            };
-        }
-
-        document.getElementById('global-feedback').oninput = (e) => {
-            reviewState.global = e.target.value;
-        };
-
-        function initSlideSorter() {
-            const slides = Reveal.getSlides();
-            const sorterList = document.getElementById('slide-sorter');
-
-            if (reviewState.order.length === 0 || reviewState.order.length !== slides.length) {
-                reviewState.order = slides.map((slide, index) => {
-                    const titleEl = slide.querySelector('h1, h2, h3');
-                    const title = titleEl ? titleEl.innerText : `슬라이드 ${index + 1}`;
-                    return { originalIndex: index, title: title, isDeleted: false };
-                });
-            }
-
-            renderSorterList();
-
-            new Sortable(sorterList, {
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                onEnd: function (evt) {
-                    const item = reviewState.order.splice(evt.oldIndex, 1)[0];
-                    reviewState.order.splice(evt.newIndex, 0, item);
-                },
-            });
-        }
-
-        function renderSorterList() {
-            const sorterList = document.getElementById('slide-sorter');
-            sorterList.innerHTML = '';
-
-            reviewState.order.forEach((item, currentIndex) => {
-                const li = document.createElement('li');
-                li.className = `slide-sorter-item ${item.isDeleted ? 'deleted' : ''}`;
-
-                li.innerHTML = `
-                    <div class="slide-num">${item.originalIndex + 1}</div>
-                    <div class="slide-title-preview" title="${item.title}">${item.title}</div>
-                    <button class="slide-action-btn ${item.isDeleted ? 'restore' : ''}" onclick="event.stopPropagation(); toggleDeleteSlide(${item.originalIndex})">
-                        ${item.isDeleted ? '↩️' : '❌'}
-                    </button>
-                `;
-                sorterList.appendChild(li);
-            });
-        }
-
-        function toggleDeleteSlide(originalIndex) {
-            const item = reviewState.order.find(i => i.originalIndex === originalIndex);
-            if (item) {
-                item.isDeleted = !item.isDeleted;
-                renderSorterList();
-            }
-        }
-
-        function generateAndCopyPrompt() {
-            let prompt = "# 🛠️ 슬라이드 일괄 수정 요청서\n\n";
-
-            if (reviewState.global.trim() !== "") {
-                prompt += "## 1. 전체 수정 사항 (Global)\n";
-                prompt += reviewState.global.trim() + "\n\n";
-            }
-
-            let hasStructureChanges = false;
-            let structureText = "## 2. 슬라이드 구조 변경 (Structure)\n";
-
-            reviewState.order.forEach((item, newIndex) => {
-                if (item.isDeleted) {
-                    structureText += `- [삭제] 기존 ${item.originalIndex + 1}번 슬라이드 ("${item.title}") 삭제\n`;
-                    hasStructureChanges = true;
-                } else if (item.originalIndex !== newIndex) {
-                    structureText += `- [순서 변경] 기존 ${item.originalIndex + 1}번 슬라이드를 ${newIndex + 1}번째 위치로 이동\n`;
-                    hasStructureChanges = true;
-                }
-            });
-
-            if (hasStructureChanges) {
-                prompt += structureText + "\n";
-            }
-
-            let hasLocalChanges = false;
-            let localText = "## 3. 개별 슬라이드 수정 (Local)\n";
-
-            Object.keys(reviewState.local).forEach(slideIndexStr => {
-                const sIdx = parseInt(slideIndexStr);
-                const feedback = reviewState.local[sIdx].trim();
-                if (feedback) {
-                    localText += `- **[기존 ${sIdx + 1}번 슬라이드]**: ${feedback}\n`;
-                    hasLocalChanges = true;
-                }
-            });
-
-            if (hasLocalChanges) {
-                prompt += localText + "\n";
-            }
-
-            if (!hasStructureChanges && !hasLocalChanges && reviewState.global.trim() === "") {
-                alert("작성된 수정 요청 사항이 없습니다.");
-                return;
-            }
-
-            navigator.clipboard.writeText(prompt).then(() => {
-                const btn = document.querySelector('.copy-prompt-btn');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = "✅ 복사 완료! 채팅창에 붙여넣으세요";
-                btn.style.background = "#22c55e";
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.style.background = "";
-                }, 3000);
-            }).catch(err => {
-                alert("클립보드 복사에 실패했습니다. 콘솔을 확인해주세요.");
-                console.error("Clipboard copy failed:", err);
-            });
-        }
+{{INCLUDE:includes/scripts/theme_editor.js}}
+{{INCLUDE:includes/scripts/slide_interactions.js}}
+{{INCLUDE:includes/scripts/reveal_autofit.js}}
+{{INCLUDE:includes/scripts/lightbox.js}}
+{{INCLUDE:includes/scripts/review_tools.js}}
     </script>
 </body>
 

@@ -122,11 +122,12 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 에이전트는 사용자의 **발표 주제를 분석**하여, 주제에 가장 어울리는 컬러와 장식 요소를 스스로 결정합니다. 
 모든 결정 사항은 `references/design-contract.md`에 명시된 **테마 스타일링 계약(Theme Styling Interface)**에 부합하도록 매핑됩니다.
 
-#### 테마 결정 4단계:
+#### 테마 결정 5단계:
 1. **주제 분석**: 발표 주제의 분위기(교육, 기술, 안전, 건강 등)를 파악
 2. **60-30-10 컬러 추출**: 주제에 어울리는 세련된 배경색(60%), 텍스트/구조색(30%), 포인트 강조색(10%)의 HEX 코드를 추출 (원색 금지, Muted/Pastel 톤 권장)
 3. **배경 패턴 및 장식 선택**: 주제에 맞는 CSS 배경 장식(`decorations`) 및 은은한 배경 패턴 스타일(`bg_pattern_style`: grid/dots/diagonal)을 투명도 8%~15% 수준으로 선택
-4. **아이콘 스타일 프리셋 선택**: 주제의 톤앤매너에 어울리는 아이콘 두께와 효과 프리셋(`icon_style_preset`: cute/tech/business)을 설정
+4. **아이콘 스타일 프리셋 선택**: 주제의 톤앤매너에 어울리는 아이콘 두께와 효과 프리셋(`icon_style_preset`: cute/tech/business/minimal_raw/handdrawn)을 설정
+5. **이미지 프레임 프리셋 선택**: 스크린샷 튜토리얼 영역의 프레임 디자인 프리셋(`image_frame_preset`: cute/tech/business/retro/minimal)을 설정
 
 #### `meta.theme_colors` 스키마:
 ```json
@@ -139,7 +140,8 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
     "accent_secondary": "#7C3AED",
     "decorations": ["corner_accent", "circles"],
     "bg_pattern_style": "grid",
-    "icon_style_preset": "cute"
+    "icon_style_preset": "cute",
+    "image_frame_preset": "cute"
 }
 ```
 > 💡 `theme_colors`가 있으면 동적 테마가 우선 적용되며, 배경 패턴과 아이콘은 설정된 프리셋에 따라 CSS로 자동 스위칭됩니다. 없으면 기존 고정 테마(`theme: "tech_blue"`)를 사용합니다.

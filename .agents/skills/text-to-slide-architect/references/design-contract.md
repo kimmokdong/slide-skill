@@ -66,6 +66,7 @@
 2. **콘텐츠 카드/박스 (Content Card/Box)**: 본문을 담는 상자의 테두리 스타일(Dashed/Solid), 모서리 둥글기(Radius), 그림자 깊이(Shadow), 투명도 및 블러(Glassmorphism)를 제어합니다.
 3. **타이포그래피 및 강조 (Typography & Highlights)**: 제목/본문 글꼴(Font family)과 텍스트 내 강조 단어(`<strong>` 등)에 씌워지는 시각적 형태(형광펜 효과, 디지털 괄호 등)를 통일성 있게 지정합니다. 에이전트는 본문 핵심 키워드를 자동으로 `<strong>` 태그로 감싸 렌더러가 테마별 강조 스타일을 적용할 수 있도록 설계해야 합니다.
 4. **이정표 영역 (Wayfinding UI)**: 상단 스텝퍼(Stepper), 좌상단 섹션 헤더(Section Header), 하단 핵심 요약 띠(Bottom Takeaway)의 스킨 및 강조색을 제어합니다.
+5. **이미지 프레임 프리셋 (Image Frame Preset)**: 이미지/스크린샷 영역에 적용되는 브라우저 창 또는 모바일 기기 모형의 외곽 디자인(Radius, Border, Shadow) 및 상단부 컨트롤러(신호등 도트 등) 노출 방식(cute, tech, business, retro, minimal)을 제어합니다.
 
 ### 9-2. 아이콘 및 이미지 에셋 공급 전략 (1, 3번 하이브리드)
 1. **아이콘 (Lucide Vector Icons + CSS 스타일링)**:

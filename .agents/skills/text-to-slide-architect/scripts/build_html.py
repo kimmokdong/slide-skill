@@ -13,6 +13,68 @@ import json
 import re
 
 
+INCLUDE_PATTERN = re.compile(r'\{\{\s*INCLUDE:([^}]+)\s*\}\}')
+
+
+def get_template_root() -> str:
+    """템플릿 루트 디렉터리 경로를 반환합니다."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.realpath(os.path.join(script_dir, '..', 'templates'))
+
+
+def expand_template_includes(text: str, root_dir: str = None, stack: tuple = (), depth: int = 0, max_depth: int = 20) -> str:
+    """{{INCLUDE:path}} 지시자를 템플릿 루트 기준으로 재귀 확장합니다."""
+    root_dir = os.path.realpath(root_dir or get_template_root())
+
+    if depth > max_depth:
+        chain = " -> ".join(stack)
+        raise RecursionError(f"include 최대 깊이({max_depth})를 초과했습니다: {chain}")
+
+    def replace_include(match):
+        include_name = match.group(1).strip()
+        normalized = include_name.replace('\\', os.sep).replace('/', os.sep)
+
+        if os.path.isabs(normalized):
+            raise ValueError(f"include 경로는 상대 경로만 허용됩니다: {include_name}")
+
+        include_path = os.path.realpath(os.path.join(root_dir, normalized))
+        if os.path.commonpath([root_dir, include_path]) != root_dir:
+            raise ValueError(f"include 경로가 templates 폴더 밖을 가리킵니다: {include_name}")
+
+        if include_path in stack:
+            chain = " -> ".join(list(stack) + [include_path])
+            raise RecursionError(f"순환 include가 감지되었습니다: {chain}")
+
+        if not os.path.isfile(include_path):
+            raise FileNotFoundError(f"include 파일을 찾을 수 없습니다: {include_name}")
+
+        with open(include_path, 'r', encoding='utf-8') as f:
+            include_text = f.read()
+
+        expanded_text = expand_template_includes(
+            include_text,
+            root_dir=root_dir,
+            stack=stack + (include_path,),
+            depth=depth + 1,
+            max_depth=max_depth
+        )
+
+        ext = os.path.splitext(include_name)[1].lower()
+        if ext in ['.css', '.js']:
+            start_comment = f"/* --- START INCLUDE: {include_name} --- */\n"
+            end_comment = f"\n/* --- END INCLUDE: {include_name} --- */"
+        elif ext in ['.html']:
+            start_comment = f"<!-- --- START INCLUDE: {include_name} --- -->\n"
+            end_comment = f"\n<!-- --- END INCLUDE: {include_name} --- -->"
+        else:
+            start_comment = ""
+            end_comment = ""
+
+        return f"{start_comment}{expanded_text}{end_comment}"
+
+    return INCLUDE_PATTERN.sub(replace_include, text)
+
+
 def load_template(name: str) -> str:
     """템플릿 파일을 읽어옵니다."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -22,7 +84,20 @@ def load_template(name: str) -> str:
         template_path = os.path.join(script_dir, '..', 'templates', f'layout_{name}.html')
 
     with open(template_path, 'r', encoding='utf-8') as f:
-        return f.read()
+        template = f.read()
+
+    return expand_template_includes(
+        template,
+        root_dir=get_template_root(),
+        stack=(os.path.realpath(template_path),)
+    )
+
+
+def assert_no_unresolved_includes(html: str) -> None:
+    """최종 HTML 안에 처리되지 않은 include 지시자가 남아 있으면 중단합니다."""
+    match = INCLUDE_PATTERN.search(html)
+    if match:
+        raise ValueError(f"처리되지 않은 include 지시자가 남았습니다: {match.group(0)}")
 
 
 def load_theme(theme_name: str) -> str:
@@ -33,7 +108,7 @@ def load_theme(theme_name: str) -> str:
     if os.path.exists(theme_path):
         with open(theme_path, 'r', encoding='utf-8') as f:
             css = f.read()
-            return f"<style>\n{css}\n</style>"
+            return f'<style id="meta-theme-style">\n{css}\n</style>'
     return ""
 
 
@@ -55,26 +130,15 @@ def is_light_color(hex_color: str) -> bool:
 
 
 def generate_dynamic_theme_css(theme_colors: dict) -> str:
-    """meta.theme_colors에서 동적 CSS 변수를 생성합니다.
-    
-    theme_colors 스키마:
-    {
-        "bg": "#F0F4FF",           // 60% 배경색
-        "text": "#1E293B",         // 30% 텍스트 및 구조색
-        "accent": "#3B82F6",       // 10% 포인트 강조색
-        "bg_secondary": "#E2E8F0", // (선택) 보조 배경
-        "accent_secondary": "#7C3AED", // (선택) 보조 강조
-        "decorations": ["circles", "waves", "dots"]  // (선택) CSS 장식 요소
-    }
-    """
+    """meta.theme_colors에서 동적 CSS 변수 및 프리셋 룰을 생성합니다."""
     if not theme_colors:
         return ""
 
-    bg = theme_colors.get('bg', '#0F172A')
+    bg = theme_colors.get('bg', '#F8FAFF')
     bg_secondary = theme_colors.get('bg_secondary', bg)
-    text = theme_colors.get('text', '#F1F5F9')
+    text = theme_colors.get('text', '#1E293B')
     text_secondary = theme_colors.get('text_secondary', text)
-    accent = theme_colors.get('accent', '#3B82F6')
+    accent = theme_colors.get('accent', '#4F46E5')
     accent_secondary = theme_colors.get('accent_secondary', accent)
 
     # 밝은 배경 대비 가드 적용
@@ -83,13 +147,468 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     card_border = "rgba(0, 0, 0, 0.12)" if is_light else "rgba(255, 255, 255, 0.15)"
 
     # 이미지 프레임 스타일 동적 파생
-    frame_bg = "#ffffff" if is_light else "rgba(255, 255, 255, 0.05)"
-    frame_border = f"1px solid {card_border}"
-    frame_shadow = "0 8px 24px rgba(0, 0, 0, 0.08)" if is_light else "0 10px 30px rgba(0, 0, 0, 0.3)"
-    frame_radius = "16px"
-    frame_dots = "flex"
+    frame_preset = theme_colors.get('image_frame_preset', 'business')
+    frame_dot_border = "none"
+    frame_css = ""
+    
+    if frame_preset == 'cute':
+        frame_bg = "#fffbf0"
+        frame_border = f"2px dashed {accent}"
+        frame_shadow = "6px 6px 0px rgba(0, 0, 0, 0.04)"
+        frame_radius = "20px"
+        frame_dots = "flex"
+        frame_header_bg = "transparent"
+        frame_css = f"""
+.screenshot-frame {{
+    padding-top: 10px !important;
+}}
+.browser-frame .frame-dots {{
+    display: block !important;
+    height: 12px;
+    background: transparent !important;
+    border: none !important;
+    position: relative;
+}}
+.browser-frame .frame-dots::before {{
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 70px;
+    height: 18px;
+    background: rgba(251, 191, 36, 0.7); /* 마스킹 테이프 */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border-left: 2px dashed rgba(0,0,0,0.15);
+    border-right: 2px dashed rgba(0,0,0,0.15);
+}}
+.browser-frame .dot {{
+    display: none !important;
+}}
+"""
+    elif frame_preset == 'tech':
+        frame_bg = "rgba(15, 23, 42, 0.65)"
+        frame_border = f"1px solid {accent}"
+        frame_shadow = f"0 0 15px {accent}4D"
+        frame_radius = "0px"
+        frame_dots = "none"
+        frame_header_bg = "rgba(0, 0, 0, 0.2)"
+        frame_css = f"""
+.browser-frame .frame-dots {{
+    display: flex !important;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.4) !important;
+    border-bottom: 1px solid {accent} !important;
+    height: 24px;
+    padding: 0 10px;
+}}
+.browser-frame .frame-dots::before {{
+    content: 'SYS.terminal@root:~';
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: {accent_secondary};
+    opacity: 0.8;
+    letter-spacing: 1px;
+}}
+.browser-frame .dot {{
+    display: none !important;
+}}
+"""
+    elif frame_preset == 'retro':
+        frame_bg = "#ffffff"
+        frame_border = f"3px solid {text}"
+        frame_shadow = f"8px 8px 0px {text}"
+        frame_radius = "4px"
+        frame_dots = "none"
+        frame_header_bg = "transparent"
+        frame_css = f"""
+.screenshot-frame {{
+    padding: 10px 10px 32px 10px !important;
+}}
+.browser-frame .frame-dots {{
+    display: none !important;
+}}
+"""
+    elif frame_preset == 'minimal':
+        frame_bg = "transparent"
+        frame_border = "none"
+        frame_shadow = "0 15px 35px rgba(0,0,0,0.12)"
+        frame_radius = "6px"
+        frame_dots = "none"
+        frame_header_bg = "transparent"
+        frame_css = f"""
+.screenshot-frame {{
+    padding: 0 !important;
+}}
+.browser-frame .frame-dots {{
+    display: none !important;
+}}
+"""
+    else: # business / auto / fallback
+        frame_bg = bg_secondary
+        frame_border = "1px solid rgba(0, 0, 0, 0.08)" if is_light else "1px solid rgba(255, 255, 255, 0.1)"
+        frame_shadow = "0 8px 24px rgba(0, 0, 0, 0.06)" if is_light else "0 10px 30px rgba(0, 0, 0, 0.2)"
+        frame_radius = "12px"
+        frame_dots = "flex"
+        frame_header_bg = "rgba(0, 0, 0, 0.04)" if is_light else "rgba(255, 255, 255, 0.04)"
+        frame_css = f"""
+.browser-frame .frame-dots {{
+    display: var(--image-frame-dots-display) !important;
+    background: var(--image-frame-header-bg) !important;
+}}
+.browser-frame .dot {{
+    display: block !important;
+}}
+"""
 
-    # 60-30-10 기반 자동 파생 색상
+    # 1. 카드 프리셋 CSS 생성
+    card_preset = theme_colors.get('card_style_preset', 'business_clean')
+    card_css = ""
+    if card_preset == 'cute_note':
+        card_css = """
+.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {
+    --color-card-bg: #fffbf0;
+    --color-card-border: 2px dashed rgba(0, 0, 0, 0.12);
+    --color-text: #2c2c2c;
+    --color-text-secondary: #555555;
+    color: #2c2c2c !important;
+    border: 2px dashed rgba(0, 0, 0, 0.12) !important;
+    border-radius: 20px !important;
+    box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.05) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+"""
+    elif card_preset == 'tech_neon':
+        card_css = f"""
+.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {{
+    --color-card-bg: rgba(15, 23, 42, 0.65);
+    --color-card-border: 1px solid {accent};
+    border: 1px solid {accent} !important;
+    border-radius: 4px !important;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.25) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}}
+"""
+    elif card_preset == 'business_clean':
+        card_css = """
+.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {
+    --color-card-bg: var(--color-bg-secondary);
+    --color-card-border: 1px solid rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+"""
+    elif card_preset == 'editorial_serif':
+        card_css = f"""
+.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {{
+    --color-card-bg: transparent;
+    --color-card-border: none;
+    border-top: 2px solid {text} !important;
+    border-bottom: 2px solid {text} !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-radius: 0px !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}}
+"""
+    elif card_preset == 'retro_bold':
+        card_css = f"""
+.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {{
+    --color-card-bg: #ffffff;
+    --color-card-border: 3px solid {text};
+    --color-text: #1e293b;
+    --color-text-secondary: #475569;
+    color: #1e293b !important;
+    border: 3px solid {text} !important;
+    border-radius: 12px !important;
+    box-shadow: 6px 6px 0px {text} !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}}
+"""
+    elif card_preset == 'transparent':
+        card_css = """
+.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {
+    --color-card-bg: transparent;
+    --color-card-border: none;
+    border: none !important;
+    border-radius: 0px !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+"""
+
+    # 2. 아이콘 프리셋 CSS 생성
+    icon_preset = theme_colors.get('icon_preset', 'business')
+    icon_css = ""
+    if icon_preset == 'cute':
+        icon_css = f"""
+.reveal .bullet-list li::before, .reveal .bullet-icon {{
+    border-radius: 50% !important;
+    border: 2px solid {accent} !important;
+    color: {accent_secondary} !important;
+    background-color: var(--color-bg-secondary) !important;
+    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
+}}
+"""
+    elif icon_preset == 'tech':
+        icon_css = f"""
+.reveal .bullet-icon {{
+    background-color: rgba(99, 102, 241, 0.1) !important;
+    border-radius: 4px !important;
+    border: 1px solid {accent} !important;
+    color: {accent} !important;
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
+    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
+}}
+"""
+    elif icon_preset == 'business':
+        icon_css = """
+.reveal .bullet-icon {
+    background-color: var(--color-bg-secondary) !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    color: var(--color-text-secondary) !important;
+    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
+}
+"""
+    elif icon_preset == 'minimal_raw':
+        icon_css = f"""
+.reveal .bullet-icon {{
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: {accent} !important;
+    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
+}}
+"""
+    elif icon_preset == 'handdrawn':
+        icon_css = """
+.reveal .bullet-icon {
+    background-color: #fef08a !important;
+    border: 2px solid #000 !important;
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50% !important;
+    color: #000 !important;
+    transform: rotate(-3deg);
+    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
+}
+"""
+
+    # 3. 폰트 프리셋 매칭
+    font_preset = theme_colors.get('font_preset', 'friendly')
+    font_stack = "'Outfit', 'Noto Sans KR', sans-serif"
+    if font_preset == 'cyber':
+        font_stack = "'Orbitron', 'Nanum Square Neo', sans-serif"
+    elif font_preset == 'classic':
+        font_stack = "'Playfair Display', 'Nanum Myeongjo', serif"
+    elif font_preset == 'editorial':
+        font_stack = "'Montserrat', 'Pretendard', sans-serif"
+    elif font_preset == 'chalkboard':
+        font_stack = "'Caveat', 'Nanum Pen Script', cursive"
+
+    # 4. 강조 텍스트(strong) 스타일 CSS 생성
+    highlight_preset = theme_colors.get('highlight_style', theme_colors.get('strong_style', 'friendly'))
+    highlight_css = ""
+    if highlight_preset == 'friendly':
+        highlight_css = f"""
+.reveal strong {{
+    position: relative; display: inline-block; font-weight: 800; color: inherit; z-index: 1;
+}}
+.reveal strong::after {{
+    content: ""; position: absolute; left: 0; bottom: 2px; width: 100%; height: 35%;
+    background-color: {accent_secondary}; opacity: 0.55; z-index: -1; border-radius: 4px;
+}}
+"""
+    elif highlight_preset == 'cyber':
+        highlight_css = f"""
+.reveal strong {{
+    font-weight: 900; color: {accent_secondary}; text-shadow: 0 0 8px rgba(165, 180, 252, 0.4); font-family: 'Orbitron', sans-serif;
+}}
+.reveal strong::before {{
+    content: "["; color: {accent}; margin-right: 2px;
+}}
+.reveal strong::after {{
+    content: "]"; color: {accent}; margin-left: 2px;
+}}
+"""
+    elif highlight_preset == 'classic':
+        highlight_css = f"""
+.reveal strong {{
+    font-style: italic; font-weight: 700; color: {accent}; border-bottom: 3px double {accent}; padding-bottom: 1px;
+}}
+"""
+    elif highlight_preset == 'editorial':
+        highlight_css = f"""
+.reveal strong {{
+    font-weight: 800; background: {text}; color: {bg}; padding: 0px 4px; border-radius: 2px;
+}}
+"""
+    elif highlight_preset == 'chalkboard':
+        highlight_css = """
+.reveal strong {
+    font-weight: 900; color: #b91c1c; text-decoration: underline wavy #b91c1c; text-underline-offset: 4px;
+}
+"""
+
+    # 5. 하단 요약바 스타일 CSS 생성
+    takeaway_preset = theme_colors.get('takeaway_style', 'friendly')
+    takeaway_css = ""
+    if takeaway_preset == 'friendly':
+        takeaway_css = f"""
+.reveal .bottom-takeaway-bar {{
+    background: linear-gradient(90deg, {accent}, {accent_secondary}) !important;
+    border-radius: 20px 20px 0 0 !important;
+    margin: 0 15px !important;
+    width: calc(100% - 30px) !important;
+    bottom: 5px !important;
+    box-shadow: 0 -5px 20px rgba(0,0,0,0.06) !important;
+}}
+"""
+    elif takeaway_preset == 'cyber':
+        takeaway_css = f"""
+.reveal .bottom-takeaway-bar {{
+    background: rgba(15, 23, 42, 0.9) !important;
+    border-top: 2px solid {accent} !important;
+    clip-path: polygon(0 0, 93% 0, 100% 100%, 0% 100%) !important;
+    color: {accent_secondary} !important;
+    text-shadow: 0 0 5px rgba(165, 180, 252, 0.4) !important;
+}}
+"""
+    elif takeaway_preset == 'classic':
+        takeaway_css = f"""
+.reveal .bottom-takeaway-bar {{
+    background: var(--color-bg-secondary) !important;
+    border-top: 1px solid {accent} !important;
+    color: {text} !important;
+    font-family: 'Playfair Display', serif !important;
+    font-style: italic !important;
+}}
+"""
+    elif takeaway_preset == 'editorial':
+        takeaway_css = f"""
+.reveal .bottom-takeaway-bar {{
+    background: transparent !important;
+    border-top: 2px solid {text} !important;
+    color: {text} !important;
+    padding: 15px 0px !important;
+    margin: 0 40px !important;
+    width: calc(100% - 80px) !important;
+    box-shadow: none !important;
+}}
+"""
+    elif takeaway_preset == 'chalkboard':
+        takeaway_css = """
+.reveal .bottom-takeaway-bar {
+    background: #8b4513 !important;
+    border-top: 4px solid #5c2c0c !important;
+    border-radius: 10px 10px 0 0 !important;
+    color: #ffedd5 !important;
+    font-family: 'Nanum Pen Script', cursive !important;
+    font-size: 1.3rem !important;
+}
+"""
+
+    # 6. 화면 전환 모션 transition 생성
+    motion_preset = theme_colors.get('motion_preset', 'friendly')
+    motion_css = ""
+    if motion_preset == 'friendly':
+        motion_css = ".reveal { --slide-transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }"
+    elif motion_preset == 'cyber':
+        motion_css = ".reveal { --slide-transition: all 0.22s cubic-bezier(0.19, 1, 0.22, 1); }"
+    elif motion_preset == 'classic':
+        motion_css = ".reveal { --slide-transition: all 0.75s cubic-bezier(0.25, 1, 0.5, 1); }"
+    elif motion_preset == 'editorial':
+        motion_css = ".reveal { --slide-transition: all 0.45s cubic-bezier(0.77, 0, 0.175, 1); }"
+    elif motion_preset == 'chalkboard':
+        motion_css = ".reveal { --slide-transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1); }"
+
+    # 7. 배경 패턴 CSS 생성
+    pattern_preset = theme_colors.get('bg_pattern_style', 'none')
+    pattern_css = ""
+    if pattern_preset == 'grid':
+        pattern_css = f"""
+.pattern-overlay {{
+    opacity: 0.12 !important;
+    background-size: 30px 30px;
+    background-image: 
+        linear-gradient(to right, {text_secondary} 1px, transparent 1px),
+        linear-gradient(to bottom, {text_secondary} 1px, transparent 1px) !important;
+}}
+"""
+    elif pattern_preset == 'dots':
+        pattern_css = f"""
+.pattern-overlay {{
+    opacity: 0.12 !important;
+    background-size: 20px 20px;
+    background-image: radial-gradient({text_secondary} 1.5px, transparent 1.5px) !important;
+}}
+"""
+    elif pattern_preset == 'diagonal':
+        pattern_css = f"""
+.pattern-overlay {{
+    opacity: 0.12 !important;
+    background-size: 40px 40px;
+    background-image: linear-gradient(45deg, 
+        {text_secondary} 1px, transparent 1px, 
+        transparent 19px, {text_secondary} 20px, 
+        transparent 20px, transparent 39px, {text_secondary} 40px
+    ) !important;
+}}
+"""
+    elif pattern_preset == 'blueprint':
+        pattern_css = f"""
+.pattern-overlay {{
+    opacity: 0.25 !important;
+    background-size: 40px 40px;
+    background-image: 
+        linear-gradient(to right, {accent} 1.5px, transparent 1.5px),
+        linear-gradient(to bottom, {accent} 1.5px, transparent 1.5px) !important;
+}}
+"""
+    elif pattern_preset == 'terrazzo':
+        pattern_css = f"""
+.pattern-overlay {{
+    opacity: 0.12 !important;
+    background-size: 120px 120px;
+    background-image: 
+        radial-gradient(circle at 20% 30%, {accent} 4px, transparent 8px),
+        radial-gradient(circle at 75% 15%, {accent_secondary} 6px, transparent 12px),
+        radial-gradient(circle at 50% 80%, {text_secondary} 5px, transparent 10px) !important;
+}}
+"""
+
+    # 8. 배경 장식 활성화 CSS 생성
+    decorations = theme_colors.get('decorations', [])
+    decor_css_list = []
+    if decorations:
+        checkbox_mappings = {
+            'corner_accent': ['.decor-corner-tl', '.decor-corner-tr', '.decor-corner-bl', '.decor-corner-br'],
+            'circles': ['.decor-circle-1', '.decor-circle-2'],
+            'hud_brackets': ['.decor-hud-left', '.decor-hud-right'],
+            'wavy_line': ['.decor-wavy'],
+            'geometric_shapes': ['.decor-shape-1', '.decor-shape-2', '.decor-shape-3', '.decor-shape-4'],
+            'tech_grid_lines': ['.decor-techlines']
+        }
+        for decor in decorations:
+            if decor in checkbox_mappings:
+                selectors = ", ".join(checkbox_mappings[decor])
+                opacity_val = "0.25" if decor == 'wavy_line' else ("0.35" if decor == 'tech_grid_lines' else ("0.18" if decor == 'circles' else ("0.22" if decor == 'geometric_shapes' else "0.3")))
+                decor_css_list.append(f"""
+{selectors} {{
+    opacity: {opacity_val} !important;
+}}
+""")
+    decor_css = "\n".join(decor_css_list)
+
+    # 60-30-10 기반 자동 파생 색상 및 프리셋 CSS 통합 조립
     css = f"""<style>
 /* ===== 동적 테마 (60-30-10 Rule) ===== */
 :root {{
@@ -103,6 +622,7 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     --color-card-bg: {card_bg};
     --color-card-border: {card_border};
     --color-muted: {text_secondary};
+    --font-primary: {font_stack};
     
     /* 이미지 프레임 (테마 제어 요소) */
     --image-frame-bg: {frame_bg};
@@ -110,11 +630,24 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     --image-frame-shadow: {frame_shadow};
     --image-frame-radius: {frame_radius};
     --image-frame-dots-display: {frame_dots};
+    --image-frame-header-bg: {frame_header_bg};
+    --image-frame-dot-border: {frame_dot_border};
 }}
+
+/* 프리셋 연동 CSS 구동 */
+{frame_css}
+{card_css}
+{icon_css}
+{highlight_css}
+{takeaway_css}
+{motion_css}
+{pattern_css}
+{decor_css}
 
 .reveal {{
     background: var(--color-bg);
     color: var(--color-text);
+    font-family: var(--font-primary) !important;
 }}
 
 .reveal h1, .reveal h2, .reveal h3 {{
@@ -155,121 +688,7 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
 .vs-badge {{
     background: var(--color-gradient) !important;
 }}
-"""
-
-    # CSS 장식 요소 (주제별 배경 패턴)
-    decorations = theme_colors.get('decorations', [])
-    if isinstance(decorations, list):
-        decorations = decorations.copy()
-    else:
-        decorations = []
-        
-    bg_pattern = theme_colors.get('bg_pattern_style')
-    if bg_pattern:
-        if bg_pattern == 'grid' and 'grid_lines' not in decorations:
-            decorations.append('grid_lines')
-        elif bg_pattern not in decorations:
-            decorations.append(bg_pattern)
-
-    if decorations:
-        css += "\n/* --- 주제별 CSS 장식 요소 --- */\n"
-        for deco in decorations:
-            if deco == 'circles':
-                css += """.reveal-viewport::before {
-    content: '';
-    position: absolute;
-    top: -80px;
-    right: -80px;
-    width: 250px;
-    height: 250px;
-    border-radius: 50%;
-    background: var(--color-accent);
-    opacity: 0.12;
-    pointer-events: none;
-    z-index: 0;
-}
-.reveal-viewport::after {
-    content: '';
-    position: absolute;
-    bottom: -60px;
-    left: -60px;
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    background: var(--color-accent-secondary);
-    opacity: 0.10;
-    pointer-events: none;
-    z-index: 0;
-}
-"""
-            elif deco == 'waves':
-                css += """.reveal::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 120px;
-    background: linear-gradient(135deg, transparent 33.33%, var(--color-accent) 33.33%, var(--color-accent) 66.66%, transparent 66.66%);
-    opacity: 0.12;
-    pointer-events: none;
-    z-index: 0;
-}
-"""
-            elif deco == 'dots':
-                css += """.reveal::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(var(--color-accent) 2px, transparent 2px);
-    background-size: 30px 30px;
-    opacity: 0.12;
-    pointer-events: none;
-    z-index: 0;
-}
-"""
-            elif deco == 'grid_lines':
-                css += """.reveal::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: 
-        linear-gradient(var(--color-accent) 1px, transparent 1px),
-        linear-gradient(90deg, var(--color-accent) 1px, transparent 1px);
-    background-size: 60px 60px;
-    opacity: 0.15;
-    pointer-events: none;
-    z-index: 0;
-}
-"""
-            elif deco == 'corner_accent':
-                css += """.reveal .slides section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 120px;
-    height: 6px;
-    background: var(--color-gradient);
-    border-radius: 0 0 6px 0;
-    pointer-events: none;
-    z-index: 1;
-}
-.reveal .slides section::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 6px;
-    height: 80px;
-    background: var(--color-gradient);
-    border-radius: 0 0 6px 0;
-    pointer-events: none;
-    z-index: 1;
-}
-"""
-
-    css += "</style>"
+</style>"""
     return css
 
 
@@ -606,6 +1025,7 @@ def build_html(input_json: str, output_html: str) -> None:
     final_html = base_html.replace('{{PRESENTATION_TITLE}}', presentation_title)
     final_html = final_html.replace('{{THEME_CSS}}', theme_css)
     final_html = final_html.replace('{{SLIDES_CONTENT}}', slides_content)
+    assert_no_unresolved_includes(final_html)
 
     # 출력 폴더 생성
     output_dir = os.path.dirname(output_html)

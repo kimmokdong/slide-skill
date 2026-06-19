@@ -1,0 +1,239 @@
+        /* ===== 기본 CSS 변수 및 레이아웃 강제 규칙 ===== */
+        :root {
+            --slide-width: 1280px;
+            --slide-height: 720px;
+            --font-primary: 'Noto Sans KR', sans-serif;
+
+            /* 테마 컬러 기본값 (build_html.py에서 덮어씌움) */
+            --color-bg: #F8FAFF;
+            --color-bg-secondary: #EEF2FF;
+            --color-text: #1E293B;
+            --color-text-secondary: #64748B;
+            --color-accent: #4F46E5;
+            --color-accent-secondary: #7C3AED;
+            --color-gradient: linear-gradient(135deg, var(--color-accent), var(--color-accent-secondary));
+            --color-card-bg: rgba(255, 255, 255, 0.4);
+            --color-muted: var(--color-text-secondary);
+
+            /* 이미지 프레임 (테마 요소) */
+            --image-frame-bg: rgba(255, 255, 255, 0.4);
+            --image-frame-border: 1px solid rgba(0, 0, 0, 0.1);
+            --image-frame-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            --image-frame-radius: 12px;
+            --image-frame-dots-display: flex;
+        }
+
+        /* Reveal.js 리셋 및 강제 크기 지정 */
+        .reveal {
+            font-family: var(--font-primary);
+            background-color: var(--color-bg);
+            color: var(--color-text);
+        }
+
+        .reveal .slides {
+            text-align: left;
+        }
+
+        /* Reveal.js의 section 자체 스타일 충돌 방지 */
+        .reveal .slides section {
+            padding: 0 !important;
+            margin: 0 !important;
+            width: var(--slide-width) !important;
+            height: var(--slide-height) !important;
+            box-sizing: border-box;
+            overflow: hidden !important;
+            display: block !important;
+            /* Reveal.js 내부 레이아웃을 1280x720로 절대화 */
+        }
+
+        /* ===== 와이어프레임 구조화 컨테이너 ===== */
+        .slide-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            padding: 40px 56px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            overflow: hidden !important;
+            font-size: 48px;
+            /* 기준 폰트 크기: 30% 증가 (44px -> 57px) */
+        }
+
+        /* 위치 꼬리표 (SECTION_HEADER) */
+        .section-header-tag {
+            position: absolute;
+            top: 20px;
+            left: 36px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-accent);
+            opacity: 0.7;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            z-index: 5;
+        }
+
+        /* 2. TITLE (슬라이드 메인 제목 영역) */
+        .slide-header {
+            flex-shrink: 0;
+            margin-bottom: 28px;
+            text-align: left;
+            width: 100%;
+            height: 92px;
+            min-height: 92px;
+            max-height: 92px;
+            border-bottom: 1px solid var(--color-card-border, rgba(0, 0, 0, 0.05));
+            padding-bottom: 8px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .slide-header h2 {
+            font-size: 64px; /* 제목 영역은 고정, 제목은 가로로 넘칠 때만 축소 */
+            font-weight: 900;
+            line-height: 1.08;
+            margin: 0;
+            color: var(--color-text);
+            word-break: keep-all;
+            white-space: nowrap;
+            overflow: visible;
+            max-width: 100%;
+        }
+
+        .slide-title-row {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .slide-title-row h2 {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* 3. BODY (12-Grid 템플릿 운동장) */
+        .slide-body {
+            flex: 1;
+            min-height: 0;
+            /* 넘침 방지 핵심 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            /* 기본은 상하 중앙 정렬 */
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden !important;
+        }
+
+        /* 4. BOTTOM_TAKEAWAY (하단 펀치라인 요약 - 약 10% 고정 바) */
+        .bottom-takeaway-bar {
+            flex-shrink: 0;
+            margin-top: 28px;
+            width: 100%;
+            height: auto;
+            min-height: 75px;
+            border-radius: 12px;
+            padding: 14px 42px;
+            background: var(--color-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .bottom-takeaway-bar .takeaway-content {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.3;
+            white-space: normal;
+            width: 100%;
+            letter-spacing: 0.02em;
+            word-break: keep-all;
+        }
+
+        /* ===== 디자인 시스템 카드 ===== */
+        .card {
+            background: var(--color-card-bg);
+            border-radius: 16px;
+            padding: 0.8em 1.2em;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--color-card-border, rgba(255, 255, 255, 0.25));
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.06);
+            box-sizing: border-box;
+        }
+
+        /* ===== 타이포그래피 (em 기반) ===== */
+        p {
+            font-size: 0.9em;
+            line-height: 1.7;
+            font-weight: 400;
+            margin: 0;
+            word-break: keep-all;
+        }
+
+        /* 표지용 (Hero Layout) */
+        .center-layout {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            box-sizing: border-box;
+            padding: 2em;
+            font-size: 48px;
+            /* 표지 전용 기준 폰트: 48px로 조정 */
+        }
+
+        /* 섹션 타이틀용 (Title Layout) */
+        .center-layout.title-layout {
+            font-size: 36px; /* hero(48px)보다 작은 36px로 조정 */
+        }
+
+        .center-layout .hero-badge {
+            display: inline-block;
+            padding: 10px 36px;
+            border-radius: 20px;
+            background: var(--color-accent);
+            color: white;
+            font-weight: 700;
+            font-size: 28px;
+            margin-bottom: 28px;
+        }
+
+        .center-layout h1 {
+            font-size: 2.1em;
+            font-weight: 900;
+            line-height: 1.3;
+            margin: 0 0 0.5em 0;
+            color: var(--color-text);
+            word-break: keep-all;
+        }
+
+        .center-layout h2 {
+            font-size: 1.25em;
+            font-weight: 300;
+            line-height: 1.4;
+            opacity: 0.8;
+            margin: 0 0 1em 0;
+            color: var(--color-text);
+            word-break: keep-all;
+        }
+
+        .center-layout .presenter {
+            font-size: 0.8em;
+            opacity: 0.6;
+            margin: 0;
+        }
