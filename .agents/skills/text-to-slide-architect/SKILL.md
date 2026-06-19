@@ -300,7 +300,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 - `BOTTOM_TAKEAWAY`: 슬라이드 하단에 그라데이션 띠로 표시되는 핵심 요약 한 줄
 - `SECTION_HEADER`: 슬라이드 좌상단에 작게 표시되는 현재 섹션명 (네비게이션 용)
 
-*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`
+*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `image_comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`
 
 ### 📚 레이아웃별 필수/선택 변수명 사전 (Schema Dictionary)
 AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에서 정확히 인식할 수 있도록, **반드시 아래 표에 명시된 변수명(대문자)만을 사용**해야 합니다. (임의의 변수명 지어내기 엄금)
@@ -313,8 +313,10 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `text_image` | 본문과 이미지 | `TITLE`, `CONTENT`, `IMAGE_SRC` | `SPEAKER_NOTES` |
 | `bullet` | 일반 글머리기호 목록 | `TITLE`, `BULLET_ITEMS` (배열) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `comparison` | 좌우 대칭 비교 | `TITLE`, `LEFT_TITLE`, `LEFT_ITEMS`, `RIGHT_TITLE`, `RIGHT_ITEMS` | `SPEAKER_NOTES` |
+| `image_comparison` | Before & After 이미지 2장 비교 | `TITLE`, `LEFT_IMAGE_SRC`, `LEFT_DESC`, `RIGHT_IMAGE_SRC`, `RIGHT_DESC` | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `timeline` | 시간 흐름 연혁 | `TITLE`, `TIMELINE_ITEMS` (title, desc) | `SPEAKER_NOTES` |
 | `quiz` | 객관식 퀴즈 | `TITLE`, `QUIZ_QUESTION`, `QUIZ_OPTIONS` (text) | `ANSWER_INDEX`, `SPEAKER_NOTES` |
+
 | `quote` | 명언, 핵심 인용구 | `QUOTE_TEXT` | `QUOTE_SOURCE`, `SPEAKER_NOTES` |
 | `diagram` | Mermaid 등 도식 | `TITLE`, `DIAGRAM_SRC` | `DIAGRAM_CAPTION`, `SPEAKER_NOTES` |
 | `stats` | 핵심 통계 수치 하이라이트 | `TITLE`, `STAT_ITEMS` (value, label) | `SPEAKER_NOTES` |
@@ -352,12 +354,17 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 
 ## 모듈 5: HTML 렌더링 및 검수
 
-1. 에이전트가 `scripts/build_html.py` 스크립트를 실행합니다.
+1. 에이전트가 `scripts/build_html.py` 스크립트를 실행하여 슬라이드를 빌드합니다.
    ```bash
    python "{스킬폴더}/scripts/build_html.py" "slide_plan.json" "output/index.html"
    ```
-2. 에러가 발생하면 JSON 문법을 고치고 다시 실행합니다.
-3. 생성된 `output/index.html`을 `view_file`로 열어 내용을 한 번 검토합니다.
+2. **[실시간 저장/검수용 로컬 서버 자동 가동]** 빌드 완료 직후, 에이전트는 로컬 8000번 포트에서 개발 서버가 돌고 있는지 확인합니다. 만약 켜져 있지 않다면, 사용자가 순서 변경/삭제의 실시간 로컬 저장을 원활히 쓸 수 있도록 아래 명령을 **백그라운드 비동기 태스크**로 즉시 실행하여 서버를 가동시켜 둡니다.
+   ```bash
+   # 프로젝트 폴더 내부(CWD) 기준 실행
+   python "{스킬폴더}/scripts/dev_server.py"
+   ```
+3. 에러가 발생하면 JSON 문법을 고치고 다시 실행합니다.
+4. 생성된 `output/index.html`을 검토한 후, 사용자에게 실시간 로컬 싱크 프리뷰 링크(`http://localhost:8000`)를 최종 안내합니다.
 
 ---
 

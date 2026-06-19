@@ -237,3 +237,208 @@
             opacity: 0.6;
             margin: 0;
         }
+
+        /* ===== 글로벌 플로팅 타이머 스타일 ===== */
+        .timer-toggle-fab {
+            position: fixed;
+            bottom: 85px;
+            right: 30px;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: var(--color-card-bg, rgba(255, 255, 255, 0.7));
+            border: 1px solid var(--color-card-border, rgba(0, 0, 0, 0.1));
+            color: var(--color-text);
+            font-size: 26px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        .timer-toggle-fab:hover {
+            transform: scale(1.1) rotate(15deg);
+            background: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
+        }
+
+        /* 타이머 모달 오버레이 */
+        .timer-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .timer-modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 타이머 모달 몸체 (글래스모피즘) - 크기 및 패딩 대폭 상향 */
+        .timer-modal-wrapper {
+            background: var(--color-card-bg, rgba(255, 255, 255, 0.85));
+            border: 2px solid var(--color-card-border, rgba(255, 255, 255, 0.5));
+            border-radius: 36px;
+            width: 800px; /* 520px -> 800px 로 크기 대폭 상향 */
+            padding: 50px 60px; /* 패딩 확장 */
+            box-shadow: 0 35px 80px rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            text-align: center;
+            position: relative;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-sizing: border-box;
+            color: var(--color-text);
+        }
+
+        .timer-modal-overlay.active .timer-modal-wrapper {
+            transform: scale(1);
+        }
+
+        .timer-modal-close-btn {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .timer-modal-close-btn:hover {
+            color: var(--color-text);
+        }
+
+        /* 타이머 디스플레이 - 폰트 크기 대폭 상향 */
+        .timer-display-container {
+            font-family: 'Outfit', monospace;
+            font-size: 180px; /* 110px -> 180px 로 폰트 크게 확장 */
+            font-weight: 800;
+            color: var(--color-text);
+            margin: 15px 0 30px 0;
+            letter-spacing: 5px;
+            line-height: 1;
+            text-shadow: 0 8px 25px rgba(0,0,0,0.08);
+        }
+
+        /* 10초 이하 경고 애니메이션 */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { box-shadow: 0 0 0 25px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .timer-modal-wrapper.time-warning {
+            border-color: #ef4444 !important;
+            animation: pulse-red 1s infinite;
+        }
+
+        .timer-modal-wrapper.time-warning #timer-display-time {
+            color: #ef4444;
+        }
+
+        /* 완료 알림 플래시/흔들림 효과 (대형 크기에 맞게 진폭 및 속도 대폭 강화) */
+        @keyframes shake-and-flash {
+            0%, 100% { transform: scale(1) translate(0, 0); background-color: var(--color-card-bg); }
+            5%, 25%, 45%, 65%, 85% { transform: scale(1.05) translate(-15px, 8px) rotate(-3deg); background-color: rgba(239, 68, 68, 0.35); }
+            15%, 35%, 55%, 75%, 95% { transform: scale(1.05) translate(15px, -8px) rotate(3deg); background-color: rgba(239, 68, 68, 0.35); }
+        }
+ 
+        .timer-modal-wrapper.flash-effect {
+            animation: shake-and-flash 1.2s ease-in-out;
+            border-color: #ef4444 !important;
+        }
+
+        /* 타이머 제어 레이아웃 - 모달 크기에 맞춰 간격 확장 */
+        .timer-presets-row, .timer-adjust-row, .timer-controls-row {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 22px;
+            width: 100%;
+        }
+
+        .timer-controls-row {
+            margin-top: 30px;
+            margin-bottom: 0;
+            gap: 16px;
+        }
+
+        .timer-btn {
+            border: 1px solid var(--color-card-border, rgba(0,0,0,0.1));
+            border-radius: 14px;
+            padding: 11px 22px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            background: var(--color-bg-secondary, rgba(0,0,0,0.03));
+            color: var(--color-text);
+        }
+
+        .timer-btn:hover {
+            background: var(--color-accent);
+            color: white;
+            border-color: var(--color-accent);
+            transform: translateY(-2px);
+        }
+
+        /* 시간 미세 조절 버튼 */
+        .timer-btn.adjust {
+            font-size: 14px;
+            padding: 9px 16px;
+            opacity: 0.85;
+        }
+
+        /* 대형 메인 시작/정지 제어 버튼 - 대폭 확장 */
+        .timer-btn.control {
+            padding: 16px 36px;
+            font-size: 20px;
+            border-radius: 20px;
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .timer-btn.control.play {
+            background: var(--color-gradient);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
+        }
+
+        .timer-btn.control.pause {
+            background: #ef4444;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .timer-btn.control.reset {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--color-text-secondary);
+        }
+        
+        .timer-btn.control.reset:hover {
+            background: var(--color-text);
+            color: var(--color-bg);
+        }

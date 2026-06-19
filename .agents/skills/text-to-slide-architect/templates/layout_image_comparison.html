@@ -1,0 +1,52 @@
+<!-- 레이아웃: 이미지 2장 비교 (Image Comparison Layout) -->
+<section>
+    <div class="slide-container">
+        <div class="slide-header">
+            <h2>{{TITLE}}</h2>
+        </div>
+        
+        <!-- BOTTOM_TAKEAWAY 가 있으면 has-takeaway 클래스 동적 부여 -->
+        <div class="image-comparison-layout{{#if BOTTOM_TAKEAWAY}} has-takeaway{{/if}}">
+            <!-- 왼쪽 컬럼 -->
+            <div class="comparison-column">
+                <div class="comparison-image-wrapper">
+                    {{#if LEFT_IMAGE_SRC}}
+                    <img src="{{LEFT_IMAGE_SRC}}" alt="{{LEFT_DESC}}" class="comparison-img">
+                    {{else}}
+                    <div class="placeholder-img-content" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.02); color: var(--color-text-secondary); padding: 1.5em; text-align: center; height: 100%; min-height: 200px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image" style="opacity: 0.4; margin-bottom: 0.5em;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                        <span style="font-size: 0.75em; opacity: 0.6; font-weight: 500;">왼쪽 이미지</span>
+                    </div>
+                    {{/if}}
+                </div>
+                {{#if LEFT_DESC}}
+                <div class="card description-card">
+                    <p>{{LEFT_DESC}}</p>
+                </div>
+                {{/if}}
+            </div>
+
+            <!-- 오른쪽 컬럼 -->
+            <div class="comparison-column">
+                <div class="comparison-image-wrapper">
+                    {{#if RIGHT_IMAGE_SRC}}
+                    <img src="{{RIGHT_IMAGE_SRC}}" alt="{{RIGHT_DESC}}" class="comparison-img">
+                    {{else}}
+                    <div class="placeholder-img-content" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.02); color: var(--color-text-secondary); padding: 1.5em; text-align: center; height: 100%; min-height: 200px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image" style="opacity: 0.4; margin-bottom: 0.5em;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                        <span style="font-size: 0.75em; opacity: 0.6; font-weight: 500;">오른쪽 이미지</span>
+                    </div>
+                    {{/if}}
+                </div>
+                {{#if RIGHT_DESC}}
+                <div class="card description-card">
+                    <p>{{RIGHT_DESC}}</p>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+        
+        {{BOTTOM_TAKEAWAY_HTML}}
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>

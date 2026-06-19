@@ -1177,12 +1177,112 @@
       box-shadow: var(--image-frame-shadow, 0 8px 24px rgba(0,0,0,0.08));
       background: var(--image-frame-bg, rgba(255,255,255,0.4));
       box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+
+    /* 이미지 프레임 창의적인 5종 프리셋 CSS */
+    /* 1. cute (마스킹 테이프 폴더/노트 감성) */
+    .screenshot-frame.frame-cute {
+      --image-frame-radius: 20px;
+      --image-frame-border: 2px dashed var(--slide-accent, #6366f1);
+      --image-frame-shadow: 6px 6px 0px rgba(0, 0, 0, 0.04);
+      --image-frame-bg: #fffbf0;
+      padding-top: 10px;
+    }
+    .frame-cute .frame-dots {
+      display: block !important;
+      height: 12px;
+      background: transparent !important;
+      border: none !important;
+      position: relative;
+    }
+    .frame-cute .frame-dots::before {
+      content: '';
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-2deg);
+      width: 70px;
+      height: 18px;
+      background: rgba(251, 191, 36, 0.7); /* 마스킹 테이프 */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border-left: 2px dashed rgba(0,0,0,0.15);
+      border-right: 2px dashed rgba(0,0,0,0.15);
+    }
+    .frame-cute .dot {
+      display: none !important;
+    }
+
+    /* 2. tech (CLI 리눅스 터미널 / 사이버 HUD) */
+    .screenshot-frame.frame-tech {
+      --image-frame-radius: 0px;
+      --image-frame-border: 1px solid var(--slide-accent, #6366f1);
+      --image-frame-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+      --image-frame-bg: rgba(15, 23, 42, 0.65);
+    }
+    .frame-tech .frame-dots {
+      display: flex !important;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.4) !important;
+      border-bottom: 1px solid var(--slide-accent, #6366f1) !important;
+      height: 24px;
+      padding: 0 10px;
+    }
+    .frame-tech .frame-dots::before {
+      content: 'SYS.terminal@root:~';
+      font-family: 'Orbitron', monospace;
+      font-size: 10px;
+      color: var(--slide-accent-secondary, #a5b4fc);
+      opacity: 0.8;
+      letter-spacing: 1px;
+    }
+    .frame-tech .dot {
+      display: none !important;
+    }
+
+    /* 3. business (깔끔한 윈도우 브라우저) */
+    .screenshot-frame.frame-business {
+      --image-frame-radius: 12px;
+      --image-frame-border: 1px solid rgba(0, 0, 0, 0.08);
+      --image-frame-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --image-frame-bg: var(--slide-bg-secondary, #f1f5f9);
+    }
+    .frame-business .frame-dots {
+      display: var(--image-frame-dots-display, flex) !important;
+      background: var(--image-frame-header-bg, rgba(0, 0, 0, 0.04)) !important;
+    }
+    .frame-business .dot {
+      display: block !important;
+    }
+
+    /* 4. retro (폴라로이드 클래식 사진틀) */
+    .screenshot-frame.frame-retro {
+      --image-frame-radius: 4px;
+      --image-frame-border: 3px solid var(--slide-text, #1e293b);
+      --image-frame-shadow: 8px 8px 0px var(--slide-text, #1e293b);
+      --image-frame-bg: #ffffff;
+      padding: 10px 10px 32px 10px !important; /* 하단 여백 극대화 */
+    }
+    .frame-retro .frame-dots {
+      display: none !important;
+    }
+
+    /* 5. minimal (프레임리스 에어 플로팅) */
+    .screenshot-frame.frame-minimal {
+      --image-frame-radius: 6px;
+      --image-frame-border: none;
+      --image-frame-shadow: 0 15px 35px rgba(0,0,0,0.12);
+      --image-frame-bg: transparent;
+      padding: 0 !important;
+    }
+    .frame-minimal .frame-dots {
+      display: none !important;
     }
     .browser-frame .frame-dots {
-      display: flex;
+      display: var(--image-frame-dots-display, flex);
       gap: 6px;
       padding: 0.4em 0.8em;
-      background: rgba(0, 0, 0, 0.04);
+      background: var(--image-frame-header-bg, rgba(0, 0, 0, 0.04));
       border-bottom: 1px solid rgba(0, 0, 0, 0.04);
       flex-shrink: 0;
     }
@@ -1190,6 +1290,7 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
+      border: var(--image-frame-dot-border, none);
     }
     .browser-frame .dot.red { background: #ff5f57; }
     .browser-frame .dot.yellow { background: #febc2e; }
@@ -1765,11 +1866,11 @@
       <div>
         <div class="section-title">조합 데모 프리셋</div>
         <div class="preset-chips">
-          <div class="chip" onclick="applyColorPreset('#fffbf0', '#f4ebe1', '#1e293b', '#64748b', '#ec4899', '#818cf8', 'cute_note', 'cute', 'friendly', 'dots', ['corner_accent'])">파스텔 큐트</div>
-          <div class="chip" onclick="applyColorPreset('#0f172a', '#1e293b', '#f8fafc', '#94a3b8', '#6366f1', '#a5b4fc', 'tech_neon', 'tech', 'cyber', 'grid', ['hud_brackets', 'tech_grid_lines'])">네온 사이버</div>
-          <div class="chip" onclick="applyColorPreset('#ffffff', '#f1f5f9', '#0f172a', '#475569', '#2563eb', '#1d4ed8', 'business_clean', 'business', 'classic', 'none', [])">모던 비즈니스</div>
-          <div class="chip" onclick="applyColorPreset('#fbf7f0', '#ebd8c3', '#4a3319', '#7a5a3a', '#d97706', '#92400e', 'editorial_serif', 'minimal_raw', 'editorial', 'diagonal', ['corner_accent'])">에디토리얼 매거진</div>
-          <div class="chip" onclick="applyColorPreset('#fec2f2', '#fee2e2', '#450a0a', '#7f1d1d', '#ef4444', '#b91c1c', 'retro_bold', 'handdrawn', 'chalkboard', 'diagonal', ['circles', 'wavy_line', 'geometric_shapes'])">레트로 팝아트</div>
+          <div class="chip" onclick="applyColorPreset('#fffbf0', '#f4ebe1', '#1e293b', '#64748b', '#ec4899', '#818cf8', 'cute_note', 'cute', 'friendly', 'dots', ['corner_accent'], 'cute')">파스텔 큐트</div>
+          <div class="chip" onclick="applyColorPreset('#0f172a', '#1e293b', '#f8fafc', '#94a3b8', '#6366f1', '#a5b4fc', 'tech_neon', 'tech', 'cyber', 'grid', ['hud_brackets', 'tech_grid_lines'], 'tech')">네온 사이버</div>
+          <div class="chip" onclick="applyColorPreset('#ffffff', '#f1f5f9', '#0f172a', '#475569', '#2563eb', '#1d4ed8', 'business_clean', 'business', 'classic', 'none', [], 'business')">모던 비즈니스</div>
+          <div class="chip" onclick="applyColorPreset('#fbf7f0', '#ebd8c3', '#4a3319', '#7a5a3a', '#d97706', '#92400e', 'editorial_serif', 'minimal_raw', 'editorial', 'diagonal', ['corner_accent'], 'minimal')">에디토리얼 매거진</div>
+          <div class="chip" onclick="applyColorPreset('#fec2f2', '#fee2e2', '#450a0a', '#7f1d1d', '#ef4444', '#b91c1c', 'retro_bold', 'handdrawn', 'chalkboard', 'diagonal', ['circles', 'wavy_line', 'geometric_shapes'], 'retro')">레트로 팝아트</div>
           <div class="chip chip-shuffle" onclick="applyRandomPreset()"><i class="fa-solid fa-shuffle"></i> 🎲 무작위 셔플</div>
         </div>
       </div>
@@ -1836,6 +1937,20 @@
             <option value="editorial_serif">에디토리얼 세리프 (editorial_serif)</option>
             <option value="retro_bold">레트로 볼드 (retro_bold)</option>
             <option value="transparent">배경 없음 (transparent)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 3-2. 이미지 프레임 프리셋 (5종 선택지 완비) -->
+      <div>
+        <div class="section-title">이미지 프레임 프리셋 (`image_frame_preset`)</div>
+        <div class="control-item">
+          <select id="selectImageFramePreset" onchange="updateImageFramePreset()">
+            <option value="cute">아기자기 노트형 (cute)</option>
+            <option value="tech">네온 테크형 (tech)</option>
+            <option value="business" selected>깔끔 비즈니스형 (business)</option>
+            <option value="retro">레트로 볼드형 (retro)</option>
+            <option value="minimal">배경 없음 미니멀 (minimal)</option>
           </select>
         </div>
       </div>
@@ -2903,10 +3018,15 @@
       canvas.style.setProperty('--slide-text-secondary', textSec);
       canvas.style.setProperty('--slide-accent', accent);
       canvas.style.setProperty('--slide-accent-secondary', accentSec);
+
+      // 컬러 갱신 시 이미지 프레임의 동적 색상 속성도 자동 반영
+      if (typeof updateImageFramePreset === 'function') {
+        updateImageFramePreset();
+      }
     }
 
     // 2. 조합 데모 적용 함수
-    function applyColorPreset(bg, bgSec, text, textSec, accent, accentSec, cardPreset, iconPreset, fontPreset, patternStyle, decors) {
+    function applyColorPreset(bg, bgSec, text, textSec, accent, accentSec, cardPreset, iconPreset, fontPreset, patternStyle, decors, imageFramePreset) {
       if (isContrastMode) {
         toggleContrast();
       }
@@ -2922,6 +3042,9 @@
       document.getElementById('selectIconPreset').value = iconPreset;
       document.getElementById('selectFont').value = fontPreset;
       document.getElementById('selectPattern').value = patternStyle;
+
+      // 이미지 프레임 프리셋이 인자로 전달되었으면 설정 (없으면 기본값 business)
+      document.getElementById('selectImageFramePreset').value = imageFramePreset || 'business';
 
       // 조합 프리셋 적용 시 강조 스타일, 하단바 스타일, 전환 모션도 해당 계열로 자동 동기화 설정
       document.getElementById('selectHighlight').value = fontPreset;
@@ -2946,6 +3069,7 @@
       updateMotion();
       updatePattern();
       updateDecorations();
+      updateImageFramePreset();
     }
 
     // 2-1. 모든 테마 요소를 무작위로 조합하는 셔플 함수
@@ -2974,6 +3098,7 @@
       const takeaways = ['friendly', 'cyber', 'classic', 'editorial', 'chalkboard'];
       const motions = ['friendly', 'cyber', 'classic', 'editorial', 'chalkboard'];
       const decors = ['corner_accent', 'circles', 'hud_brackets', 'wavy_line', 'geometric_shapes', 'tech_grid_lines'];
+      const frames = ['cute', 'tech', 'business', 'retro', 'minimal'];
 
       // 무작위 선택
       const palette = palettes[Math.floor(Math.random() * palettes.length)];
@@ -2984,6 +3109,7 @@
       const highlight = highlights[Math.floor(Math.random() * highlights.length)];
       const takeaway = takeaways[Math.floor(Math.random() * takeaways.length)];
       const motion = motions[Math.floor(Math.random() * motions.length)];
+      const frame = frames[Math.floor(Math.random() * frames.length)];
       
       // 장식 다중 선택 (각 데코레이션 별로 40% 확률로 활성화)
       const chosenDecors = decors.filter(() => Math.random() < 0.4);
@@ -3003,6 +3129,7 @@
       document.getElementById('selectHighlight').value = highlight;
       document.getElementById('selectTakeaway').value = takeaway;
       document.getElementById('selectMotion').value = motion;
+      document.getElementById('selectImageFramePreset').value = frame;
 
       // 데코레이션 체크박스 상태 갱신
       const checkboxes = [
@@ -3024,6 +3151,7 @@
       updateMotion();
       updatePattern();
       updateDecorations();
+      updateImageFramePreset();
     }
 
     // 2-2. 화면 전환 모션 프리셋 업데이트
@@ -3032,6 +3160,27 @@
       const canvas = document.getElementById('slideCanvas');
       canvas.classList.remove('motion-friendly', 'motion-cyber', 'motion-classic', 'motion-editorial', 'motion-chalkboard');
       canvas.classList.add(`motion-${select.value}`);
+    }
+
+    // 2-3. 이미지 프레임 프리셋 업데이트 (신규 추가)
+    function updateImageFramePreset() {
+      const select = document.getElementById('selectImageFramePreset').value;
+      const frames = document.querySelectorAll('.screenshot-frame');
+      const text = document.getElementById('colorText').value;
+      const accent = document.getElementById('colorAccent').value;
+      const bgSec = document.getElementById('colorBgSecondary').value;
+
+      frames.forEach(frame => {
+        // 기존 클래스 제거
+        frame.classList.remove('frame-cute', 'frame-tech', 'frame-business', 'frame-retro', 'frame-minimal');
+        // 신규 클래스 추가
+        frame.classList.add(`frame-${select}`);
+        
+        // 동적 컬러 적용
+        frame.style.setProperty('--slide-accent', accent);
+        frame.style.setProperty('--slide-text', text);
+        frame.style.setProperty('--slide-bg-secondary', bgSec);
+      });
     }
 
     // 3. 카드 프리셋 클래스 매치 (6종) - 모든 슬라이드 페이지 카드 일괄 제어

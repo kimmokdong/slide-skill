@@ -194,3 +194,49 @@
                 console.error("Clipboard copy failed:", err);
             });
         }
+
+        function saveSlideLayoutToServer() {
+            // 삭제되지 않은(isDeleted: false) 슬라이드들만 필터링하여 원래 인덱스의 배열을 생성
+            const activeIndices = reviewState.order
+                .filter(item => !item.isDeleted)
+                .map(item => item.originalIndex);
+
+            const btn = document.getElementById('btn-save-layout');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "💾 저장 중...";
+            btn.disabled = true;
+
+            // 로컬 개발 서버로 POST 요청 전송
+            fetch('/api/save-order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    indices: activeIndices
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                btn.innerHTML = "✅ 저장 완료! 새로고침합니다...";
+                btn.style.background = "#22c55e";
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1200);
+            })
+            .catch(err => {
+                btn.innerHTML = "❌ 저장 실패! (서버 오프라인)";
+                btn.style.background = "#ef4444";
+                btn.disabled = false;
+                console.error("Layout save error:", err);
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = "";
+                }, 3000);
+            });
+        }
