@@ -22,10 +22,11 @@
 
 ## 3. Layout (레이아웃 컴포넌트)
 자유 형식보다는 사전 정의된 컴포넌트를 활용해야 합니다. 단순 글머리기호의 나열을 최소화하세요.
-- **절차/순서:** `roadmap` (징검다리 로드맵), `timeline`
+- **절차/순서:** `roadmap` (3~5단계 절차 카드, 기본 4단계 권장)
+- **시간 흐름/상태 변화:** `timeline` (`date`, `title`, `desc` 기반 시간축)
 - **분류/비교:** `matrix` (2x2 분류), `vs_ox` (O/X 대비), `comparison`
 - **스크린샷 튜토리얼:** `tutorial` (좌 텍스트 + 우 이미지 50:50 분할, 상단 스텝퍼)
-- **핵심 요약:** `summary` (카드형 나열)
+- **핵심 요약:** `summary` (`title`, `desc` 기반 요약 리스트)
 - **실습 안내:** `hands_on`
 
 ## 4. 정보 흐름과 네비게이션 (Wayfinding)
@@ -52,7 +53,7 @@
 - **Fidelity 모드**: "~임", "~현황" (단정적, 간결한 명사형)
 
 ## 8. Anti-patterns (절대 금지 사항)
-- ❌ **글씨 꽉 채우기**: 본문이 넘치면 무조건 `speakerNote`로 분리!
+- ❌ **글씨 꽉 채우기**: 본문이 넘치면 무조건 `SPEAKER_NOTES`로 분리!
 - ❌ **표를 텍스트로 뭉개기**: 중요한 표를 불릿 항목으로 뭉뚱그리지 마세요.
 - ❌ **가짜 수치 (Hallucination)**: 출처 없는 수치를 지어내지 말고, 검색을 통해 팩트체크하세요.
 - ❌ **날것의 캡처 나열**: 하이라이트, 스텝퍼 없이 스크린샷만 연속으로 나열하지 마세요.
@@ -73,9 +74,32 @@
    - HTML 내의 아이콘은 가볍고 확장성이 우수한 **Lucide Icons**를 표준으로 사용하며 CDN을 통해 렌더링합니다.
    - 테마에 따라 아이콘의 두께(`stroke-width`), 네온 발광(`filter: drop-shadow(...)`), 배경 배지 디자인(원형/각진형/그레이형)을 CSS만으로 스위칭합니다.
 2. **삽화 이미지 (AI 실시간 투명 일러스트 생성)**:
-   - 슬라이드 1장을 대변하는 정교한 설명용 삽화가 필요할 시, **`generate_image`를 통해 배경이 투명한(Transparent PNG) 고품질 일러스트**를 실시간으로 제작해 배치합니다.
+   - 슬라이드 1장을 대변하는 정교한 설명용 삽화가 필요할 시, 사용 가능한 이미지 생성 도구로 배경이 투명한(Transparent PNG) 고품질 일러스트를 제작해 배치합니다.
 
-### 9-3. 레이아웃별 데이터 스키마 표준 키 명세
+### 9-3. `meta.theme_colors` 표준 키 명세
+테마 에디터와 HTML 렌더러가 공유하는 표준 키는 아래 이름을 사용합니다. `icon_style_preset`처럼 과거 명칭을 새로 만들지 말고 `icon_preset`으로 통일합니다.
+
+```json
+{
+  "bg": "#F8FAFF",
+  "bg_secondary": "#EEF2FF",
+  "text": "#1E293B",
+  "text_secondary": "#64748B",
+  "accent": "#4F46E5",
+  "accent_secondary": "#7C3AED",
+  "card_style_preset": "business_clean",
+  "icon_preset": "business",
+  "font_preset": "friendly",
+  "highlight_style": "friendly",
+  "takeaway_style": "friendly",
+  "motion_preset": "friendly",
+  "image_frame_preset": "business",
+  "bg_pattern_style": "grid",
+  "decorations": ["corner_accent"]
+}
+```
+
+### 9-4. 레이아웃별 데이터 스키마 표준 키 명세
 에이전트가 `slide_plan.json`을 작성할 때 템플릿 렌더러가 올바르게 인식하도록 아래 레이아웃별 고유 키 매핑을 엄격히 준수해야 합니다. 임의로 키를 축약하거나 변경해서는 안 됩니다.
 1. **`stats` (통계/수치)**:
    - **`STAT_ITEMS`** (`STATS_ITEMS` 금지) ➔ 각 항목은 `{"value": "100%", "label": "라벨"}` 형태의 배열
@@ -89,11 +113,20 @@
 4. **`matrix` (분류 매트릭스)**:
    - **`MATRIX_ITEMS`** ➔ 매트릭스 셀 배열. 각 항목은 `{"icon": "📝", "label": "라벨", "desc": "설명"}` 형태
 5. **`roadmap` / `timeline` (순서/절차)**:
-   - **`ROADMAP_ITEMS`** / **`TIMELINE_ITEMS`** ➔ 절차 카드 배열. 각 항목은 `{"label": "라벨", "desc": "설명"}` 형태
-6. **`tutorial` / `hands_on` (실습/순서)**:
+   - **`ROADMAP_ITEMS`** ➔ 절차 카드 배열. 각 항목은 `{"label": "라벨", "desc": "설명"}` 형태
+   - **`TIMELINE_ITEMS`** ➔ 시간축 카드 배열. 각 항목은 `{"date": "시점", "title": "제목", "desc": "설명"}` 형태
+   - `roadmap`은 3~5개를 허용하고 기본 4개를 권장합니다. `timeline`은 3~6개를 허용하며 4개 이하는 가로 rail, 5개 이상은 compact 구조로 렌더링됩니다.
+6. **`summary` (핵심 요약)**:
+   - **`SUMMARY_ITEMS`** ➔ `{"title": "요약 제목", "desc": "설명"}` 객체 배열을 권장합니다. 짧은 문자열 배열도 허용합니다.
+7. **`closing` (마무리)**:
+   - **`MESSAGE`** ➔ 마무리 문장
+   - **`CTA`** ➔ 행동 유도 문구
+   - **`BULLET_ITEMS`** ➔ 필요 시 마지막 체크리스트
+8. **`tutorial` / `hands_on` (실습/순서)**:
    - **`STEPPER_ITEMS`** ➔ 상단 내비게이션 스텝 배열. 각 항목은 `{"label": "단계명", "state": "completed/active/inactive"}` 형태
    - **`STEP_NUMBER`** ➔ 현재 활성화된 단계 번호 문자열 (예: `"1"`)
    - **`BULLET_ITEMS`** ➔ 좌측 실습 단계 리스트
-   - **`TIP`** / **`WARNING`** ➔ 보조 안내 팁 및 경고 메타 데이터
+   - **`TIP`** / **`WARNING`** / **`DURATION`** ➔ 보조 안내 팁, 경고, 예상 소요 시간
+   - **`RESULT_TEXT`** ➔ `hands_on`에서 예상 결과 캡션
 
 

@@ -42,9 +42,14 @@
 ### 🧩 정보의 성격에 따른 레이아웃 강제 매핑
 - 단순한 점(Bullet)의 나열을 죄악으로 여깁니다.
 - **순서/절차** ➔ `roadmap`, `tutorial`
-- **대조/비교** ➔ `vs_ox`, `comparison`
+- **대조/비교** ➔ `vs_ox`, `comparison`, `image_comparison`
 - **분류/기준** ➔ `matrix`
 - **경험/실습** ➔ `hands_on`
+- **시각 자료 중심** ➔ `split`, `text_image`, `fullbleed`, `diagram`
+- **핵심 수치** ➔ `stats`
+- **시간 흐름** ➔ `timeline`
+- **명언/인용** ➔ `quote`
+- **구조/표지** ➔ `hero`, `title`, `closing`, `summary`
 위와 같이 정보의 DNA를 분석하여 가장 찰떡같이 들어맞는 레이아웃 틀에 강제로 주입하여 학습 효과를 극대화합니다.
 
 ### 🔄 스텝퍼(Stepper) 레이아웃의 슬라이드 동기화 (Sequence Mapping)

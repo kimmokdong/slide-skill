@@ -46,7 +46,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 **[최우선 필수 작업]** 사용자가 제공한 원본 대본이나 시나리오 메모 텍스트는 유실되지 않도록 반드시 프로젝트 폴더 내에 `raw_script.md` 파일로 가장 먼저 저장해 두어야 합니다.
 
-이후 `ask_question` 도구를 사용하거나 주어진 텍스트를 분석하여 아래 필수 변수를 수집하고 `slide_context.yaml`에 저장합니다.
+이후 사용 가능한 사용자 입력/질문 도구를 사용하거나 주어진 텍스트를 분석하여 아래 필수 변수를 수집하고 `slide_context.yaml`에 저장합니다.
 1. `audience_level` (청중 수준): 초등/중고등/교원/학부모/일반인
 2. `lecture_duration_min` (강의 시간)
 3. `slide_count` (슬라이드 장수) - 시간/장수 중 하나만 입력되면 `3분/장` 기준으로 자동 보정 제안
@@ -94,7 +94,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 - 기존 PPTX/PDF가 있다면 `parse_pptx.py` 또는 `parse_pdf.py`로 텍스트를 추출해 읽어들입니다.
 
 ### 1-2. 리서치 보강 (Research)
-- 사용자의 원문에 수치, 통계, 외부 사례가 포함된 경우 웹 검색(`search_web`)을 통해 팩트체크를 진행합니다.
+- 사용자의 원문에 수치, 통계, 외부 사례가 포함된 경우 사용 가능한 웹 검색 도구를 통해 팩트체크를 진행합니다.
 - 부족한 사례나 뒷받침할 만한 최신 통계를 검색하여 덧붙입니다.
 - **가짜 수치(Hallucination) 절대 금지**: 출처가 없는 수치는 삭제하고, 검색된 검증된 수치만 슬라이드에 넣습니다.
 
@@ -126,7 +126,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 1. **주제 분석**: 발표 주제의 분위기(교육, 기술, 안전, 건강 등)를 파악
 2. **60-30-10 컬러 추출**: 주제에 어울리는 세련된 배경색(60%), 텍스트/구조색(30%), 포인트 강조색(10%)의 HEX 코드를 추출 (원색 금지, Muted/Pastel 톤 권장)
 3. **배경 패턴 및 장식 선택**: 주제에 맞는 CSS 배경 장식(`decorations`) 및 은은한 배경 패턴 스타일(`bg_pattern_style`: grid/dots/diagonal)을 투명도 8%~15% 수준으로 선택
-4. **아이콘 스타일 프리셋 선택**: 주제의 톤앤매너에 어울리는 아이콘 두께와 효과 프리셋(`icon_style_preset`: cute/tech/business/minimal_raw/handdrawn)을 설정
+4. **아이콘 스타일 프리셋 선택**: 주제의 톤앤매너에 어울리는 아이콘 두께와 효과 프리셋(`icon_preset`: cute/tech/business/minimal_raw/handdrawn)을 설정
 5. **이미지 프레임 프리셋 선택**: 스크린샷 튜토리얼 영역의 프레임 디자인 프리셋(`image_frame_preset`: cute/tech/business/retro/minimal)을 설정
 
 #### `meta.theme_colors` 스키마:
@@ -138,10 +138,15 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
     "text_secondary": "#64748B",
     "accent": "#3B82F6",
     "accent_secondary": "#7C3AED",
-    "decorations": ["corner_accent", "circles"],
+    "card_style_preset": "business_clean",
+    "icon_preset": "business",
+    "font_preset": "friendly",
+    "highlight_style": "friendly",
+    "takeaway_style": "friendly",
+    "motion_preset": "friendly",
+    "image_frame_preset": "business",
     "bg_pattern_style": "grid",
-    "icon_style_preset": "cute",
-    "image_frame_preset": "cute"
+    "decorations": ["corner_accent", "circles"]
 }
 ```
 > 💡 `theme_colors`가 있으면 동적 테마가 우선 적용되며, 배경 패턴과 아이콘은 설정된 프리셋에 따라 CSS로 자동 스위칭됩니다. 없으면 기존 고정 테마(`theme: "tech_blue"`)를 사용합니다.
@@ -169,11 +174,17 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 | 정보 성격 | 권장 레이아웃 | 예시 |
 |-----------|--------------|------|
-| 순서/절차 | `roadmap`, `timeline` | 학교폭력 처리 5단계 |
+| 순서/절차 | `roadmap` | 학교폭력 처리 4단계 |
+| 시간 흐름/상태 변화 | `timeline` | 1분 이내 → 2~3분 → 5분 이상 |
 | 비교/대조 | `comparison`, `vs_ox` | 전통 교육 vs AI 교육 |
 | 분류/유형 | `matrix` | 에듀테크 4분면 선택 기준 |
 | 핵심 수치 | `stats` | 만족도 95%, 참여율 87% |
 | 명언/인용 | `quote` | 전문가 의견 |
+
+### 순서형 레이아웃 항목 수 규칙
+- `roadmap`: 절차/단계가 명확한 경우 3~5개를 허용하고, 기본은 4개를 권장합니다. 2개만 있으면 `comparison` 또는 `vs_ox`를 우선 검토합니다.
+- `timeline`: 시간 흐름·상태 변화는 3~6개를 허용합니다. 4개 이하는 가로 rail 구조, 5개 이상은 compact 구조로 렌더링됩니다.
+- 6개를 초과하는 절차나 시간 흐름은 한 장에 밀어 넣지 말고 여러 장으로 분할합니다.
 
 ### 🔄 스텝퍼(Stepper) 레이아웃의 슬라이드 개수 1:1 동기화 원칙
 `hands_on`, `tutorial` 등 진행 과정(Stepper)을 보여주는 레이아웃을 사용할 때는 **내용의 전체 단계 수와 동일한 개수의 슬라이드(JSON 객체)를 반드시 생성**해야 합니다.
@@ -182,7 +193,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 - 단계가 누락되거나 하나의 슬라이드에 여러 단계를 구겨 넣지 마세요.
 
 ### 이미지 vs 도식 판정 기준
-- **이미지 생성 (generate_image)**: 실존 대상, 감성적 표지, 구체적 사례, 비전. 스타일은 **플랫 디자인, 파스텔 톤, 배경 투명 컷아웃(cut-out)** 형태를 기본으로 합니다.
+- **이미지 생성**: 실존 대상, 감성적 표지, 구체적 사례, 비전. 사용 가능한 이미지 생성 도구를 쓰며, 스타일은 **플랫 디자인, 파스텔 톤, 배경 투명 컷아웃(cut-out)** 형태를 기본으로 합니다.
 - **도식 생성 (Mermaid)**: 흐름(flowchart), 비교, 구조(block), 수치 비율(pie), 데이터 중심 표
 
 ### slide_plan.json 스키마 예시
@@ -197,6 +208,14 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
       "text_secondary": "#64748B",
       "accent": "#4F46E5",
       "accent_secondary": "#7C3AED",
+      "card_style_preset": "business_clean",
+      "icon_preset": "business",
+      "font_preset": "friendly",
+      "highlight_style": "friendly",
+      "takeaway_style": "friendly",
+      "motion_preset": "friendly",
+      "image_frame_preset": "business",
+      "bg_pattern_style": "grid",
       "decorations": ["corner_accent", "circles"]
     }
   },
@@ -260,6 +279,16 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
       "SPEAKER_NOTES": "로드맵 설명..."
     },
     {
+      "type": "timeline",
+      "TITLE": "학습 흐름 타임라인",
+      "TIMELINE_ITEMS": [
+        {"date": "도입", "title": "맥락 열기", "desc": "핵심 질문 제시"},
+        {"date": "전개", "title": "활동 수행", "desc": "자료 분석과 토의"},
+        {"date": "정리", "title": "전이 확인", "desc": "실천 과제 연결"}
+      ],
+      "SPEAKER_NOTES": "시간 흐름이나 상태 변화 설명..."
+    },
+    {
       "type": "stats",
       "TITLE": "핵심 수치 하이라이트",
       "STAT_ITEMS": [
@@ -320,20 +349,19 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `bullet` | 일반 글머리기호 목록 | `TITLE`, `BULLET_ITEMS` (배열) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `comparison` | 좌우 대칭 비교 | `TITLE`, `LEFT_TITLE`, `LEFT_ITEMS`, `RIGHT_TITLE`, `RIGHT_ITEMS` | `SPEAKER_NOTES` |
 | `image_comparison` | Before & After 이미지 2장 비교 | `TITLE`, `LEFT_IMAGE_SRC`, `LEFT_DESC`, `RIGHT_IMAGE_SRC`, `RIGHT_DESC` | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
-| `timeline` | 시간 흐름 연혁 | `TITLE`, `TIMELINE_ITEMS` (title, desc) | `SPEAKER_NOTES` |
-| `quiz` | 객관식 퀴즈 | `TITLE`, `QUIZ_QUESTION`, `QUIZ_OPTIONS` (text) | `ANSWER_INDEX`, `SPEAKER_NOTES` |
-
+| `timeline` | 시간 흐름/상태 변화 | `TITLE`, `TIMELINE_ITEMS` (`date`, `title`, `desc`) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
+| `quiz` | 객관식 퀴즈 | `TITLE`, `QUESTION`, `QUIZ_OPTIONS` (text) | `ANSWER_INDEX`, `SPEAKER_NOTES` |
 | `quote` | 명언, 핵심 인용구 | `QUOTE_TEXT` | `QUOTE_SOURCE`, `SPEAKER_NOTES` |
 | `diagram` | Mermaid 등 도식 | `TITLE`, `DIAGRAM_SRC` | `DIAGRAM_CAPTION`, `SPEAKER_NOTES` |
 | `stats` | 핵심 통계 수치 하이라이트 | `TITLE`, `STAT_ITEMS` (value, label) | `SPEAKER_NOTES` |
-| `summary` | 2x2 그리드 요약 (4칸) | `TITLE`, `SUMMARY_ITEMS` (문자열 배열) | `SPEAKER_NOTES` |
-| `closing` | 마무리 및 연락처 | `TITLE`, `MESSAGE`, `CONTACT_INFO` | `SPEAKER_NOTES` |
+| `summary` | 핵심 요약 리스트 | `TITLE`, `SUMMARY_ITEMS` (`title`, `desc` 권장. 문자열도 허용) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
+| `closing` | 마무리 및 행동 유도 | `TITLE`, `MESSAGE` | `CTA`, `BULLET_ITEMS`, `SPEAKER_NOTES` |
 | `tutorial` | UI 스텝퍼 포함 튜토리얼 | `TITLE`, `STEP_NUMBER`, `STEPPER_ITEMS` (label, state) | `BULLET_ITEMS`, `TIP`, `WARNING`, `IMAGE_SRC`, `SPEAKER_NOTES` |
-| `hands_on` | 실습 지시 및 예상 결과 | `TITLE`, `STEP_NUMBER`, `STEPPER_ITEMS` (label, state) | `BULLET_ITEMS`, `IMAGE_SRC`, `RESULT_TEXT`, `SPEAKER_NOTES` |
+| `hands_on` | 실습 지시 및 예상 결과 | `TITLE`, `STEPPER_ITEMS` (label, state) | `BULLET_ITEMS`, `TIP`, `DURATION`, `IMAGE_SRC`, `RESULT_TEXT`, `SPEAKER_NOTES` |
 | `fullbleed` | 전체 화면 이미지 배경 | `TITLE`, `IMAGE_SRC` | `SUBTITLE`, `STEPPER_ITEMS`, `SPEAKER_NOTES` |
 | `matrix` | 2x2 아이콘 매트릭스 | `TITLE`, `MATRIX_ITEMS` (icon, label, desc) | `SPEAKER_NOTES` |
 | `vs_ox` | O/X 행동 비교 가이드 | `TITLE`, `O_TITLE`, `O_ITEMS` (marker, text), `X_TITLE`, `X_ITEMS` | `SPEAKER_NOTES` |
-| `roadmap` | 4단계 가로 로드맵 카드 | `TITLE`, `ROADMAP_ITEMS` (label, desc) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
+| `roadmap` | 3~5단계 가로 로드맵 카드 | `TITLE`, `ROADMAP_ITEMS` (label, desc) | `SUBTITLE`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 
 *(참고: 모든 레이아웃 공통으로 `SECTION_HEADER`와 `BOTTOM_TAKEAWAY`는 원할 경우 선택 변수로 추가 가능합니다.)*
 
@@ -353,7 +381,7 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
    - `scripts/render_mermaid.py`를 사용해 SVG 생성
    - `DIAGRAM_SRC` 속성에 `diagrams/파일명.svg` 상대 경로 기록
 2. **이미지 (AI)**
-   - `generate_image` 도구 사용
+   - 사용 가능한 이미지 생성 도구 사용
    - `IMAGE_SRC` 속성에 `images/파일명.png` 상대 경로 기록
 
 ---

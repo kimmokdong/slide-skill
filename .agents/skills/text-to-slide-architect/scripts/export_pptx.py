@@ -31,8 +31,9 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
     with open(input_json, "r", encoding="utf-8") as f:
         plan = json.load(f)
 
+    meta = plan.get('meta', {})
     slides_data = plan.get('slides', [])
-    theme_name = plan.get('meta', {}).get('theme', 'tech_blue')
+    theme_name = meta.get('theme', 'tech_blue')
     
     if not html_dir:
         html_dir = os.path.dirname(os.path.abspath(input_json))
@@ -50,15 +51,65 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
         'mono_dark': {'bg': (17, 24, 39), 'ink': (249, 250, 251), 'accent': (107, 114, 128), 'muted': (156, 163, 175)},
     }
     
-    c = themes.get(theme_name, themes['tech_blue'])
+    c = themes.get(theme_name, themes['tech_blue']).copy()
+
+    def hex_to_rgb_tuple(value, fallback):
+        if not isinstance(value, str):
+            return fallback
+        value = value.strip().lstrip('#')
+        if len(value) == 3:
+            value = ''.join(ch * 2 for ch in value)
+        if len(value) != 6:
+            return fallback
+        try:
+            return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+        except ValueError:
+            return fallback
+
+    theme_colors = meta.get('theme_colors') or {}
+    if theme_colors:
+        c['bg'] = hex_to_rgb_tuple(theme_colors.get('bg'), c['bg'])
+        c['ink'] = hex_to_rgb_tuple(theme_colors.get('text'), c['ink'])
+        c['accent'] = hex_to_rgb_tuple(theme_colors.get('accent'), c['accent'])
+        c['muted'] = hex_to_rgb_tuple(theme_colors.get('text_secondary'), c['muted'])
     
     def rgb(tup):
         return RGBColor(tup[0], tup[1], tup[2])
+
+    def item_text(item, title_key='title', label_key='label', desc_key='desc'):
+        if isinstance(item, dict):
+            title = item.get(title_key) or item.get(label_key) or item.get('text') or ''
+            desc = item.get(desc_key) or ''
+            return f"{title}: {desc}" if title and desc else str(title or desc)
+        return str(item)
+
+    def normalize_slide_data(data):
+        normalized = data.copy()
+        stype = normalized.get('layout', normalized.get('type', 'title'))
+        normalized['type'] = stype
+
+        if stype == 'text_image' and not normalized.get('CONTENT') and normalized.get('BODY'):
+            normalized['CONTENT'] = normalized.get('BODY', '')
+        if stype == 'quiz':
+            if not normalized.get('QUESTION') and normalized.get('QUIZ_QUESTION'):
+                normalized['QUESTION'] = normalized.get('QUIZ_QUESTION', '')
+            if not normalized.get('QUIZ_OPTIONS') and normalized.get('OPTIONS'):
+                normalized['QUIZ_OPTIONS'] = normalized.get('OPTIONS', [])
+            if normalized.get('ANSWER') and 'ANSWER_INDEX' not in normalized and normalized.get('QUIZ_OPTIONS'):
+                for opt_idx, option in enumerate(normalized.get('QUIZ_OPTIONS', [])):
+                    option_text = option.get('text', option) if isinstance(option, dict) else option
+                    if str(option_text).strip() == str(normalized.get('ANSWER')).strip():
+                        normalized['ANSWER_INDEX'] = opt_idx
+                        break
+        if stype == 'closing' and not normalized.get('MESSAGE') and normalized.get('SUBTITLE'):
+            normalized['MESSAGE'] = normalized.get('SUBTITLE', '')
+        return normalized
 
     blank_layout = prs.slide_layouts[6]
 
     current_section_header = ""
     for idx, data in enumerate(slides_data):
+        data = normalize_slide_data(data)
         if 'SECTION_HEADER' in data:
             current_section_header = data['SECTION_HEADER']
         elif current_section_header:
@@ -159,7 +210,7 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
                 for i, item in enumerate(items):
                     p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
                     prefix = f"{i+1}. " if stype == 'summary' else "• "
-                    p.text = prefix + str(item)
+                    p.text = prefix + item_text(item)
                     p.font.size = Pt(24)
                     p.font.color.rgb = rgb(c['ink'])
                     p.space_after = Pt(14)
@@ -207,6 +258,55 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
                 p.text = "• " + str(item)
                 p.font.size = Pt(20)
 
+        elif stype == 'vs_ox':
+            add_title(data.get('TITLE'))
+            groups = [
+                (data.get('O_TITLE', 'O'), data.get('O_ITEMS', []), 0.9),
+                (data.get('X_TITLE', 'X'), data.get('X_ITEMS', []), 6.9),
+            ]
+            for title, items, x in groups:
+                box = slide.shapes.add_textbox(Inches(x), Inches(2.0), Inches(5.5), Inches(5.0))
+                tf = box.text_frame
+                tf.word_wrap = True
+                head = tf.paragraphs[0]
+                head.text = title
+                head.font.bold = True
+                head.font.size = Pt(28)
+                head.font.color.rgb = rgb(c['accent'])
+                for item in items:
+                    p = tf.add_paragraph()
+                    text = item.get('text', item_text(item)) if isinstance(item, dict) else str(item)
+                    marker = item.get('marker', '') if isinstance(item, dict) else ''
+                    p.text = f"{marker} {text}".strip()
+                    p.font.size = Pt(20)
+                    p.font.color.rgb = rgb(c['ink'])
+
+        elif stype == 'matrix':
+            add_title(data.get('TITLE'))
+            if data.get('SUBTITLE'):
+                sub = slide.shapes.add_textbox(Inches(0.9), Inches(1.35), Inches(11.5), Inches(0.5))
+                sp = sub.text_frame.paragraphs[0]
+                sp.text = data.get('SUBTITLE')
+                sp.font.size = Pt(18)
+                sp.font.color.rgb = rgb(c['muted'])
+            items = data.get('MATRIX_ITEMS', [])
+            positions = [(0.9, 2.0), (6.9, 2.0), (0.9, 4.55), (6.9, 4.55)]
+            for i, item in enumerate(items[:4]):
+                x, y = positions[i]
+                box = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(5.5), Inches(2.1))
+                tf = box.text_frame
+                tf.word_wrap = True
+                label = tf.paragraphs[0]
+                label.text = item.get('label', item.get('title', str(item))) if isinstance(item, dict) else str(item)
+                label.font.bold = True
+                label.font.size = Pt(24)
+                label.font.color.rgb = rgb(c['accent'])
+                if isinstance(item, dict) and item.get('desc'):
+                    desc = tf.add_paragraph()
+                    desc.text = item.get('desc', '')
+                    desc.font.size = Pt(17)
+                    desc.font.color.rgb = rgb(c['ink'])
+
         elif stype == 'timeline':
             add_title(data.get('TITLE'))
             items = data.get('TIMELINE_ITEMS', [])
@@ -214,13 +314,49 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
                 box = slide.shapes.add_textbox(Inches(0.9), Inches(2.0), Inches(11.5), Inches(5.0))
                 for i, item in enumerate(items):
                     if isinstance(item, dict):
-                        when = item.get('title', '')
+                        when = item.get('date', '')
+                        title = item.get('title', '')
                         desc = item.get('desc', '')
                         p = box.text_frame.paragraphs[0] if i == 0 else box.text_frame.add_paragraph()
-                        p.text = f"[{when}] {desc}"
+                        label = f"[{when}] " if when else ""
+                        p.text = f"{label}{title}: {desc}" if title and desc else f"{label}{title or desc}"
                         p.font.size = Pt(24)
                         p.space_after = Pt(14)
                         p.font.color.rgb = rgb(c['ink'])
+                    else:
+                        p = box.text_frame.paragraphs[0] if i == 0 else box.text_frame.add_paragraph()
+                        p.text = str(item)
+                        p.font.size = Pt(24)
+                        p.space_after = Pt(14)
+                        p.font.color.rgb = rgb(c['ink'])
+
+        elif stype == 'roadmap':
+            add_title(data.get('TITLE'))
+            items = data.get('ROADMAP_ITEMS', [])
+            if items:
+                width = 11.5 / max(len(items), 1)
+                for i, item in enumerate(items):
+                    x = 0.9 + (i * width)
+                    box = slide.shapes.add_textbox(Inches(x), Inches(2.2), Inches(width - 0.15), Inches(4.2))
+                    tf = box.text_frame
+                    tf.word_wrap = True
+                    num = tf.paragraphs[0]
+                    num.text = f"{i+1}"
+                    num.font.size = Pt(28)
+                    num.font.bold = True
+                    num.font.color.rgb = rgb(c['accent'])
+
+                    label = tf.add_paragraph()
+                    label.text = item.get('label', item.get('title', str(item))) if isinstance(item, dict) else str(item)
+                    label.font.size = Pt(22)
+                    label.font.bold = True
+                    label.font.color.rgb = rgb(c['ink'])
+
+                    if isinstance(item, dict) and item.get('desc'):
+                        desc = tf.add_paragraph()
+                        desc.text = item.get('desc', '')
+                        desc.font.size = Pt(16)
+                        desc.font.color.rgb = rgb(c['muted'])
 
         elif stype == 'stats':
             add_title(data.get('TITLE'))
@@ -260,7 +396,7 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
                 cap.text_frame.paragraphs[0].font.size = Pt(20)
 
         elif stype == 'quiz':
-            add_title("🎯 " + data.get('QUIZ_QUESTION', 'Quiz'), is_hero=True)
+            add_title(data.get('QUESTION', 'Quiz'), is_hero=True)
             opts = data.get('QUIZ_OPTIONS', [])
             if opts:
                 box = slide.shapes.add_textbox(Inches(0.9), Inches(3.5), Inches(11.5), Inches(3.5))
@@ -268,6 +404,8 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
                     text = opt.get('text', '') if isinstance(opt, dict) else str(opt)
                     p = box.text_frame.paragraphs[0] if i == 0 else box.text_frame.add_paragraph()
                     p.text = f"{chr(65+i)}. {text}"
+                    if data.get('ANSWER_INDEX') == i:
+                        p.text += " *"
                     p.font.size = Pt(24)
                     p.font.color.rgb = rgb(c['ink'])
                     p.space_after = Pt(14)

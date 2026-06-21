@@ -146,263 +146,15 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     card_bg = "rgba(255, 255, 255, 0.65)" if is_light else "rgba(255, 255, 255, 0.08)"
     card_border = "rgba(0, 0, 0, 0.12)" if is_light else "rgba(255, 255, 255, 0.15)"
 
-    # 이미지 프레임 스타일 동적 파생
+    # CSS 하드코딩을 중단하고 프리셋 이름만 추출하여 HTML 클래스 주입으로 대체 (SSOT 원칙 적용)
     frame_preset = theme_colors.get('image_frame_preset', 'business')
-    frame_dot_border = "none"
-    frame_css = ""
-    
-    if frame_preset == 'cute':
-        frame_bg = "#fffbf0"
-        frame_border = f"2px dashed {accent}"
-        frame_shadow = "6px 6px 0px rgba(0, 0, 0, 0.04)"
-        frame_radius = "20px"
-        frame_dots = "flex"
-        frame_header_bg = "transparent"
-        frame_css = f"""
-.screenshot-frame {{
-    padding-top: 10px !important;
-}}
-.browser-frame .frame-dots {{
-    display: block !important;
-    height: 12px;
-    background: transparent !important;
-    border: none !important;
-    position: relative;
-}}
-.browser-frame .frame-dots::before {{
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    transform: translateX(-50%) rotate(-2deg);
-    width: 70px;
-    height: 18px;
-    background: rgba(251, 191, 36, 0.7); /* 마스킹 테이프 */
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    border-left: 2px dashed rgba(0,0,0,0.15);
-    border-right: 2px dashed rgba(0,0,0,0.15);
-}}
-.browser-frame .dot {{
-    display: none !important;
-}}
-"""
-    elif frame_preset == 'tech':
-        frame_bg = "rgba(15, 23, 42, 0.65)"
-        frame_border = f"1px solid {accent}"
-        frame_shadow = f"0 0 15px {accent}4D"
-        frame_radius = "0px"
-        frame_dots = "none"
-        frame_header_bg = "rgba(0, 0, 0, 0.2)"
-        frame_css = f"""
-.browser-frame .frame-dots {{
-    display: flex !important;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.4) !important;
-    border-bottom: 1px solid {accent} !important;
-    height: 24px;
-    padding: 0 10px;
-}}
-.browser-frame .frame-dots::before {{
-    content: 'SYS.terminal@root:~';
-    font-family: 'Orbitron', monospace;
-    font-size: 10px;
-    color: {accent_secondary};
-    opacity: 0.8;
-    letter-spacing: 1px;
-}}
-.browser-frame .dot {{
-    display: none !important;
-}}
-"""
-    elif frame_preset == 'retro':
-        frame_bg = "#ffffff"
-        frame_border = f"3px solid {text}"
-        frame_shadow = f"8px 8px 0px {text}"
-        frame_radius = "4px"
-        frame_dots = "none"
-        frame_header_bg = "transparent"
-        frame_css = f"""
-.screenshot-frame {{
-    padding: 10px 10px 32px 10px !important;
-}}
-.browser-frame .frame-dots {{
-    display: none !important;
-}}
-"""
-    elif frame_preset == 'minimal':
-        frame_bg = "transparent"
-        frame_border = "none"
-        frame_shadow = "0 15px 35px rgba(0,0,0,0.12)"
-        frame_radius = "6px"
-        frame_dots = "none"
-        frame_header_bg = "transparent"
-        frame_css = f"""
-.screenshot-frame {{
-    padding: 0 !important;
-}}
-.browser-frame .frame-dots {{
-    display: none !important;
-}}
-"""
-    else: # business / auto / fallback
-        frame_bg = bg_secondary
-        frame_border = "1px solid rgba(0, 0, 0, 0.08)" if is_light else "1px solid rgba(255, 255, 255, 0.1)"
-        frame_shadow = "0 8px 24px rgba(0, 0, 0, 0.06)" if is_light else "0 10px 30px rgba(0, 0, 0, 0.2)"
-        frame_radius = "12px"
-        frame_dots = "flex"
-        frame_header_bg = "rgba(0, 0, 0, 0.04)" if is_light else "rgba(255, 255, 255, 0.04)"
-        frame_css = f"""
-.browser-frame .frame-dots {{
-    display: var(--image-frame-dots-display) !important;
-    background: var(--image-frame-header-bg) !important;
-}}
-.browser-frame .dot {{
-    display: block !important;
-}}
-"""
-
-    # 1. 카드 프리셋 CSS 생성
     card_preset = theme_colors.get('card_style_preset', 'business_clean')
-    card_css = ""
-    if card_preset == 'cute_note':
-        card_css = """
-.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {
-    --color-card-bg: #fffbf0;
-    --color-card-border: 2px dashed rgba(0, 0, 0, 0.12);
-    --color-text: #2c2c2c;
-    --color-text-secondary: #555555;
-    color: #2c2c2c !important;
-    border: 2px dashed rgba(0, 0, 0, 0.12) !important;
-    border-radius: 20px !important;
-    box-shadow: 5px 5px 0px rgba(0, 0, 0, 0.05) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-"""
-    elif card_preset == 'tech_neon':
-        card_css = f"""
-.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {{
-    --color-card-bg: rgba(15, 23, 42, 0.65);
-    --color-card-border: 1px solid {accent};
-    border: 1px solid {accent} !important;
-    border-radius: 4px !important;
-    box-shadow: 0 0 15px rgba(99, 102, 241, 0.25) !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-}}
-"""
-    elif card_preset == 'business_clean':
-        card_css = """
-.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {
-    --color-card-bg: var(--color-bg-secondary);
-    --color-card-border: 1px solid rgba(0, 0, 0, 0.06);
-    border: 1px solid rgba(0, 0, 0, 0.06) !important;
-    border-radius: 10px !important;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-"""
-    elif card_preset == 'editorial_serif':
-        card_css = f"""
-.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {{
-    --color-card-bg: transparent;
-    --color-card-border: none;
-    border-top: 2px solid {text} !important;
-    border-bottom: 2px solid {text} !important;
-    border-left: none !important;
-    border-right: none !important;
-    border-radius: 0px !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}}
-"""
-    elif card_preset == 'retro_bold':
-        card_css = f"""
-.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {{
-    --color-card-bg: #ffffff;
-    --color-card-border: 3px solid {text};
-    --color-text: #1e293b;
-    --color-text-secondary: #475569;
-    color: #1e293b !important;
-    border: 3px solid {text} !important;
-    border-radius: 12px !important;
-    box-shadow: 6px 6px 0px {text} !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}}
-"""
-    elif card_preset == 'transparent':
-        card_css = """
-.reveal .card, .reveal .stat-card-button, .reveal .roadmap-step, .reveal .ox-column, .reveal .matrix-cell {
-    --color-card-bg: transparent;
-    --color-card-border: none;
-    border: none !important;
-    border-radius: 0px !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-}
-"""
-
-    # 2. 아이콘 프리셋 CSS 생성
     icon_preset = theme_colors.get('icon_preset', 'business')
-    icon_css = ""
-    if icon_preset == 'cute':
-        icon_css = f"""
-.reveal .bullet-list li::before, .reveal .bullet-icon {{
-    border-radius: 50% !important;
-    border: 2px solid {accent} !important;
-    color: {accent_secondary} !important;
-    background-color: var(--color-bg-secondary) !important;
-    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
-}}
-"""
-    elif icon_preset == 'tech':
-        icon_css = f"""
-.reveal .bullet-icon {{
-    background-color: rgba(99, 102, 241, 0.1) !important;
-    border-radius: 4px !important;
-    border: 1px solid {accent} !important;
-    color: {accent} !important;
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.4) !important;
-    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
-}}
-"""
-    elif icon_preset == 'business':
-        icon_css = """
-.reveal .bullet-icon {
-    background-color: var(--color-bg-secondary) !important;
-    border-radius: 8px !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
-    color: var(--color-text-secondary) !important;
-    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
-}
-"""
-    elif icon_preset == 'minimal_raw':
-        icon_css = f"""
-.reveal .bullet-icon {{
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: {accent} !important;
-    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
-}}
-"""
-    elif icon_preset == 'handdrawn':
-        icon_css = """
-.reveal .bullet-icon {
-    background-color: #fef08a !important;
-    border: 2px solid #000 !important;
-    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50% !important;
-    color: #000 !important;
-    transform: rotate(-3deg);
-    display: inline-flex; justify-content: center; align-items: center; width: 1.5em; height: 1.5em;
-}
-"""
+    highlight_preset = theme_colors.get('highlight_style', theme_colors.get('strong_style', 'friendly'))
+    takeaway_preset = theme_colors.get('takeaway_style', 'friendly')
+    motion_preset = theme_colors.get('motion_preset', 'friendly')
 
-    # 3. 폰트 프리셋 매칭
+    # 폰트 프리셋 매칭 (유일하게 :root에 직접 반영되어야 하는 값)
     font_preset = theme_colors.get('font_preset', 'friendly')
     font_stack = "'Outfit', 'Noto Sans KR', sans-serif"
     if font_preset == 'cyber':
@@ -413,200 +165,6 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
         font_stack = "'Montserrat', 'Pretendard', sans-serif"
     elif font_preset == 'chalkboard':
         font_stack = "'Caveat', 'Nanum Pen Script', cursive"
-
-    # 4. 강조 텍스트(strong) 스타일 CSS 생성
-    highlight_preset = theme_colors.get('highlight_style', theme_colors.get('strong_style', 'friendly'))
-    highlight_css = ""
-    if highlight_preset == 'friendly':
-        highlight_css = f"""
-.reveal strong {{
-    position: relative; display: inline-block; font-weight: 800; color: inherit; z-index: 1;
-}}
-.reveal strong::after {{
-    content: ""; position: absolute; left: 0; bottom: 2px; width: 100%; height: 35%;
-    background-color: {accent_secondary}; opacity: 0.55; z-index: -1; border-radius: 4px;
-}}
-"""
-    elif highlight_preset == 'cyber':
-        highlight_css = f"""
-.reveal strong {{
-    font-weight: 900; color: {accent_secondary}; text-shadow: 0 0 8px rgba(165, 180, 252, 0.4); font-family: 'Orbitron', sans-serif;
-}}
-.reveal strong::before {{
-    content: "["; color: {accent}; margin-right: 2px;
-}}
-.reveal strong::after {{
-    content: "]"; color: {accent}; margin-left: 2px;
-}}
-"""
-    elif highlight_preset == 'classic':
-        highlight_css = f"""
-.reveal strong {{
-    font-style: italic; font-weight: 700; color: {accent}; border-bottom: 3px double {accent}; padding-bottom: 1px;
-}}
-"""
-    elif highlight_preset == 'editorial':
-        highlight_css = f"""
-.reveal strong {{
-    font-weight: 800; background: {text}; color: {bg}; padding: 0px 4px; border-radius: 2px;
-}}
-"""
-    elif highlight_preset == 'chalkboard':
-        highlight_css = """
-.reveal strong {
-    font-weight: 900; color: #b91c1c; text-decoration: underline wavy #b91c1c; text-underline-offset: 4px;
-}
-"""
-
-    # 5. 하단 요약바 스타일 CSS 생성
-    takeaway_preset = theme_colors.get('takeaway_style', 'friendly')
-    takeaway_css = ""
-    if takeaway_preset == 'friendly':
-        takeaway_css = f"""
-.reveal .bottom-takeaway-bar {{
-    background: linear-gradient(90deg, {accent}, {accent_secondary}) !important;
-    border-radius: 20px 20px 0 0 !important;
-    margin: 0 15px !important;
-    width: calc(100% - 30px) !important;
-    bottom: 5px !important;
-    box-shadow: 0 -5px 20px rgba(0,0,0,0.06) !important;
-}}
-"""
-    elif takeaway_preset == 'cyber':
-        takeaway_css = f"""
-.reveal .bottom-takeaway-bar {{
-    background: rgba(15, 23, 42, 0.9) !important;
-    border-top: 2px solid {accent} !important;
-    clip-path: polygon(0 0, 93% 0, 100% 100%, 0% 100%) !important;
-    color: {accent_secondary} !important;
-    text-shadow: 0 0 5px rgba(165, 180, 252, 0.4) !important;
-}}
-"""
-    elif takeaway_preset == 'classic':
-        takeaway_css = f"""
-.reveal .bottom-takeaway-bar {{
-    background: var(--color-bg-secondary) !important;
-    border-top: 1px solid {accent} !important;
-    color: {text} !important;
-    font-family: 'Playfair Display', serif !important;
-    font-style: italic !important;
-}}
-"""
-    elif takeaway_preset == 'editorial':
-        takeaway_css = f"""
-.reveal .bottom-takeaway-bar {{
-    background: transparent !important;
-    border-top: 2px solid {text} !important;
-    color: {text} !important;
-    padding: 15px 0px !important;
-    margin: 0 40px !important;
-    width: calc(100% - 80px) !important;
-    box-shadow: none !important;
-}}
-"""
-    elif takeaway_preset == 'chalkboard':
-        takeaway_css = """
-.reveal .bottom-takeaway-bar {
-    background: #8b4513 !important;
-    border-top: 4px solid #5c2c0c !important;
-    border-radius: 10px 10px 0 0 !important;
-    color: #ffedd5 !important;
-    font-family: 'Nanum Pen Script', cursive !important;
-    font-size: 1.3rem !important;
-}
-"""
-
-    # 6. 화면 전환 모션 transition 생성
-    motion_preset = theme_colors.get('motion_preset', 'friendly')
-    motion_css = ""
-    if motion_preset == 'friendly':
-        motion_css = ".reveal { --slide-transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }"
-    elif motion_preset == 'cyber':
-        motion_css = ".reveal { --slide-transition: all 0.22s cubic-bezier(0.19, 1, 0.22, 1); }"
-    elif motion_preset == 'classic':
-        motion_css = ".reveal { --slide-transition: all 0.75s cubic-bezier(0.25, 1, 0.5, 1); }"
-    elif motion_preset == 'editorial':
-        motion_css = ".reveal { --slide-transition: all 0.45s cubic-bezier(0.77, 0, 0.175, 1); }"
-    elif motion_preset == 'chalkboard':
-        motion_css = ".reveal { --slide-transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1); }"
-
-    # 7. 배경 패턴 CSS 생성
-    pattern_preset = theme_colors.get('bg_pattern_style', 'none')
-    pattern_css = ""
-    if pattern_preset == 'grid':
-        pattern_css = f"""
-.pattern-overlay {{
-    opacity: 0.12 !important;
-    background-size: 30px 30px;
-    background-image: 
-        linear-gradient(to right, {text_secondary} 1px, transparent 1px),
-        linear-gradient(to bottom, {text_secondary} 1px, transparent 1px) !important;
-}}
-"""
-    elif pattern_preset == 'dots':
-        pattern_css = f"""
-.pattern-overlay {{
-    opacity: 0.12 !important;
-    background-size: 20px 20px;
-    background-image: radial-gradient({text_secondary} 1.5px, transparent 1.5px) !important;
-}}
-"""
-    elif pattern_preset == 'diagonal':
-        pattern_css = f"""
-.pattern-overlay {{
-    opacity: 0.12 !important;
-    background-size: 40px 40px;
-    background-image: linear-gradient(45deg, 
-        {text_secondary} 1px, transparent 1px, 
-        transparent 19px, {text_secondary} 20px, 
-        transparent 20px, transparent 39px, {text_secondary} 40px
-    ) !important;
-}}
-"""
-    elif pattern_preset == 'blueprint':
-        pattern_css = f"""
-.pattern-overlay {{
-    opacity: 0.25 !important;
-    background-size: 40px 40px;
-    background-image: 
-        linear-gradient(to right, {accent} 1.5px, transparent 1.5px),
-        linear-gradient(to bottom, {accent} 1.5px, transparent 1.5px) !important;
-}}
-"""
-    elif pattern_preset == 'terrazzo':
-        pattern_css = f"""
-.pattern-overlay {{
-    opacity: 0.12 !important;
-    background-size: 120px 120px;
-    background-image: 
-        radial-gradient(circle at 20% 30%, {accent} 4px, transparent 8px),
-        radial-gradient(circle at 75% 15%, {accent_secondary} 6px, transparent 12px),
-        radial-gradient(circle at 50% 80%, {text_secondary} 5px, transparent 10px) !important;
-}}
-"""
-
-    # 8. 배경 장식 활성화 CSS 생성
-    decorations = theme_colors.get('decorations', [])
-    decor_css_list = []
-    if decorations:
-        checkbox_mappings = {
-            'corner_accent': ['.decor-corner-tl', '.decor-corner-tr', '.decor-corner-bl', '.decor-corner-br'],
-            'circles': ['.decor-circle-1', '.decor-circle-2'],
-            'hud_brackets': ['.decor-hud-left', '.decor-hud-right'],
-            'wavy_line': ['.decor-wavy'],
-            'geometric_shapes': ['.decor-shape-1', '.decor-shape-2', '.decor-shape-3', '.decor-shape-4'],
-            'tech_grid_lines': ['.decor-techlines']
-        }
-        for decor in decorations:
-            if decor in checkbox_mappings:
-                selectors = ", ".join(checkbox_mappings[decor])
-                opacity_val = "0.25" if decor == 'wavy_line' else ("0.35" if decor == 'tech_grid_lines' else ("0.18" if decor == 'circles' else ("0.22" if decor == 'geometric_shapes' else "0.3")))
-                decor_css_list.append(f"""
-{selectors} {{
-    opacity: {opacity_val} !important;
-}}
-""")
-    decor_css = "\n".join(decor_css_list)
 
     # 60-30-10 기반 자동 파생 색상 및 프리셋 CSS 통합 조립
     css = f"""<style>
@@ -623,26 +181,8 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     --color-card-border: {card_border};
     --color-muted: {text_secondary};
     --font-primary: {font_stack};
-    
-    /* 이미지 프레임 (테마 제어 요소) */
-    --image-frame-bg: {frame_bg};
-    --image-frame-border: {frame_border};
-    --image-frame-shadow: {frame_shadow};
-    --image-frame-radius: {frame_radius};
-    --image-frame-dots-display: {frame_dots};
-    --image-frame-header-bg: {frame_header_bg};
-    --image-frame-dot-border: {frame_dot_border};
 }}
 
-/* 프리셋 연동 CSS 구동 */
-{frame_css}
-{card_css}
-{icon_css}
-{highlight_css}
-{takeaway_css}
-{motion_css}
-{pattern_css}
-{decor_css}
 
 .reveal {{
     background: var(--color-bg);
@@ -659,6 +199,13 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}}
+
+/* h1 내부 strong의 투명화 상속 차단 — hero/closing 표지에서 형광펜 글자가 사라지는 버그 근본 해결 */
+.reveal h1 strong {{
+    -webkit-text-fill-color: var(--color-text);
+    background-clip: initial;
+    -webkit-background-clip: initial;
 }}
 
 .reveal p, .reveal li {{
@@ -744,7 +291,7 @@ def process_list(items, tag='li', class_name=''):
     cls_attr = f' class="{class_name}"' if class_name else ''
     result = []
 
-    for item in items:
+    for index, item in enumerate(items):
         if isinstance(item, str):
             result.append(f"<{tag}{cls_attr}>{item}</{tag}>")
         elif isinstance(item, dict):
@@ -753,11 +300,25 @@ def process_list(items, tag='li', class_name=''):
                 icon = item['icon']
                 text = item['text']
                 result.append(f'<li class="icon-bullet"><span class="bullet-icon">{icon}</span><span class="bullet-text">{text}</span></li>')
+            elif tag == 'li':
+                title = item.get('title', item.get('label', ''))
+                desc = item.get('desc', item.get('text', ''))
+                if title or desc:
+                    result.append(f'''<li>
+                        {f'<strong>{title}</strong>' if title else ''}
+                        {f'<span>{desc}</span>' if desc else ''}
+                    </li>''')
             # 복합 객체 처리
             elif tag == 'timeline-item':
+                date = item.get('date', '')
+                date_html = f'<div class="timeline-date">{date}</div>' if date else ''
                 result.append(f'''<div class="timeline-item">
-                    <div class="timeline-title">{item.get('title', '')}</div>
-                    <div class="timeline-desc">{item.get('desc', '')}</div>
+                    <div class="timeline-marker"><span>{index + 1}</span></div>
+                    <div class="timeline-content">
+                        {date_html}
+                        <div class="timeline-title">{item.get('title', '')}</div>
+                        <div class="timeline-desc">{item.get('desc', '')}</div>
+                    </div>
                 </div>''')
             elif tag == 'stat-item':
                 value_str = item.get('value', '')
@@ -776,7 +337,7 @@ def process_list(items, tag='li', class_name=''):
                 result.append(f'<div class="quiz-option card">{item.get("text", "")}</div>')
             # matrix 아이템: {"label": "텍스트", "quadrant": 1~4}
             elif tag == 'matrix-item':
-                label = item.get('label', '')
+                label = item.get('label', item.get('title', ''))
                 icon = item.get('icon', '')
                 desc = item.get('desc', '')
                 icon_html = f'<div class="matrix-icon">{icon}</div>' if icon else ''
@@ -822,6 +383,28 @@ def render_slide(slide_data: dict) -> str:
 
     # 특수 처리 (리스트 등)
     data = slide_data.copy()
+    if slide_type == 'text_image' and not data.get('CONTENT') and data.get('BODY'):
+        data['CONTENT'] = data.get('BODY', '')
+    if slide_type == 'image_comparison':
+        if not data.get('LEFT_IMAGE_SRC') and data.get('LEFT_IMAGE'):
+            data['LEFT_IMAGE_SRC'] = data.get('LEFT_IMAGE', '')
+        if not data.get('RIGHT_IMAGE_SRC') and data.get('RIGHT_IMAGE'):
+            data['RIGHT_IMAGE_SRC'] = data.get('RIGHT_IMAGE', '')
+        if not data.get('LEFT_DESC') and data.get('LEFT_TITLE'):
+            data['LEFT_DESC'] = data.get('LEFT_TITLE', '')
+        if not data.get('RIGHT_DESC') and data.get('RIGHT_TITLE'):
+            data['RIGHT_DESC'] = data.get('RIGHT_TITLE', '')
+    if slide_type == 'quiz':
+        if not data.get('QUIZ_OPTIONS') and data.get('OPTIONS'):
+            data['QUIZ_OPTIONS'] = data.get('OPTIONS', [])
+        if data.get('ANSWER') and 'ANSWER_INDEX' not in data and data.get('QUIZ_OPTIONS'):
+            for idx, option in enumerate(data.get('QUIZ_OPTIONS', [])):
+                option_text = option.get('text', option) if isinstance(option, dict) else option
+                if str(option_text).strip() == str(data.get('ANSWER')).strip():
+                    data['ANSWER_INDEX'] = idx
+                    break
+    if slide_type == 'closing' and not data.get('MESSAGE') and data.get('SUBTITLE'):
+        data['MESSAGE'] = data.get('SUBTITLE', '')
     if slide_type == 'tutorial':
         raw_title = str(data.get('TITLE', ''))
         data['DISPLAY_TITLE'] = re.sub(r'^\s*\d+\s*단계\s*[:：;；]\s*', '', raw_title)
@@ -841,6 +424,8 @@ def render_slide(slide_data: dict) -> str:
         data['SUMMARY_ITEMS'] = process_list(data['SUMMARY_ITEMS'], 'li')
 
     if 'TIMELINE_ITEMS' in data:
+        timeline_count = len(data['TIMELINE_ITEMS']) if isinstance(data['TIMELINE_ITEMS'], list) else 0
+        data['TIMELINE_DENSITY_CLASS'] = 'timeline-rail' if timeline_count <= 4 else 'timeline-compact'
         data['TIMELINE_ITEMS'] = process_list(data['TIMELINE_ITEMS'], 'timeline-item')
 
     if 'STAT_ITEMS' in data:
@@ -884,8 +469,14 @@ def render_slide(slide_data: dict) -> str:
             data['OX_DENSITY_CLASS'] = 'ox-dense'
 
     if 'O_ITEMS' in data:
+        for item in data['O_ITEMS']:
+            if isinstance(item, dict) and not item.get('marker'):
+                item['marker'] = 'O'
         data['O_ITEMS'] = process_list(data['O_ITEMS'], 'ox-item')
     if 'X_ITEMS' in data:
+        for item in data['X_ITEMS']:
+            if isinstance(item, dict) and not item.get('marker'):
+                item['marker'] = 'X'
         data['X_ITEMS'] = process_list(data['X_ITEMS'], 'ox-item')
 
     # 신규: 로드맵 아이템
@@ -1024,6 +615,46 @@ def build_html(input_json: str, output_html: str) -> None:
 
     final_html = base_html.replace('{{PRESENTATION_TITLE}}', presentation_title)
     final_html = final_html.replace('{{THEME_CSS}}', theme_css)
+    
+    # 테마 에디터와 충돌하지 않도록 모든 프리셋, 패턴, 장식 클래스를 문자열 치환 주입
+    if theme_colors:
+        frame_preset = theme_colors.get('image_frame_preset', 'business')
+        card_preset = theme_colors.get('card_style_preset', 'business_clean')
+        icon_preset = theme_colors.get('icon_preset', 'business')
+        font_preset = theme_colors.get('font_preset', 'friendly')
+        highlight_preset = theme_colors.get('highlight_style', theme_colors.get('strong_style', 'friendly'))
+        takeaway_preset = theme_colors.get('takeaway_style', 'friendly')
+        motion_preset = theme_colors.get('motion_preset', 'friendly')
+
+        # reveal 기본 컨테이너에 모든 프리셋 클래스 주입
+        reveal_classes = f"reveal card-preset-{card_preset} icon-preset-{icon_preset} theme-{font_preset} highlight-{highlight_preset} takeaway-{takeaway_preset} motion-{motion_preset}"
+        final_html = final_html.replace('class="reveal"', f'class="{reveal_classes}"')
+
+        # 이미지 프레임 클래스 주입
+        final_html = final_html.replace('class="screenshot-frame ', f'class="screenshot-frame frame-{frame_preset} ')
+        final_html = final_html.replace('class="screenshot-frame"', f'class="screenshot-frame frame-{frame_preset}"')
+        
+        # 배경 패턴 주입
+        pattern_preset = theme_colors.get('bg_pattern_style', 'none')
+        if pattern_preset != 'none':
+            final_html = final_html.replace('class="pattern-overlay"', f'class="pattern-overlay pattern-{pattern_preset}"')
+        
+        # 배경 장식 주입
+        decorations = theme_colors.get('decorations', [])
+        if decorations:
+            if 'corner_accent' in decorations:
+                final_html = final_html.replace('class="decor-corner ', 'class="decor-corner active ')
+            if 'circles' in decorations:
+                final_html = final_html.replace('class="decor-circle ', 'class="decor-circle active ')
+            if 'hud_brackets' in decorations:
+                final_html = final_html.replace('class="decor-hud ', 'class="decor-hud active ')
+            if 'wavy_line' in decorations:
+                final_html = final_html.replace('class="decor-wavy"', 'class="decor-wavy active"')
+            if 'geometric_shapes' in decorations:
+                final_html = final_html.replace('class="decor-shape ', 'class="decor-shape active ')
+            if 'tech_grid_lines' in decorations:
+                final_html = final_html.replace('class="decor-techlines"', 'class="decor-techlines active"')
+
     final_html = final_html.replace('{{SLIDES_CONTENT}}', slides_content)
     assert_no_unresolved_includes(final_html)
 

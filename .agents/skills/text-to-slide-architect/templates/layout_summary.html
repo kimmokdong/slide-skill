@@ -1,41 +1,11 @@
 <!-- 레이아웃: 요약/정리 -->
-<section>
-    <style>
-        .summary-list-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-        }
-        .summary-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-        .summary-list li {
-            font-size: 0.9em;
-            line-height: 1.6;
-            color: var(--color-text-secondary);
-            font-weight: 500;
-            word-break: keep-all;
-            margin-bottom: 0.8em;
-            text-align: center;
-            display: block;
-        }
-        .summary-list li:last-child {
-            margin-bottom: 0;
-        }
-    </style>
+<section class="summary-slide">
     <div class="slide-container">
-        <div class="slide-header" style="text-align: center;">
-            <div class="summary-emoji" style="font-size: 1.2em; margin-bottom: 0.2em; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">📌</div>
-            <h2 style="font-size: 1.45em; font-weight: 900;">{{TITLE}}</h2>
+        <div class="slide-header summary-header">
+            <div class="summary-emoji">📌</div>
+            <h2>{{TITLE}}</h2>
         </div>
-        <div class="slide-body">
+        <div class="slide-body summary-body">
             <div class="summary-list-container">
                 <ol class="summary-list">
                     {{SUMMARY_ITEMS}}
