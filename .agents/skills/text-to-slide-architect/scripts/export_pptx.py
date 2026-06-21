@@ -18,7 +18,7 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
         from pptx import Presentation
         from pptx.util import Inches, Pt
         from pptx.dml.color import RGBColor
-        from pptx.enum.text import PP_ALIGN
+        from pptx.enum.text import PP_ALIGN, MSO_AUTO_SIZE
     except ImportError:
         print("오류: python-pptx가 설치되지 않았습니다.")
         print("설치 명령: pip install python-pptx")
@@ -513,6 +513,13 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
                 sub_p.text = data['SUBTITLE']
                 sub_p.font.size = Pt(32)
                 sub_p.font.color.rgb = RGBColor(220, 220, 220)
+
+    # 모든 슬라이드의 모든 텍스트 상자에 AutoFit 적용 (사용자 요청: 교육용 최대 확대/맞춤)
+    for s in prs.slides:
+        for shape in s.shapes:
+            if shape.has_text_frame:
+                shape.text_frame.word_wrap = True
+                shape.text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
 
     # 출력 폴더 생성
     output_dir = os.path.dirname(output_path)

@@ -260,30 +260,23 @@
             --font-primary: 'Caveat', 'Nanum Pen Script', cursive;
         }
 
-        /* E. 강조 텍스트(strong) 프리셋 5종 */
+        /* E. 강조 텍스트(strong) 프리셋 5종 (근본적 형광펜 기법) */
         .reveal.highlight-friendly strong {
-            position: relative;
-            display: inline-block;
             font-weight: 800;
-            color: inherit;
-            z-index: 1;
-        }
-        .reveal.highlight-friendly strong::after {
-            content: "";
-            position: absolute;
-            left: 0;
-            bottom: 2px;
-            width: 100%;
-            height: 35%;
-            background-color: var(--color-accent-secondary, #a5b4fc);
-            opacity: 0.55;
-            z-index: -1;
-            border-radius: 4px;
+            color: inherit !important;
+            text-decoration: none;
+            /* 테마 색상과 충돌하지 않도록 반투명도(40%)를 혼합한 배경 형광펜 */
+            background: linear-gradient(transparent 55%, color-mix(in srgb, var(--color-accent-secondary, #a5b4fc) 40%, transparent) 55%);
         }
         .reveal.highlight-cyber strong {
             font-weight: 900;
-            color: var(--color-accent-secondary, #a5b4fc);
-            text-shadow: 0 0 8px rgba(165, 180, 252, 0.4);
+            color: inherit !important;
+            text-decoration: underline;
+            text-decoration-style: dashed;
+            text-decoration-color: var(--color-accent);
+            text-decoration-thickness: 2px;
+            text-underline-offset: 4px;
+            text-shadow: 0 0 8px rgba(165, 180, 252, 0.2);
             font-family: 'Orbitron', sans-serif;
         }
         .reveal.highlight-cyber strong::before {
@@ -299,21 +292,25 @@
         .reveal.highlight-classic strong {
             font-style: italic;
             font-weight: 700;
-            color: var(--color-accent);
-            border-bottom: 3px double var(--color-accent, #6366f1);
-            padding-bottom: 1px;
+            color: inherit !important;
+            text-decoration: none;
+            /* 클래식한 느낌의 옅은 옐로우/골드 반투명 하이라이트 */
+            background: linear-gradient(transparent 55%, color-mix(in srgb, var(--color-accent) 30%, transparent) 55%);
         }
         .reveal.highlight-editorial strong {
-            font-weight: 800;
-            background: var(--color-text);
-            color: var(--color-bg);
-            padding: 0px 4px;
-            border-radius: 2px;
+            font-weight: 900;
+            color: inherit !important;
+            text-decoration: none;
+            /* 텍스트 색상의 15% 투명도를 배경으로 깔아 세련된 하이라이트 구성 */
+            background: linear-gradient(transparent 55%, color-mix(in srgb, var(--color-text) 15%, transparent) 55%);
         }
         .reveal.highlight-chalkboard strong {
             font-weight: 900;
-            color: #b91c1c;
-            text-decoration: underline wavy #b91c1c;
+            color: inherit !important;
+            text-decoration: underline;
+            text-decoration-style: wavy;
+            text-decoration-color: #ef4444; /* 분필에 어울리는 빨간 물결 */
+            text-decoration-thickness: 2px;
             text-underline-offset: 4px;
         }
 

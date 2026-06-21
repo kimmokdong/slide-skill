@@ -24,190 +24,84 @@
         function autoFitContainer(container) {
             if (container.dataset.autofitDone === "true") return;
 
-            // 제목 구역은 높이/위치를 고정하고, 가로로 넘칠 때만 h2 글자를 줄입니다.
-            function fitTitleInHeader(header) {
-                const h2 = header.querySelector('h2');
-                if (!h2) return;
-
+            // 1. 제목 영역 (가로로 넘칠 때만 줄임)
+            container.querySelectorAll('.slide-header h2').forEach(h2 => {
                 h2.style.whiteSpace = 'nowrap';
-                let headerSize = parseFloat(getComputedStyle(h2).fontSize) || 48;
-                const minHeaderSize = header.classList.contains('tutorial-title-box') ? 28 : 32;
-
-                for (let i = 0; i < 45 && headerSize > minHeaderSize; i++) {
-                    const tooWide = h2.scrollWidth > h2.clientWidth + 2;
-                    if (!tooWide) break;
-                    headerSize -= 1.0;
-                    h2.style.fontSize = headerSize + 'px';
+                h2.style.fontSize = '80px';
+                while (h2.scrollWidth > h2.clientWidth + 2 && parseFloat(h2.style.fontSize) > 28) {
+                    h2.style.fontSize = (parseFloat(h2.style.fontSize) - 1) + 'px';
                 }
-            }
+            });
 
-            container.querySelectorAll('.slide-header').forEach(fitTitleInHeader);
-
-            // 폰트 초기화 (CSS 기본값으로 복원)
-            container.style.fontSize = '';
-
-            // O/X 표는 좌우 컬럼 폭을 먼저 고정하고, 각 컬럼 내부 글자만 폭에 맞춰 줄입니다.
-            function fitNowrapElements(selector, minPx) {
-                container.querySelectorAll(selector).forEach(el => {
-                    let size = parseFloat(getComputedStyle(el).fontSize);
-                    if (!size) return;
-                    for (let i = 0; i < 60 && size > minPx; i++) {
-                        if (el.scrollWidth <= el.clientWidth + 1) break;
-                        size -= 1;
-                        el.style.fontSize = size + 'px';
-                    }
-                });
-            }
-
-            function overflowsHorizontally(el) {
-                if (!el || el.clientWidth <= 0) return false;
-                if (el.scrollWidth > el.clientWidth + 1) return true;
-                const parentRect = el.getBoundingClientRect();
-                for (let child of el.children) {
-                    const rect = child.getBoundingClientRect();
-                    if (rect.left < parentRect.left - 1 || rect.right > parentRect.right + 1) {
-                        return true;
-                    }
-                    if (child.scrollWidth > child.clientWidth + 1) {
-                        return true;
-                    }
+            // 2. 하단바 영역 (상자 크기 안에서 최대한 크게)
+            container.querySelectorAll('.takeaway-content').forEach(tc => {
+                tc.style.fontSize = '60px'; // 넉넉하게 시작
+                while ((tc.scrollHeight > tc.clientHeight + 2 || tc.scrollWidth > tc.clientWidth + 2) && parseFloat(tc.style.fontSize) > 20) {
+                    tc.style.fontSize = (parseFloat(tc.style.fontSize) - 1) + 'px';
                 }
-                return false;
-            }
+            });
 
-            function clipsOwnContent(el) {
-                if (!el || el.clientWidth <= 0 || el.clientHeight <= 0) return false;
-                return el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
-            }
-
-            function oxItemClips(item) {
-                const text = item.querySelector('.ox-text');
-                return overflowsHorizontally(item) || clipsOwnContent(item) || clipsOwnContent(text);
-            }
-
-            function fitOxContent() {
-                container.querySelectorAll('.ox-column-header').forEach(header => {
-                    let size = parseFloat(getComputedStyle(header).fontSize);
-                    if (!size) return;
-                    for (let i = 0; i < 80 && size > 28; i++) {
-                        const title = header.querySelector('h3');
-                        if (!overflowsHorizontally(header) && !clipsOwnContent(title)) break;
-                        size -= 1;
-                        header.style.fontSize = size + 'px';
-                    }
-                });
-
-                container.querySelectorAll('.ox-item').forEach(item => {
-                    let size = parseFloat(getComputedStyle(item).fontSize);
-                    if (!size) return;
-                    for (let i = 0; i < 90 && size > 22; i++) {
-                        if (!oxItemClips(item)) break;
-                        size -= 1;
-                        item.style.fontSize = size + 'px';
-                    }
-                });
-
-                container.querySelectorAll('.ox-column-body').forEach(body => {
-                    const items = Array.from(body.querySelectorAll('.ox-item'));
-                    if (!items.length) return;
-                    let size = Math.min(...items.map(item => parseFloat(getComputedStyle(item).fontSize)).filter(Boolean));
-                    if (!size) return;
-                    for (let i = 0; i < 120 && size > 18; i++) {
-                        const bodyClips = clipsOwnContent(body);
-                        const itemClips = items.some(item => oxItemClips(item));
-                        if (!bodyClips && !itemClips) break;
-                        size -= 1;
-                        items.forEach(item => item.style.fontSize = size + 'px');
-                    }
-                });
-            }
-
-            fitOxContent();
-
-            let currentSize = parseFloat(getComputedStyle(container).fontSize);
-            const minSize = 11; // 원본의 약 50% 수준 이하로 축소 허용 (기존 13)
-            const maxIterations = 60; // 반복 한계치 확장 (기존 35)
-
+            // 3. 본문 영역 (.slide-body) - 유니버설 분산형 오토핏
+            // 기하학적 겹침 꼼수는 버리되, 자식 요소 내부의 오버플로우 은닉(Swallowed Overflow)을 감지하는 센서는 복구
             const body = container.querySelector('.slide-body');
-
-            // 컨테이너나 내부 슬라이드 바디 영역이 한도를 넘어서면 넘침으로 판정
-            function hasOverflow() {
-                // 1. 기하학적 겹침 감지 (마지막 핵심 콘텐츠 요소와 하단 요약 바의 경계 체크)
-                const takeawayBar = container.querySelector('.bottom-takeaway-bar');
-                if (takeawayBar) {
-                    const takeawayRect = takeawayBar.getBoundingClientRect();
-                    // 하단 바보다 위에 있어야 하는 콘텐츠 요소들을 조사
-                    const contentElements = container.querySelectorAll('.slide-body, .tutorial-tip, .tutorial-warning, .bullet-list, .hands-on-steps, .ox-layout');
-                    for (let el of contentElements) {
-                        const elRect = el.getBoundingClientRect();
-                        // 콘텐츠 요소의 바텀이 하단 바의 탑보다 아래로 넘어가면 오버플로우로 판정
-                        if (elRect.bottom > takeawayRect.top + 2) {
-                            console.log("[AutoFit Debug] Geometrical overflow with takeaway bar detected:", el, "bottom:", elRect.bottom, "bar top:", takeawayRect.top);
-                            return true;
-                        }
-                    }
-                }
-
-                // 2. 전체 컨테이너 높이 대비 경계 체크 (기하학적 캔버스 바텀 영역 체크)
-                const containerRect = container.getBoundingClientRect();
-                const allElements = container.querySelectorAll('*');
-                for (let el of allElements) {
+            
+            if (body) {
+                // 브라우저의 DOM/CSS 엔진 렌더링 스펙에 따른 근본적인 센서 필터링
+                const children = Array.from(body.querySelectorAll('*')).filter(el => {
                     const style = getComputedStyle(el);
-                    if (el.closest('.slide-header')) {
-                        continue;
-                    }
-                    const clipper = el.closest('.slide-body, .split-layout .left, .tutorial-text, .ox-column-body, .roadmap-step');
-                    if (clipper && clipper !== el) {
-                        const clippedRect = el.getBoundingClientRect();
-                        const clipRect = clipper.getBoundingClientRect();
-                        if (clippedRect.bottom > clipRect.bottom + 2 || clippedRect.top < clipRect.top - 2) {
-                            console.log("[AutoFit Debug] Clipped by parent:", el, "clipper:", clipper);
-                            return true;
-                        }
-                    }
-                    if (style.position === 'absolute' || el.clientHeight === 0) {
-                        continue;
-                    }
-                    const elRect = el.getBoundingClientRect();
-                    // 요소의 바텀이 컨테이너의 바텀보다 아래로 내려갔는지 체크 (패딩 영역 감안하여 12px 버퍼)
-                    if (elRect.bottom > containerRect.bottom - 12) {
-                        // 하단 요약 바 자체는 컨테이너 안에 깔리므로 예외 처리
-                        if (el.classList.contains('bottom-takeaway-bar') || el.closest('.bottom-takeaway-bar')) {
-                            continue;
-                        }
-                        console.log("[AutoFit Debug] Geometrical container overflow detected:", el, "bottom:", elRect.bottom, "container bottom:", containerRect.bottom);
-                        return true;
-                    }
-                }
-
-                // 3. 본문 영역 scrollHeight 방식 백업 적용 (제목 영역은 제외)
-                if (body && body.scrollHeight > body.clientHeight + 4) {
+                    
+                    // 1. 화면에 렌더링되지 않거나, 브라우저가 공간을 0으로 할당한 요소 배제 (숨김 처리 등)
+                    if (el.clientWidth === 0 || el.clientHeight === 0) return false;
+                    
+                    // 2. 인라인 요소 배제 (중요!)
+                    // 브라우저는 순수 inline 요소(span, strong 등)의 clientWidth를 0으로 계산하는 경우가 많으며,
+                    // 이때 scrollWidth는 텍스트 길이로 반환되므로 'scrollWidth > clientWidth'가 무조건 true가 되는 치명적 오탐지 발생
+                    if (style.display === 'inline') return false;
+                    
+                    // 3. 레이아웃 흐름에서 벗어난 절대 좌표 요소 배제
+                    if (style.position === 'absolute' || style.position === 'fixed') return false;
+                    
+                    // 위 조건을 통과한 모든 요소(Block, Flex, Grid 박스)는 검사 대상!
+                    // 예: .split-layout .left, .ox-column 등 높이가 제한되어 오버플로우가 발생할 수 있는 모든 상자
                     return true;
+                });
+
+                // 브라우저의 레이아웃 엔진(scrollHeight)만 믿고 이분 탐색(Binary Search) 수행
+                let minSize = 16;
+                let maxSize = 100;
+                let bestSize = minSize;
+
+                while (minSize <= maxSize) {
+                    let midSize = Math.floor((minSize + maxSize) / 2);
+                    body.style.fontSize = midSize + 'px';
+                    
+                    // 1차: 본문 전체가 터졌는가?
+                    let isOverflow = (body.scrollHeight > body.clientHeight + 2) || (body.scrollWidth > body.clientWidth + 2);
+
+                    // 2차: 내부 박스(ox-column 등)가 글씨를 숨겨서 잘라먹었는가?
+                    if (!isOverflow) {
+                        for (let child of children) {
+                            if (child.scrollHeight > child.clientHeight + 2 || child.scrollWidth > child.clientWidth + 2) {
+                                isOverflow = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isOverflow) {
+                        // 넘치면 크기를 줄여야 함
+                        maxSize = midSize - 1;
+                    } else {
+                        // 안 넘치면 일단 합격! 최적값으로 저장하고, "혹시 더 키울 수 있을까?" 하고 큰 쪽을 다시 탐색
+                        bestSize = midSize;
+                        minSize = midSize + 1;
+                    }
                 }
-                for (let el of allElements) {
-                    const style = getComputedStyle(el);
-                    if (el.closest('.slide-header')) {
-                        continue;
-                    }
-                    if (style.position === 'absolute') {
-                        continue;
-                    }
-                    if (el.clientHeight > 0 && el.scrollHeight > el.clientHeight + 2) {
-                        return true;
-                    }
-                    if (style.whiteSpace === 'nowrap' && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 2) {
-                        return true;
-                    }
-                }
-                return false;
+                
+                // 최종 적용
+                body.style.fontSize = bestSize + 'px';
             }
 
-            let iterations = 0;
-            while (hasOverflow() && currentSize > minSize && iterations < maxIterations) {
-                currentSize -= 0.5; // 정밀하게 0.5px 단위로 줄임
-                container.style.fontSize = currentSize + 'px';
-                iterations++;
-            }
             container.dataset.autofitDone = "true";
         }
 
@@ -272,3 +166,16 @@
                 Reveal.layout();
             });
         }
+
+        // 에디터 모드 대응: 사용자가 텍스트 편집 시 실시간으로 다시 핏팅 수행
+        document.addEventListener('input', (e) => {
+            const container = e.target.closest('.slide-container, .center-layout');
+            if (container) {
+                container.dataset.autofitDone = "false";
+                clearTimeout(container.autofitTimer);
+                container.autofitTimer = setTimeout(() => {
+                    autoFitContainer(container);
+                    Reveal.layout();
+                }, 300); // 300ms 디바운싱 처리
+            }
+        });
