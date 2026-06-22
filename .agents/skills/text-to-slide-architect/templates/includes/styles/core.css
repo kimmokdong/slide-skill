@@ -121,14 +121,12 @@
         .slide-body {
             flex: 1;
             min-height: 0;
-            /* 넘침 방지 핵심 */
             display: flex;
             flex-direction: column;
             justify-content: center;
-            /* 기본은 상하 중앙 정렬 */
             width: 100%;
             box-sizing: border-box;
-            overflow: hidden !important;
+            /* overflow: hidden !important; 제거됨 - 오토핏 scrollHeight 정상 감지를 위해 허용 */
         }
 
         /* 4. BOTTOM_TAKEAWAY (하단 펀치라인 요약 - 약 10% 고정 바) */
@@ -138,6 +136,7 @@
             width: 100%;
             height: auto;
             min-height: 75px;
+            max-height: 90px; /* 1줄 유지를 위해 높이 축소 */
             border-radius: 12px;
             padding: 14px 42px;
             background: var(--color-gradient);
@@ -155,7 +154,7 @@
             font-weight: 700;
             text-align: center;
             line-height: 1.3;
-            white-space: normal;
+            white-space: nowrap; /* 무조건 1줄로 만들고 가로로 넘치게 하여 오토핏 유도 */
             width: 100%;
             letter-spacing: 0.02em;
             word-break: keep-all;
