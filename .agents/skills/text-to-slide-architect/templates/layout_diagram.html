@@ -2,13 +2,13 @@
 <section>
     <div class="slide-container">
         <div class="slide-header">
-            <h2>{{TITLE}}</h2>
+            <h2 data-edit-id="TITLE">{{TITLE}}</h2>
         </div>
         <div class="slide-body diagram-body">
             <div class="diagram-container">
                 <img src="{{DIAGRAM_SRC}}" alt="{{TITLE}}">
                 {{#if DIAGRAM_CAPTION}}
-                <p class="caption">{{DIAGRAM_CAPTION}}</p>
+                <p class="caption" data-edit-id="DIAGRAM_CAPTION">{{DIAGRAM_CAPTION}}</p>
                 {{/if}}
             </div>
         </div>

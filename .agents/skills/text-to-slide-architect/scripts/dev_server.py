@@ -13,10 +13,140 @@ import os
 import sys
 import subprocess
 import urllib.parse
+import copy
+import re
+import shutil
+import time
 
 PORT = 8000
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 BUILD_HTML_PY = os.path.join(SCRIPT_DIR, 'build_html.py')
+
+
+def read_json_body(handler):
+    content_length = int(handler.headers.get('Content-Length', 0))
+    post_data = handler.rfile.read(content_length)
+    return json.loads(post_data.decode('utf-8') or '{}')
+
+
+def get_plan_path():
+    return os.path.join(os.getcwd(), 'slide_plan.json')
+
+
+def get_output_html_path():
+    return os.path.join(os.getcwd(), 'output', 'index.html')
+
+
+def load_plan():
+    plan_path = get_plan_path()
+    if not os.path.exists(plan_path):
+        raise FileNotFoundError("slide_plan.json 파일을 찾을 수 없습니다.")
+    with open(plan_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def write_plan(path, plan):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(plan, f, ensure_ascii=False, indent=2)
+
+
+def validate_indices(indices, slide_count):
+    if not isinstance(indices, list):
+        raise ValueError("indices는 배열이어야 합니다.")
+    if not indices:
+        raise ValueError("최소 1장의 슬라이드는 남아 있어야 합니다.")
+    if len(set(indices)) != len(indices):
+        raise ValueError("중복된 슬라이드 인덱스가 있습니다.")
+    for idx in indices:
+        if not isinstance(idx, int) or idx < 0 or idx >= slide_count:
+            raise ValueError(f"범위를 벗어난 슬라이드 인덱스입니다: {idx}")
+
+
+def build_html_from_plan(plan_path, output_path):
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    cmd = [sys.executable, BUILD_HTML_PY, plan_path, output_path]
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr or result.stdout or "HTML build failed")
+
+
+def commit_plan_after_success(plan, response_message):
+    plan_path = get_plan_path()
+    output_html = get_output_html_path()
+    timestamp = time.strftime('%Y%m%d_%H%M%S')
+    backup_path = os.path.join(os.getcwd(), f'slide_plan.backup.{timestamp}.json')
+    tmp_plan_path = os.path.join(os.getcwd(), f'.slide_plan.pending.{timestamp}.json')
+    tmp_html_path = os.path.join(os.getcwd(), 'output', f'.index.pending.{timestamp}.html')
+
+    try:
+        write_plan(tmp_plan_path, plan)
+        build_html_from_plan(tmp_plan_path, tmp_html_path)
+
+        shutil.copy2(plan_path, backup_path)
+        os.replace(tmp_plan_path, plan_path)
+        os.replace(tmp_html_path, output_html)
+    except Exception:
+        for path in [tmp_plan_path, tmp_html_path]:
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except OSError:
+                pass
+        raise
+
+    return {
+        "status": "success",
+        "message": response_message,
+        "backup": os.path.basename(backup_path)
+    }
+
+
+def apply_edit_to_slide(slide, edit_id, value):
+    scalar_match = re.fullmatch(r'[A-Z_]+', edit_id)
+    if scalar_match:
+        slide[edit_id] = value
+        return
+
+    list_match = re.fullmatch(r'([A-Z_]+)\[(\d+)\](?:\.([A-Za-z_]+))?', edit_id)
+    if not list_match:
+        raise ValueError(f"지원하지 않는 편집 ID입니다: {edit_id}")
+
+    key, index_text, prop = list_match.groups()
+    index = int(index_text)
+    items = slide.get(key)
+    if not isinstance(items, list) or index >= len(items):
+        raise ValueError(f"편집 대상 리스트를 찾을 수 없습니다: {edit_id}")
+
+    if prop:
+        if not isinstance(items[index], dict):
+            items[index] = {"text": str(items[index])}
+        items[index][prop] = value
+    else:
+        items[index] = value
+
+
+def apply_text_edits(plan, edits, style_overrides):
+    slides = plan.get('slides', [])
+    for edit in edits or []:
+        slide_index = edit.get('slideIndex')
+        edit_id = edit.get('editId')
+        value = edit.get('value', '')
+        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"범위를 벗어난 슬라이드 번호입니다: {slide_index}")
+        if not edit_id:
+            continue
+        apply_edit_to_slide(slides[slide_index], edit_id, value)
+
+    for style in style_overrides or []:
+        slide_index = style.get('slideIndex')
+        edit_id = style.get('editId')
+        font_size = style.get('fontSize')
+        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"범위를 벗어난 스타일 슬라이드 번호입니다: {slide_index}")
+        if not edit_id or not font_size:
+            continue
+        overrides = slides[slide_index].setdefault('STYLE_OVERRIDES', {})
+        overrides[edit_id] = {"fontSize": font_size}
 
 
 class DevServerHandler(http.server.SimpleHTTPRequestHandler):
@@ -43,88 +173,56 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
         return super().translate_path(path)
 
     def do_POST(self):
-        """POST /api/save-order API 요청을 처리합니다."""
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path == '/api/save-order':
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
-            
-            try:
-                req_json = json.loads(post_data.decode('utf-8'))
+        try:
+            if parsed.path == '/api/save-order':
+                req_json = read_json_body(self)
                 indices = req_json.get('indices', [])
-                
-                # slide_plan.json 정렬 및 삭제 저장
-                plan_path = os.path.join(os.getcwd(), 'slide_plan.json')
-                if not os.path.exists(plan_path):
-                    self.send_error_response(404, "slide_plan.json 파일을 찾을 수 없습니다. 현재 프로젝트 폴더 내에서 서버가 실행되었는지 확인해 주세요.")
-                    return
-                
-                with open(plan_path, 'r', encoding='utf-8') as f:
-                    plan = json.load(f)
-                
+                plan = load_plan()
                 original_slides = plan.get('slides', [])
-                
-                # 인덱스 검증
-                new_slides = []
-                for idx in indices:
-                    if 0 <= idx < len(original_slides):
-                        new_slides.append(original_slides[idx])
-                    else:
-                        print(f"[경고] 올바르지 않은 슬라이드 인덱스 무시: {idx}")
-                
-                # 저장
-                plan['slides'] = new_slides
-                with open(plan_path, 'w', encoding='utf-8') as f:
-                    json.dump(plan, f, ensure_ascii=False, indent=2)
-                
-                print(f"[API] slide_plan.json 슬라이드 구성 갱신 완료 (남은 슬라이드: {len(new_slides)}장)")
-                
-                # html 빌더 실행 (build_html.py)
-                output_html = os.path.join(os.getcwd(), 'output', 'index.html')
-                cmd = [sys.executable, BUILD_HTML_PY, plan_path, output_html]
-                
-                print(f"[SYS] HTML 빌드 자동 실행: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
-                
-                if result.returncode != 0:
-                    print(f"[오류] 빌드 실패: {result.stderr}")
-                    self.send_error_response(500, f"HTML 빌드 실패: {result.stderr}")
-                    return
-                
-                # 1. 네이티브 PPTX 자동 재생성
-                output_pptx = os.path.join(os.getcwd(), 'output', 'presentation.pptx')
-                export_pptx_py = os.path.join(SCRIPT_DIR, 'export_pptx.py')
-                pptx_cmd = [sys.executable, export_pptx_py, plan_path, output_pptx, os.path.join(os.getcwd(), 'output')]
-                print(f"[SYS] 네이티브 PPTX 빌드 자동 실행: {' '.join(pptx_cmd)}")
-                subprocess.run(pptx_cmd, capture_output=True)
-                
-                # 2. 슬라이드 스크린샷(PNG) 자동 캡처
-                output_images_dir = os.path.join(os.getcwd(), 'output', 'captured_images')
-                capture_png_py = os.path.join(SCRIPT_DIR, 'capture_png.py')
-                capture_cmd = [sys.executable, capture_png_py, output_html, output_images_dir]
-                print(f"[SYS] 슬라이드 스크린샷 캡처 자동 실행: {' '.join(capture_cmd)}")
-                capture_res = subprocess.run(capture_cmd, capture_output=True)
-                
-                # 3. 이미지형 PPTX 자동 재생성 (캡처 성공 시)
-                if capture_res.returncode == 0:
-                    output_image_pptx = os.path.join(os.getcwd(), 'output', 'presentation_images.pptx')
-                    export_img_pptx_py = os.path.join(SCRIPT_DIR, 'export_image_pptx.py')
-                    img_pptx_cmd = [sys.executable, export_img_pptx_py, output_images_dir, output_image_pptx]
-                    print(f"[SYS] 이미지형 PPTX 빌드 자동 실행: {' '.join(img_pptx_cmd)}")
-                    subprocess.run(img_pptx_cmd, capture_output=True)
-                
-                # 성공 응답
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                response = {"status": "success", "message": "슬라이드 정렬 및 삭제 완료, HTML/PPTX/이미지 빌드 성공!"}
-                self.wfile.write(json.dumps(response).encode('utf-8'))
-                
-            except Exception as e:
-                print(f"[오류] 요청 처리 중 예외 발생: {e}")
-                self.send_error_response(500, f"서버 처리 오류: {str(e)}")
-        else:
+                validate_indices(indices, len(original_slides))
+                plan['slides'] = [copy.deepcopy(original_slides[idx]) for idx in indices]
+                response = commit_plan_after_success(plan, "슬라이드 순서/삭제 저장 완료")
+                self.send_json_response(200, response)
+                return
+
+            if parsed.path == '/api/save-theme':
+                req_json = read_json_body(self)
+                theme_colors = req_json.get('theme_colors')
+                if not isinstance(theme_colors, dict):
+                    raise ValueError("theme_colors는 객체여야 합니다.")
+                plan = load_plan()
+                plan.setdefault('meta', {})['theme_colors'] = theme_colors
+                response = commit_plan_after_success(plan, "테마 저장 완료")
+                self.send_json_response(200, response)
+                return
+
+            if parsed.path == '/api/save-text-edits':
+                req_json = read_json_body(self)
+                plan = load_plan()
+                apply_text_edits(
+                    plan,
+                    req_json.get('edits', []),
+                    req_json.get('style_overrides', [])
+                )
+                response = commit_plan_after_success(plan, "텍스트 직접 편집 저장 완료")
+                self.send_json_response(200, response)
+                return
+
             self.send_error_response(404, "API 엔드포인트를 찾을 수 없습니다.")
+        except FileNotFoundError as e:
+            self.send_error_response(404, str(e))
+        except ValueError as e:
+            self.send_error_response(400, str(e))
+        except Exception as e:
+            print(f"[오류] 요청 처리 중 예외 발생: {e}")
+            self.send_error_response(500, f"서버 처리 오류: {str(e)}")
+
+    def send_json_response(self, code, payload):
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload, ensure_ascii=False).encode('utf-8'))
 
     def send_error_response(self, code, message):
         self.send_response(code)

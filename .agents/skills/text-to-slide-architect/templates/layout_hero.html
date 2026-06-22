@@ -4,12 +4,12 @@
         {{#if BADGE}}
         <div class="hero-badge">{{BADGE}}</div>
         {{/if}}
-        <h1>{{TITLE}}</h1>
+        <h1 data-edit-id="TITLE">{{TITLE}}</h1>
         {{#if SUBTITLE}}
-        <h2>{{SUBTITLE}}</h2>
+        <h2 data-edit-id="SUBTITLE">{{SUBTITLE}}</h2>
         {{/if}}
         {{#if PRESENTER}}
-        <p class="presenter">👤 {{PRESENTER}}</p>
+        <p class="presenter" data-edit-id="PRESENTER">👤 {{PRESENTER}}</p>
         {{/if}}
     </div>
     <aside class="notes">{{SPEAKER_NOTES}}</aside>

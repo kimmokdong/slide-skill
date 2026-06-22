@@ -2,13 +2,13 @@
 <section>
     <div class="slide-container">
         <div class="slide-header">
-            <h2>{{TITLE}}</h2>
+            <h2 data-edit-id="TITLE">{{TITLE}}</h2>
         </div>
         <div class="slide-body comparison-body">
             <div class="comparison-grid">
                 <div class="card comparison-card">
                     <div class="comparison-card-title" style="color: var(--color-accent);">
-                        {{LEFT_TITLE}}
+                        <span data-edit-id="LEFT_TITLE">{{LEFT_TITLE}}</span>
                     </div>
                     <ul class="bullet-list">
                         {{LEFT_ITEMS}}
@@ -16,7 +16,7 @@
                 </div>
                 <div class="card comparison-card">
                     <div class="comparison-card-title" style="color: var(--color-accent-secondary);">
-                        {{RIGHT_TITLE}}
+                        <span data-edit-id="RIGHT_TITLE">{{RIGHT_TITLE}}</span>
                     </div>
                     <ul class="bullet-list">
                         {{RIGHT_ITEMS}}

@@ -12,13 +12,16 @@
             position: absolute;
             top: 0;
             left: 0;
+            right: 0;
             height: 100%;
             width: 100%;
-            transition: width 0.4s cubic-bezier(0.2, 0, 0, 1);
+            transition: right 0.4s cubic-bezier(0.2, 0, 0, 1);
         }
 
         body.review-active .reveal-container-wrapper {
-            width: calc(100% - 400px);
+            right: 400px;
+            width: auto;
+            height: 100%;
         }
 
         .review-sidebar {
@@ -48,6 +51,16 @@
 
         body.review-active .review-sidebar {
             right: 0;
+        }
+
+        .review-sidebar::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(90deg, rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0));
+            transform: translateX(-100%);
+            width: 28px;
         }
 
         .review-header {
@@ -201,6 +214,53 @@
 
         .copy-prompt-btn:hover {
             background: #2563eb;
+        }
+
+        .direct-edit-hint {
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: #cbd5e1;
+            margin: 0 0 12px 0;
+        }
+
+        .direct-edit-controls {
+            display: grid;
+            gap: 10px;
+        }
+
+        .direct-edit-controls label {
+            display: grid;
+            gap: 6px;
+            color: #e2e8f0;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .direct-edit-controls input[type="range"],
+        .direct-edit-controls input[type="number"] {
+            width: 100%;
+        }
+
+        .direct-edit-selected {
+            min-height: 32px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #f8fafc;
+            font-size: 0.82rem;
+            word-break: keep-all;
+        }
+
+        .reveal [data-edit-id].direct-editable {
+            outline: 2px dashed rgba(59, 130, 246, 0.55);
+            outline-offset: 4px;
+            cursor: text;
+        }
+
+        .reveal [data-edit-id].direct-editable:hover,
+        .reveal [data-edit-id].direct-edit-selected {
+            outline-color: rgba(245, 158, 11, 0.9);
+            background-color: rgba(245, 158, 11, 0.08);
         }
 
         .review-toggle-fab {

@@ -47,13 +47,51 @@
             return boxOverflow || boundaryOverflow;
         }
 
-        function autoFitAllSlides() {
+        function isTextSizeLocked(el) {
+            return Boolean(el && el.dataset && el.dataset.styleLocked === 'true');
+        }
+
+        function snapshotLockedFontSizes(container) {
+            return Array.from(container.querySelectorAll('[data-style-locked="true"]')).map(el => ({
+                el,
+                fontSize: el.style.fontSize
+            }));
+        }
+
+        function restoreLockedFontSizes(snapshot) {
+            snapshot.forEach(item => {
+                if (item.el && item.fontSize) item.el.style.fontSize = item.fontSize;
+            });
+        }
+
+        function restoreOriginalFontSize(el) {
+            if (!Object.prototype.hasOwnProperty.call(el.dataset, 'badWrapOriginalFontSize')) {
+                el.dataset.badWrapOriginalFontSize = el.style.getPropertyValue('font-size') || '';
+                el.dataset.badWrapOriginalFontPriority = el.style.getPropertyPriority('font-size') || '';
+            }
+
+            el.style.removeProperty('font-size');
+            if (el.dataset.badWrapOriginalFontSize) {
+                el.style.setProperty(
+                    'font-size',
+                    el.dataset.badWrapOriginalFontSize,
+                    el.dataset.badWrapOriginalFontPriority || ''
+                );
+            }
+        }
+
+        function setAutofitFontSize(el, px) {
+            el.style.setProperty('font-size', px + 'px', 'important');
+        }
+
+        function autoFitAllSlides(options = {}) {
             document.querySelectorAll('.slide-container, .center-layout').forEach(container => {
-                autoFitContainer(container, { force: true });
+                autoFitContainer(container, { force: true, ...options });
             });
         }
 
         function fitSingleLine(el, maxVar, minVar, maxFallback, minFallback) {
+            if (!el || isTextSizeLocked(el)) return;
             const maxSize = cssNumber(el, maxVar, maxFallback);
             const minSize = cssNumber(el, minVar, minFallback);
             el.style.whiteSpace = 'nowrap';
@@ -69,6 +107,7 @@
 
         function autoFitContainer(container, options = {}) {
             if (container.dataset.autofitDone === 'true' && !options.force) return;
+            const lockedSnapshot = options.preserveEditedText ? snapshotLockedFontSizes(container) : [];
 
             container.querySelectorAll('.slide-header h2').forEach(h2 => {
                 fitSingleLine(h2, '--title-fit-max', '--title-fit-min', 72, 34);
@@ -116,7 +155,114 @@
                 body.dataset.autofitSize = String(bestSize);
             }
 
+            fixBadVerticalWraps(container);
+            if (options.preserveEditedText) restoreLockedFontSizes(lockedSnapshot);
             container.dataset.autofitDone = 'true';
+        }
+
+        function isBadVerticalWrap(el) {
+            if (!hasLayoutBox(el) || isTextSizeLocked(el)) return false;
+            const text = el.textContent.trim().replace(/\s+/g, '');
+            if (text.length < 3) return false;
+
+            const rect = el.getBoundingClientRect();
+            const style = getComputedStyle(el);
+            const fontSize = parseFloat(style.fontSize) || 16;
+            const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.3;
+            const lines = Math.max(1, Math.round(rect.height / lineHeight));
+            const averageCharsPerLine = text.length / lines;
+            const isCompactMetric = el.classList.contains('stat-number');
+
+            return (
+                (lines >= 3 && averageCharsPerLine <= 4.5 && rect.width < fontSize * 9) ||
+                (isCompactMetric && lines >= 2 && text.length <= 6)
+            );
+        }
+
+        function fixBadVerticalWraps(container) {
+            const selector = [
+                '.stat-number',
+                '.stat-label',
+                '.bullet-text',
+                '.comparison-card-title',
+                '.matrix-label',
+                '.roadmap-label',
+                '.ox-text',
+                '.timeline-date',
+                '.timeline-title',
+                '.summary-card-title',
+                '.hands-on-steps li',
+                '.tutorial-steps li',
+                '.tutorial-tip .tip-text',
+                '.tutorial-warning .tip-text'
+            ].join(',');
+
+            container.querySelectorAll(selector).forEach(el => {
+                if (isTextSizeLocked(el)) return;
+                restoreOriginalFontSize(el);
+                el.style.wordBreak = 'keep-all';
+                el.style.overflowWrap = 'normal';
+                el.style.wordWrap = 'normal';
+
+                const computed = getComputedStyle(el);
+                let currentSize = parseFloat(computed.fontSize) || parseFloat(el.style.fontSize) || 16;
+                const minSize = Math.max(12, cssNumber(el, '--bad-wrap-min', 15));
+
+                while (isBadVerticalWrap(el) && currentSize > minSize) {
+                    currentSize -= 1;
+                    setAutofitFontSize(el, currentSize);
+                }
+            });
+        }
+
+        function stabilizeSlideContainer(container, options = {}) {
+            if (!container) return;
+            container.dataset.autofitDone = 'false';
+            autoFitContainer(container, {
+                force: true,
+                preserveEditedText: options.preserveEditedText !== false
+            });
+        }
+
+        function stabilizeAfterPaint(container, delay = 0) {
+            const run = () => {
+                if (container) {
+                    stabilizeSlideContainer(container, { preserveEditedText: true });
+                } else {
+                    autoFitAllSlides({ preserveEditedText: true });
+                }
+                Reveal.layout();
+            };
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(run);
+            });
+
+            if (delay > 0) {
+                setTimeout(run, delay);
+            }
+        }
+
+        function stabilizeCurrentSlideAfterThemeChange() {
+            const slide = Reveal.getCurrentSlide();
+            const container = slide && slide.querySelector('.slide-container, .center-layout');
+            if (!container) return;
+
+            stabilizeSlideContainer(container, { preserveEditedText: true });
+            Reveal.layout();
+
+            if (document.fonts && document.fonts.ready) {
+                document.fonts.ready.then(() => {
+                    stabilizeSlideContainer(container, { preserveEditedText: true });
+                    Reveal.layout();
+                });
+            }
+
+            clearTimeout(container.themeStabilizeTimer);
+            container.themeStabilizeTimer = setTimeout(() => {
+                stabilizeSlideContainer(container, { preserveEditedText: true });
+                Reveal.layout();
+            }, 520);
         }
 
         function setupImageLoadListeners() {
@@ -127,7 +273,7 @@
                     const container = img.closest('.slide-container, .center-layout');
                     if (container) {
                         container.dataset.autofitDone = 'false';
-                        autoFitContainer(container, { force: true });
+                        autoFitContainer(container, { force: true, preserveEditedText: true });
                         Reveal.layout();
                     }
                 });
@@ -155,22 +301,30 @@
                     triggerGaugeAnimation(Reveal.getCurrentSlide());
                 }
                 Reveal.layout();
+                stabilizeAfterPaint(null, 360);
             }, 150);
         });
 
         window.addEventListener('load', () => {
             setTimeout(() => {
-                autoFitAllSlides();
+                autoFitAllSlides({ preserveEditedText: true });
                 Reveal.layout();
+                stabilizeAfterPaint(null, 260);
             }, 50);
         });
 
         if (document.fonts && document.fonts.ready) {
             document.fonts.ready.then(() => {
-                autoFitAllSlides();
+                autoFitAllSlides({ preserveEditedText: true });
                 Reveal.layout();
+                stabilizeAfterPaint(null, 260);
             });
         }
+
+        Reveal.on('slidechanged', event => {
+            const container = event.currentSlide && event.currentSlide.querySelector('.slide-container, .center-layout');
+            if (container) stabilizeAfterPaint(container, 180);
+        });
 
         document.addEventListener('input', event => {
             const container = event.target.closest('.slide-container, .center-layout');
@@ -178,7 +332,7 @@
                 container.dataset.autofitDone = 'false';
                 clearTimeout(container.autofitTimer);
                 container.autofitTimer = setTimeout(() => {
-                    autoFitContainer(container, { force: true });
+                    autoFitContainer(container, { force: true, preserveEditedText: true });
                     Reveal.layout();
                 }, 300);
             }
