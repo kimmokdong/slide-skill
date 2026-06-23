@@ -85,6 +85,21 @@ def commit_plan_after_success(plan, response_message):
         shutil.copy2(plan_path, backup_path)
         os.replace(tmp_plan_path, plan_path)
         os.replace(tmp_html_path, output_html)
+        
+        # 만약 작업 폴더에 inject_audio.py가 있다면 실행 (오디오 태그 복구)
+        audio_script = os.path.join(os.getcwd(), 'inject_audio.py')
+        if os.path.exists(audio_script):
+            subprocess.run([sys.executable, 'inject_audio.py'], capture_output=True)
+            
+        # 자동 청소 로직: 최근 5개의 백업 파일만 유지하고 나머지는 삭제
+        try:
+            cwd = os.getcwd()
+            backup_files = sorted([f for f in os.listdir(cwd) if f.startswith('slide_plan.backup.') and f.endswith('.json')])
+            if len(backup_files) > 5:
+                for old_backup in backup_files[:-5]:
+                    os.remove(os.path.join(cwd, old_backup))
+        except Exception as e:
+            print(f"Backup cleanup failed: {e}")
     except Exception:
         for path in [tmp_plan_path, tmp_html_path]:
             try:
@@ -166,7 +181,7 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
             return os.path.join(os.getcwd(), 'output', rel_path)
             
         # /images/ 또는 /diagrams/ 등의 에셋 매핑 지원 (HTML 상에서 images/name.png 로 가리키는 경우)
-        for asset_dir in ['images', 'diagrams', 'includes']:
+        for asset_dir in ['images', 'diagrams', 'includes', 'audio']:
             if clean_path.startswith(f'/{asset_dir}/'):
                 return os.path.join(os.getcwd(), 'output', clean_path.lstrip('/'))
 

@@ -107,6 +107,14 @@
 
         function autoFitContainer(container, options = {}) {
             if (container.dataset.autofitDone === 'true' && !options.force) return;
+            
+            // Fragment 임시 표시 (최종 크기 정확한 측정을 위해)
+            const hiddenFragments = Array.from(container.querySelectorAll('.fragment:not(.visible)'));
+            hiddenFragments.forEach(f => {
+                f.style.transition = 'none';
+                f.classList.add('visible', 'autofit-temp');
+            });
+            
             const lockedSnapshot = options.preserveEditedText ? snapshotLockedFontSizes(container) : [];
 
             container.querySelectorAll('.slide-header h2').forEach(h2 => {
@@ -158,6 +166,16 @@
             fixBadVerticalWraps(container);
             if (options.preserveEditedText) restoreLockedFontSizes(lockedSnapshot);
             container.dataset.autofitDone = 'true';
+            
+            // Fragment 원상 복구
+            hiddenFragments.forEach(f => {
+                f.classList.remove('visible', 'autofit-temp');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        f.style.transition = '';
+                    });
+                });
+            });
         }
 
         function isBadVerticalWrap(el) {

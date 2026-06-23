@@ -307,4 +307,75 @@
             });
         }
 
+        // ===== 초기 로드시 현재 활성 테마 변수/클래스를 에디터에 동기화 =====
+        function syncThemeEditorWithCurrentState() {
+            const style = getComputedStyle(document.documentElement);
+            const getHex = (varName) => style.getPropertyValue(varName).trim();
+            
+            // 색상 동기화
+            const bg = getHex('--color-bg');
+            if (bg) document.getElementById('editor-color-bg').value = bg;
+            const bgSec = getHex('--color-bg-secondary');
+            if (bgSec) document.getElementById('editor-color-bg-secondary').value = bgSec;
+            const text = getHex('--color-text');
+            if (text) document.getElementById('editor-color-text').value = text;
+            const textSec = getHex('--color-text-secondary');
+            if (textSec) document.getElementById('editor-color-text-secondary').value = textSec;
+            const accent = getHex('--color-accent');
+            if (accent) document.getElementById('editor-color-accent').value = accent;
+            const accentSec = getHex('--color-accent-secondary');
+            if (accentSec) document.getElementById('editor-color-accent-secondary').value = accentSec;
+
+            // 클래스 기반 셀렉트박스 동기화
+            const revealEl = document.querySelector('.reveal');
+            if (revealEl) {
+                const classes = Array.from(revealEl.classList);
+                const setSelectByPrefix = (prefix, selectId) => {
+                    const matched = classes.find(c => c.startsWith(prefix));
+                    if (matched) {
+                        const val = matched.replace(prefix, '');
+                        const select = document.getElementById(selectId);
+                        if (select && select.querySelector(`option[value="${val}"]`)) select.value = val;
+                    }
+                };
+                setSelectByPrefix('card-preset-', 'editor-select-card');
+                setSelectByPrefix('icon-preset-', 'editor-select-icon');
+                setSelectByPrefix('theme-', 'editor-select-font');
+                setSelectByPrefix('highlight-', 'editor-select-highlight');
+                setSelectByPrefix('takeaway-', 'editor-select-takeaway');
+                setSelectByPrefix('motion-', 'editor-select-motion');
+            }
+
+            const frameEl = document.querySelector('.screenshot-frame');
+            if (frameEl) {
+                const frameClass = Array.from(frameEl.classList).find(c => c.startsWith('frame-'));
+                if (frameClass) document.getElementById('editor-select-frame').value = frameClass.replace('frame-', '');
+            }
+
+            const patternEl = document.querySelector('.pattern-overlay');
+            if (patternEl) {
+                const patternClass = Array.from(patternEl.classList).find(c => c.startsWith('pattern-') && c !== 'pattern-overlay');
+                if (patternClass) {
+                    document.getElementById('editor-select-pattern').value = patternClass.replace('pattern-', '');
+                } else {
+                    document.getElementById('editor-select-pattern').value = 'none';
+                }
+            }
+
+            // 장식 체크박스 동기화
+            const checkDecor = (decorId, checkboxId) => {
+                const el = document.getElementById(decorId);
+                const cb = document.getElementById(checkboxId);
+                if (el && cb) cb.checked = el.classList.contains('active');
+            };
+            checkDecor('decorTL', 'editor-check-decor-corner'); 
+            checkDecor('decorCircle1', 'editor-check-decor-circles');
+            checkDecor('decorHudL', 'editor-check-decor-brackets');
+            checkDecor('decorWavy', 'editor-check-decor-wavy');
+            checkDecor('decorShape1', 'editor-check-decor-shapes');
+            checkDecor('decorTechlines', 'editor-check-decor-techlines');
+        }
+
+        window.addEventListener('load', syncThemeEditorWithCurrentState);
+
         // 퀴즈 정답/오답 확인 함수

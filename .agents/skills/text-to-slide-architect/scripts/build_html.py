@@ -338,10 +338,13 @@ def apply_style_overrides(rendered_html: str, style_overrides: dict) -> str:
     return rendered_html
 
 
-def process_list(items, tag='li', class_name='', edit_key='', default_marker='O', default_marker_class='marker-o'):
+def process_list(items, tag='li', class_name='', edit_key='', default_marker='O', default_marker_class='marker-o', sequential=False):
     """리스트 데이터를 HTML 태그로 변환합니다."""
     if not items:
         return ""
+
+    if sequential:
+        class_name = f"{class_name} fragment" if class_name else "fragment"
 
     cls_attr = f' class="{class_name}"' if class_name else ''
     result = []
@@ -357,7 +360,7 @@ def process_list(items, tag='li', class_name='', edit_key='', default_marker='O'
                 text = str(item)
                 marker = default_marker
                 marker_class = default_marker_class
-            result.append(f'<div class="ox-item"><span class="ox-marker {marker_class}"{editable_attrs(item_edit_id + ".marker")}>{marker}</span><span class="ox-text"{editable_attrs(item_edit_id + ".text")}>{text}</span></div>')
+            result.append(f'<div class="ox-item{" fragment" if sequential else ""}"><span class="ox-marker {marker_class}"{editable_attrs(item_edit_id + ".marker")}>{marker}</span><span class="ox-text"{editable_attrs(item_edit_id + ".text")}>{text}</span></div>')
             continue
 
         if isinstance(item, str):
@@ -367,12 +370,12 @@ def process_list(items, tag='li', class_name='', edit_key='', default_marker='O'
             if 'icon' in item and 'text' in item:
                 icon = item['icon']
                 text = item['text']
-                result.append(f'<li class="icon-bullet"><span class="bullet-icon">{icon}</span><span class="bullet-text"{editable_attrs(item_edit_id + ".text")}>{text}</span></li>')
+                result.append(f'<li class="icon-bullet{" fragment" if sequential else ""}"><span class="bullet-icon">{icon}</span><span class="bullet-text"{editable_attrs(item_edit_id + ".text")}>{text}</span></li>')
             elif tag == 'li':
                 title = item.get('title', item.get('label', ''))
                 desc = item.get('desc', item.get('text', ''))
                 if title or desc:
-                    result.append(f'''<li>
+                    result.append(f'''<li class="{"fragment" if sequential else ""}">
                         {f'<strong{editable_attrs(item_edit_id + ".title")}>{title}</strong>' if title else ''}
                         {f'<span{editable_attrs(item_edit_id + ".desc")}>{desc}</span>' if desc else ''}
                     </li>''')
@@ -410,7 +413,7 @@ def process_list(items, tag='li', class_name='', edit_key='', default_marker='O'
                 desc = item.get('desc', '')
                 icon_html = f'<div class="matrix-icon">{icon}</div>' if icon else ''
                 desc_html = f'<div class="matrix-desc"{editable_attrs(item_edit_id + ".desc")}>{desc}</div>' if desc else ''
-                result.append(f'<div class="matrix-cell card">{icon_html}<div class="matrix-label"{editable_attrs(item_edit_id + ".label")}>{label}</div>{desc_html}</div>')
+                result.append(f'<div class="matrix-cell card{" fragment" if sequential else ""}">{icon_html}<div class="matrix-label"{editable_attrs(item_edit_id + ".label")}>{label}</div>{desc_html}</div>')
     return "\n".join(result)
 
 
@@ -477,24 +480,24 @@ def render_slide(slide_data: dict) -> str:
         data['X_MARKER'] = str(get_first_value(data, ['X_MARKER', 'x_marker'], '❌'))
 
     if 'BULLET_ITEMS' in data:
-        data['BULLET_ITEMS'] = process_list(data['BULLET_ITEMS'], 'li', edit_key='BULLET_ITEMS')
+        data['BULLET_ITEMS'] = process_list(data['BULLET_ITEMS'], 'li', edit_key='BULLET_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'LEFT_ITEMS' in data:
-        data['LEFT_ITEMS'] = process_list(data['LEFT_ITEMS'], 'li', edit_key='LEFT_ITEMS')
+        data['LEFT_ITEMS'] = process_list(data['LEFT_ITEMS'], 'li', edit_key='LEFT_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'RIGHT_ITEMS' in data:
-        data['RIGHT_ITEMS'] = process_list(data['RIGHT_ITEMS'], 'li', edit_key='RIGHT_ITEMS')
+        data['RIGHT_ITEMS'] = process_list(data['RIGHT_ITEMS'], 'li', edit_key='RIGHT_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'SUMMARY_ITEMS' in data:
-        data['SUMMARY_ITEMS'] = process_list(data['SUMMARY_ITEMS'], 'li', edit_key='SUMMARY_ITEMS')
+        data['SUMMARY_ITEMS'] = process_list(data['SUMMARY_ITEMS'], 'li', edit_key='SUMMARY_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'TIMELINE_ITEMS' in data:
         timeline_count = len(data['TIMELINE_ITEMS']) if isinstance(data['TIMELINE_ITEMS'], list) else 0
         data['TIMELINE_DENSITY_CLASS'] = 'timeline-rail' if timeline_count <= 4 else 'timeline-compact'
-        data['TIMELINE_ITEMS'] = process_list(data['TIMELINE_ITEMS'], 'timeline-item', edit_key='TIMELINE_ITEMS')
+        data['TIMELINE_ITEMS'] = process_list(data['TIMELINE_ITEMS'], 'timeline-item', edit_key='TIMELINE_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'STAT_ITEMS' in data:
-        data['STAT_ITEMS'] = process_list(data['STAT_ITEMS'], 'stat-item', edit_key='STAT_ITEMS')
+        data['STAT_ITEMS'] = process_list(data['STAT_ITEMS'], 'stat-item', edit_key='STAT_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'QUIZ_OPTIONS' in data:
         answer_index = data.get('ANSWER_INDEX', 0)
@@ -511,7 +514,7 @@ def render_slide(slide_data: dict) -> str:
 
     # 신규: 매트릭스 아이템
     if 'MATRIX_ITEMS' in data:
-        data['MATRIX_ITEMS'] = process_list(data['MATRIX_ITEMS'], 'matrix-item', edit_key='MATRIX_ITEMS')
+        data['MATRIX_ITEMS'] = process_list(data['MATRIX_ITEMS'], 'matrix-item', edit_key='MATRIX_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     # 신규: O/X 아이템
     if 'O_ITEMS' in data or 'X_ITEMS' in data:
@@ -540,7 +543,7 @@ def render_slide(slide_data: dict) -> str:
                     item['marker'] = data['O_MARKER']
                 if not item.get('marker_class'):
                     item['marker_class'] = 'marker-o'
-        data['O_ITEMS'] = process_list(data['O_ITEMS'], 'ox-item', edit_key='O_ITEMS', default_marker=data['O_MARKER'], default_marker_class='marker-o')
+        data['O_ITEMS'] = process_list(data['O_ITEMS'], 'ox-item', edit_key='O_ITEMS', default_marker=data['O_MARKER'], default_marker_class='marker-o', sequential=data.get('SEQUENTIAL', False))
     if 'X_ITEMS' in data:
         for item in data['X_ITEMS']:
             if isinstance(item, dict):
@@ -548,7 +551,7 @@ def render_slide(slide_data: dict) -> str:
                     item['marker'] = data['X_MARKER']
                 if not item.get('marker_class'):
                     item['marker_class'] = 'marker-x'
-        data['X_ITEMS'] = process_list(data['X_ITEMS'], 'ox-item', edit_key='X_ITEMS', default_marker=data['X_MARKER'], default_marker_class='marker-x')
+        data['X_ITEMS'] = process_list(data['X_ITEMS'], 'ox-item', edit_key='X_ITEMS', default_marker=data['X_MARKER'], default_marker_class='marker-x', sequential=data.get('SEQUENTIAL', False))
 
     # 신규: 로드맵 아이템
     if 'ROADMAP_ITEMS' in data:
@@ -622,7 +625,10 @@ def render_slide(slide_data: dict) -> str:
     html = re.sub(r'\{\{\#if [A-Z_]+\}\}(.*?)\{\{\/if\}\}', lambda m: re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)[1] if len(re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)) > 1 else '', html, flags=re.DOTALL)
 
     # 단순 치환
+    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML'}
     for key, value in data.items():
+        if isinstance(value, str) and key not in html_keys:
+            value = value.replace('\n', '<br>')
         html = html.replace(f'{{{{{key}}}}}', str(value))
 
     # 채워지지 않은 변수 지우기
@@ -689,6 +695,9 @@ def build_html(input_json: str, output_html: str) -> None:
     final_html = base_html.replace('{{PRESENTATION_TITLE}}', presentation_title)
     final_html = final_html.replace('{{THEME_CSS}}', theme_css)
     
+    # 슬라이드 본문을 먼저 조립해야, 내부의 클래스(screenshot-frame 등)에 동적 테마 치환이 적용됩니다!
+    final_html = final_html.replace('{{SLIDES_CONTENT}}', slides_content)
+    
     # 테마 에디터와 충돌하지 않도록 모든 프리셋, 패턴, 장식 클래스를 문자열 치환 주입
     if theme_colors:
         frame_preset = theme_colors.get('image_frame_preset', 'business')
@@ -728,7 +737,6 @@ def build_html(input_json: str, output_html: str) -> None:
             if 'tech_grid_lines' in decorations:
                 final_html = final_html.replace('class="decor-techlines"', 'class="decor-techlines active"')
 
-    final_html = final_html.replace('{{SLIDES_CONTENT}}', slides_content)
     assert_no_unresolved_includes(final_html)
 
     # 출력 폴더 생성
