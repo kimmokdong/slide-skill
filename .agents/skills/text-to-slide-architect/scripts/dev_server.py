@@ -211,9 +211,6 @@ def decode_upload_image(image_data: str, filename: str, file_type: str = ""):
     if not detected_mime:
         raise ApiError(415, "Unsupported or invalid image file.")
 
-    if declared_mime and declared_mime not in {"image/jpg", detected_mime}:
-        raise ApiError(415, "The image content does not match the declared file type.")
-
     stem = sanitize_filename_stem(filename)
     return raw, detected_mime, extension, stem
 
