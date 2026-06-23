@@ -1,0 +1,30 @@
+<!-- 레이아웃: 비교 (좌우 대비) -->
+<section>
+    <div class="slide-container">
+        <div class="slide-header">
+            <h2 data-edit-id="TITLE">{{TITLE}}</h2>
+        </div>
+        <div class="slide-body comparison-body">
+            <div class="comparison-grid">
+                <div class="card comparison-card">
+                    <div class="comparison-card-title" style="color: var(--color-accent);">
+                        <span data-edit-id="LEFT_TITLE">{{LEFT_TITLE}}</span>
+                    </div>
+                    <ul class="bullet-list">
+                        {{LEFT_ITEMS}}
+                    </ul>
+                </div>
+                <div class="card comparison-card">
+                    <div class="comparison-card-title" style="color: var(--color-accent-secondary);">
+                        <span data-edit-id="RIGHT_TITLE">{{RIGHT_TITLE}}</span>
+                    </div>
+                    <ul class="bullet-list">
+                        {{RIGHT_ITEMS}}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {{BOTTOM_TAKEAWAY_HTML}}
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>

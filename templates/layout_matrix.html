@@ -1,0 +1,16 @@
+<!-- 레이아웃: 4분면 매트릭스 (matrix) -->
+<section>
+    <div class="slide-container">
+        <div class="slide-header matrix-header">
+            <h2 data-edit-id="TITLE">{{TITLE}}</h2>
+            {{#if SUBTITLE}}<p class="matrix-subtitle" data-edit-id="SUBTITLE">{{SUBTITLE}}</p>{{/if}}
+        </div>
+        <div class="slide-body matrix-body">
+            <div class="matrix-grid">
+                {{MATRIX_ITEMS}}
+            </div>
+        </div>
+        {{BOTTOM_TAKEAWAY_HTML}}
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>

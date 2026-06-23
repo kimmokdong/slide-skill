@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{PRESENTATION_TITLE}}</title>
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
+
+    <!-- Google Fonts: editor typography presets -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Montserrat:wght@400;500;700;900&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@300;400;500;700;900&family=Orbitron:wght@400;700;900&family=Outfit:wght@400;500;700;900&family=Playfair+Display:wght@400;700;900&display=swap"
+        rel="stylesheet">
+
+    <!-- 공통 레이아웃 및 디자인 시스템 (CSS) -->
+    <style>
+{{INCLUDE:includes/styles/core.css}}
+{{INCLUDE:includes/styles/layouts.css}}
+{{INCLUDE:includes/styles/review_mode.css}}
+{{INCLUDE:includes/styles/interactions.css}}
+{{INCLUDE:includes/styles/theme_presets_editor.css}}
+    </style>
+
+
+    <!-- 테마 CSS (동적으로 주입되는 컬러 변수 및 특정 스타일) -->
+    {{THEME_CSS}}
+</head>
+
+<body>
+    <!-- Review Toggle Button -->
+    <button class="review-toggle-fab" onclick="toggleReviewMode()" title="리뷰 모드 열기 (단축키: E)">✍️</button>
+
+    <!-- 글로벌 플로팅 타이머 버튼 -->
+    <button class="timer-toggle-fab" id="timer-fab" onclick="toggleTimerModal()" title="타이머 열기 (단축키: T)">⏱️</button>
+
+    <!-- 단축키 도움말 버튼 -->
+    <button class="help-toggle-fab" onclick="Reveal.toggleHelp()" title="단축키 도움말 (단축키: ?)">❓</button>
+
+    <!-- 타이머 오버레이 모달 -->
+    <div id="timer-modal" class="timer-modal-overlay" onclick="closeTimerModal()">
+        <div class="timer-modal-wrapper" onclick="event.stopPropagation()">
+            <button class="timer-modal-close-btn" onclick="closeTimerModal()">✕</button>
+            <div class="timer-display-container">
+                <span id="timer-display-time">05:00</span>
+            </div>
+            
+            <div class="timer-presets-row">
+                <button class="timer-btn preset" onclick="setTimerPreset(60)">1분</button>
+                <button class="timer-btn preset" onclick="setTimerPreset(180)">3분</button>
+                <button class="timer-btn preset" onclick="setTimerPreset(300)">5분</button>
+                <button class="timer-btn preset" onclick="setTimerPreset(600)">10분</button>
+            </div>
+            
+            <div class="timer-adjust-row">
+                <button class="timer-btn adjust" onclick="adjustTimerTime(60)">+1분</button>
+                <button class="timer-btn adjust" onclick="adjustTimerTime(-60)">-1분</button>
+                <button class="timer-btn adjust" onclick="adjustTimerTime(10)">+10초</button>
+                <button class="timer-btn adjust" onclick="adjustTimerTime(-10)">-10초</button>
+            </div>
+            
+            <div class="timer-controls-row">
+                <button id="timer-start-btn" class="timer-btn control play" onclick="toggleTimerStart()">시작</button>
+                <button class="timer-btn control reset" onclick="resetTimer()">리셋</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox Overlay -->
+    <div id="image-lightbox" class="lightbox-overlay" onclick="closeLightbox()">
+        <div class="lightbox-wrapper" onclick="event.stopPropagation()">
+            <button class="lightbox-close-btn" onclick="closeLightbox()" title="닫기 (Esc)">✕</button>
+            <img id="lightbox-target-img" class="lightbox-img" src="" alt="확대 이미지">
+            <div id="lightbox-caption" class="lightbox-caption">이미지 상세 보기</div>
+        </div>
+    </div>
+
+    <div class="reveal-container-wrapper" id="reveal-wrapper">
+        <div class="reveal">
+            <!-- 배경 패턴 레이어 -->
+            <div id="patternOverlay" class="pattern-overlay"></div>
+            <!-- 배경 장식 레이어 -->
+            <div class="decorations-layer">
+                <div id="decorTL" class="decor-corner decor-corner-tl"></div>
+                <div id="decorTR" class="decor-corner decor-corner-tr"></div>
+                <div id="decorBL" class="decor-corner decor-corner-bl"></div>
+                <div id="decorBR" class="decor-corner decor-corner-br"></div>
+                
+                <div id="decorCircle1" class="decor-circle decor-circle-1"></div>
+                <div id="decorCircle2" class="decor-circle decor-circle-2"></div>
+                
+                <div id="decorHudL" class="decor-hud decor-hud-left"></div>
+                <div id="decorHudR" class="decor-hud decor-hud-right"></div>
+                
+                <div id="decorWavy" class="decor-wavy"></div>
+                
+                <div id="decorShape1" class="decor-shape decor-shape-1"></div>
+                <div id="decorShape2" class="decor-shape decor-shape-2"></div>
+                <div id="decorShape3" class="decor-shape decor-shape-3"></div>
+                <div id="decorShape4" class="decor-shape decor-shape-4"></div>
+                
+                <div id="decorTechlines" class="decor-techlines"></div>
+            </div>
+
+            <div class="slides">
+                {{SLIDES_CONTENT}}
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Sidebar -->
+    <aside class="review-sidebar">
+        <div class="review-header">
+            <h2>✍️ 리뷰 모드</h2>
+            <button class="close-review-btn" onclick="toggleReviewMode()">✕</button>
+        </div>
+        
+        <div class="review-tab-nav">
+            <button id="tab-btn-feedback" class="review-tab-btn active" onclick="switchReviewTab('feedback')">📝 피드백 작성</button>
+            <button id="tab-btn-theme" class="review-tab-btn" onclick="switchReviewTab('theme')">🎨 테마 에디터</button>
+            <button id="tab-btn-direct" class="review-tab-btn" onclick="switchReviewTab('direct')">텍스트 직접 편집</button>
+        </div>
+
+        <div class="review-content">
+            <!-- 1. 피드백 탭 패널 -->
+            <div id="pane-feedback" class="review-tab-pane active">
+                <div class="review-section">
+                    <h3>🌐 전체 수정 요청 (Global)</h3>
+                    <textarea id="global-feedback" class="review-textarea"
+                        placeholder="전체 테마, 톤앤매너, 공통 수정 사항을 적어주세요."></textarea>
+                </div>
+
+                <div class="review-section">
+                    <h3>↕️ 슬라이드 구성 관리</h3>
+                    <ul id="slide-sorter" class="slide-sorter-list">
+                        <!-- JS로 동적 생성됨 -->
+                    </ul>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 6px; text-align: right;">* 드래그 앤 드롭으로 순서 변경
+                    </div>
+                </div>
+
+                <div class="review-section"
+                    style="border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.05);">
+                    <h3>📝 <span id="current-slide-label">1번</span> 슬라이드 수정</h3>
+                    <textarea id="local-feedback" class="review-textarea"
+                        placeholder="현재 보고 있는 슬라이드에 대한 구체적인 수정/추가 요청을 적어주세요."></textarea>
+                </div>
+            </div>
+
+            <!-- 2. 테마 에디터 탭 패널 -->
+            <div id="pane-theme" class="review-tab-pane">
+                <!-- A. 조합 데모 프리셋 -->
+                <div class="editor-form-group">
+                    <label>조합 프리셋 데모</label>
+                    <div class="editor-preset-chips">
+                        <div class="editor-chip" onclick="applyPresetToEditor('#fffbf0', '#f4ebe1', '#1e293b', '#64748b', '#ec4899', '#818cf8', 'cute_note', 'cute', 'friendly', 'dots', ['corner_accent'], 'cute')">파스텔 큐트</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#0f172a', '#1e293b', '#f8fafc', '#94a3b8', '#6366f1', '#a5b4fc', 'tech_neon', 'tech', 'cyber', 'grid', ['hud_brackets', 'tech_grid_lines'], 'tech')">네온 사이버</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#ffffff', '#f1f5f9', '#0f172a', '#475569', '#2563eb', '#1d4ed8', 'business_clean', 'business', 'classic', 'none', [], 'business')">모던 비즈니스</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#fbf7f0', '#ebd8c3', '#4a3319', '#7a5a3a', '#d97706', '#92400e', 'editorial_serif', 'minimal_raw', 'editorial', 'diagonal', ['corner_accent'], 'minimal')">에디토리얼 매거진</div>
+                        <div class="editor-chip" onclick="applyPresetToEditor('#fec2f2', '#fee2e2', '#450a0a', '#7f1d1d', '#ef4444', '#b91c1c', 'retro_bold', 'handdrawn', 'chalkboard', 'diagonal', ['circles', 'wavy_line', 'geometric_shapes'], 'retro')">레트로 팝아트</div>
+                        <div class="editor-chip editor-chip-shuffle" onclick="applyRandomPresetToEditor()"><i class="fa-solid fa-shuffle"></i> 🎲 무작위 셔플</div>
+                    </div>
+                </div>
+
+                <!-- B. 60-30-10 컬러 피커 -->
+                <div class="editor-form-group">
+                    <label>동적 컬러 조정 (60-30-10)</label>
+                    <div class="editor-color-grid">
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-bg" value="#f8fafc">
+                            <span>배경(60%)</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-bg-secondary" value="#e2e8f0">
+                            <span>구조(30%)</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-text" value="#1e293b">
+                            <span>글자색</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-text-secondary" value="#64748b">
+                            <span>보조글자</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-accent" value="#4f46e5">
+                            <span>강조(10%)</span>
+                        </div>
+                        <div class="editor-color-input-wrapper">
+                            <input type="color" id="editor-color-accent-secondary" value="#7c3aed">
+                            <span>보조강조</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- C. 테마 요소 셀렉트 박스 -->
+                <div class="editor-form-group">
+                    <label>카드 스타일 프리셋</label>
+                    <select id="editor-select-card" class="editor-select">
+                        <option value="cute_note">아기자기 노트 (cute_note)</option>
+                        <option value="tech_neon">네온 테크 (tech_neon)</option>
+                        <option value="business_clean" selected>깔끔 비즈니스 (business_clean)</option>
+                        <option value="editorial_serif">에디토리얼 세리프 (editorial_serif)</option>
+                        <option value="retro_bold">레트로 볼드 (retro_bold)</option>
+                        <option value="transparent">배경 없음 투명 (transparent)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>아이콘 프리셋</label>
+                    <select id="editor-select-icon" class="editor-select">
+                        <option value="cute">cute (둥근 파스텔)</option>
+                        <option value="tech">tech (각진 HUD 네온)</option>
+                        <option value="business" selected>business (미니멀 코너)</option>
+                        <option value="minimal_raw">minimal_raw (쌩 아이콘)</option>
+                        <option value="handdrawn">handdrawn (손그림 원형)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>글꼴 타이포</label>
+                    <select id="editor-select-font" class="editor-select">
+                        <option value="friendly" selected>friendly (Outfit/Noto Sans)</option>
+                        <option value="cyber">cyber (Orbitron/SquareNeo)</option>
+                        <option value="classic">classic (Playfair/Myeongjo)</option>
+                        <option value="editorial">editorial (Montserrat/Pretendard)</option>
+                        <option value="chalkboard">chalkboard (Caveat/PenScript)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>강조 텍스트 스타일</label>
+                    <select id="editor-select-highlight" class="editor-select">
+                        <option value="friendly" selected>friendly (파스텔 형광펜)</option>
+                        <option value="cyber">cyber (HUD 꺾쇠괄호)</option>
+                        <option value="classic">classic (알약 테두리 태그)</option>
+                        <option value="editorial">editorial (반전 블록)</option>
+                        <option value="chalkboard">chalkboard (손글씨 물결빨강)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>하단 요약바 스타일</label>
+                    <select id="editor-select-takeaway" class="editor-select">
+                        <option value="friendly" selected>friendly (둥글둥글 구름형)</option>
+                        <option value="cyber">cyber (HUD 사선 컷아웃)</option>
+                        <option value="classic">classic (우아한 구분선형)</option>
+                        <option value="editorial">editorial (미니멀 상단라인)</option>
+                        <option value="chalkboard">chalkboard (칠판 분필받침대)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>화면 전환 모션</label>
+                    <select id="editor-select-motion" class="editor-select">
+                        <option value="friendly" selected>friendly (바운시 팝)</option>
+                        <option value="cyber">cyber (글리치 샤프)</option>
+                        <option value="classic">classic (부드러운 페이드아웃)</option>
+                        <option value="editorial">editorial (프레스 플립)</option>
+                        <option value="chalkboard">chalkboard (내추럴 리스폰스)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>이미지 프레임 프리셋</label>
+                    <select id="editor-select-frame" class="editor-select">
+                        <option value="cute">cute (마스킹테이프 노트)</option>
+                        <option value="tech">tech (CLI 터미널창)</option>
+                        <option value="business" selected>business (깔끔 윈도우)</option>
+                        <option value="retro">retro (폴라로이드 사진틀)</option>
+                        <option value="minimal">minimal (무테 에어플로팅)</option>
+                    </select>
+                </div>
+
+                <div class="editor-form-group">
+                    <label>배경 패턴</label>
+                    <select id="editor-select-pattern" class="editor-select">
+                        <option value="none" selected>none (패턴 없음)</option>
+                        <option value="grid">grid (모눈 종이)</option>
+                        <option value="dots">dots (도트 그리드)</option>
+                        <option value="diagonal">diagonal (사선 빗금)</option>
+                        <option value="blueprint">blueprint (청사진 설계)</option>
+                        <option value="terrazzo">terrazzo (스톤 테라초)</option>
+                    </select>
+                </div>
+
+                <!-- D. 배경 장식 체크박스 -->
+                <div class="editor-form-group">
+                    <label>배경 장식 레이어</label>
+                    <div class="editor-checkbox-grid">
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-corner" value="corner_accent"> 모서리 액센트
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-circles" value="circles"> 원형 버블
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-brackets" value="hud_brackets"> HUD 대괄호
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-wavy" value="wavy_line"> 물결 무늬선
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-shapes" value="geometric_shapes"> 기하학 도형
+                        </label>
+                        <label class="editor-checkbox-label">
+                            <input type="checkbox" id="editor-check-decor-techlines" value="tech_grid_lines"> 설계 가이드선
+                        </label>
+                    </div>
+                </div>
+
+                <!-- E. 고대비 토글 버튼 -->
+                <div class="editor-form-group" style="text-align: center; margin-top: 15px;">
+                    <button class="editor-chip" id="editor-btn-contrast" style="background:#fbbf24; color:#0f172a; font-weight:800; border:none; padding:8px 14px; width:100%;" onclick="toggleEditorContrast()">
+                        <i class="fa-solid fa-circle-half-stroke"></i> 빔프로젝터 고대비 모드 ON
+                    </button>
+                </div>
+            </div>
+
+            <div id="pane-direct" class="review-tab-pane">
+                <div class="review-section">
+                    <h3>현재 슬라이드 텍스트 편집</h3>
+                    <p class="direct-edit-hint">슬라이드 안의 점선 영역을 클릭하면 내용을 바로 수정할 수 있습니다. 글자 크기는 선택한 텍스트에만 적용됩니다.</p>
+                    <div class="direct-edit-controls">
+                        <div id="direct-edit-selected" class="direct-edit-selected">선택된 텍스트 없음</div>
+                        <label>
+                            글자 크기
+                            <input id="direct-font-range" type="range" min="12" max="96" step="1" value="32">
+                        </label>
+                        <label>
+                            px
+                            <input id="direct-font-number" type="number" min="12" max="96" step="1" value="32">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="review-footer" style="display: flex; flex-direction: column; gap: 8px; padding: 15px; box-sizing: border-box;">
+            <button id="btn-copy-prompt" class="copy-prompt-btn" onclick="generateAndCopyPrompt()" style="width: 100%;">🤖 AI 프롬프트 복사하기</button>
+            <button id="btn-save-layout" class="save-layout-btn" onclick="saveSlideLayoutToServer()" style="background:#4f46e5; color:white; font-weight:800; border:none; padding:10px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; width: 100%; font-size: 14px;">💾 슬라이드 구성 로컬 저장</button>
+            <button id="btn-apply-theme" class="apply-theme-btn" style="display:none; width: 100%;" onclick="applyThemeEditorSettings()">🎨 테마 실시간 적용</button>
+            <button id="btn-save-theme" class="apply-theme-btn" style="display:none; width: 100%;" onclick="saveThemeEditorSettings()">테마 영구 저장</button>
+            <button id="btn-save-text-edits" class="save-layout-btn" onclick="saveDirectTextEditsToServer()" style="display:none; background:#0f766e; color:white; font-weight:800; border:none; padding:10px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; width: 100%; font-size: 14px;">텍스트 수정 영구 저장</button>
+        </div>
+    </aside>
+
+    <!-- SortableJS (Drag & Drop) -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- Reveal.js 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+
+    <script>
+{{INCLUDE:includes/scripts/theme_editor.js}}
+{{INCLUDE:includes/scripts/slide_interactions.js}}
+{{INCLUDE:includes/scripts/reveal_autofit.js}}
+{{INCLUDE:includes/scripts/lightbox.js}}
+{{INCLUDE:includes/scripts/review_tools_v2.js}}
+{{INCLUDE:includes/scripts/timer.js}}
+{{INCLUDE:includes/scripts/draggable_fabs.js}}
+    </script>
+</body>
+
+</html>

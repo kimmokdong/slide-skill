@@ -1,0 +1,68 @@
+<!-- 레이아웃: 실습 안내 (Hands-on) -->
+<section class="hands-on-slide">
+    <div class="slide-container">
+        <div class="slide-header hands-on-header">
+            {{#if STEPPER_ITEMS}}
+            <div class="stepper-container hands-on-stepper">
+                {{STEPPER_ITEMS}}
+            </div>
+            {{else}}
+            <div class="slide-title-row">
+                <div class="step-badge hands-on-badge">실습 시간</div>
+                <h2 data-edit-id="TITLE">{{TITLE}}</h2>
+            </div>
+            {{/if}}
+        </div>
+
+        <div class="hands-on-content">
+            <!-- 좌측: 실습 지시사항 -->
+            <div class="slide-body hands-on-body">
+                {{#if STEPPER_ITEMS}}
+                <div class="hands-on-current-label" data-edit-id="TITLE">{{TITLE}}</div>
+                {{/if}}
+                <h3 class="instruction-label">실습 순서</h3>
+                {{#if BULLET_ITEMS}}
+                <ol class="hands-on-steps">
+                    {{BULLET_ITEMS}}
+                </ol>
+                {{/if}}
+                <div class="hands-on-meta">
+                    {{#if TIP}}
+                    <div class="tutorial-tip">
+                        <span class="tip-icon">💡</span>
+                        <span class="tip-text" data-edit-id="TIP">{{TIP}}</span>
+                    </div>
+                    {{/if}}
+                    {{#if DURATION}}
+                    <div class="duration-badge" data-edit-id="DURATION">예상 소요 시간: {{DURATION}}</div>
+                    {{/if}}
+                </div>
+            </div>
+
+            <!-- 우측: 예상 결과 화면 -->
+            <div class="hands-on-result">
+                <div class="hands-on-result-label">예상 결과</div>
+                <div class="screenshot-frame browser-frame editable-image-frame" data-slide-index="{{SLIDE_INDEX}}" data-target-key="IMAGE_SRC">
+                    <div class="frame-dots">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                    </div>
+                    {{#if IMAGE_SRC}}
+                    <img src="{{IMAGE_SRC}}" alt="{{TITLE}}" class="slide-image screenshot-img">
+                    {{else}}
+                    <div class="placeholder-img-content hands-on-placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image placeholder-icon"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                        <span class="placeholder-label">예상 결과 화면</span>
+                    </div>
+                    {{/if}}
+                </div>
+                {{#if RESULT_TEXT}}
+                <div class="hands-on-result-caption" data-edit-id="RESULT_TEXT">{{RESULT_TEXT}}</div>
+                {{/if}}
+            </div>
+        </div>
+        {{BOTTOM_TAKEAWAY_HTML}}
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>
