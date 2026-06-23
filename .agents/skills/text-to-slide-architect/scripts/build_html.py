@@ -11,6 +11,7 @@ import sys
 import os
 import json
 import re
+from html import escape
 
 
 INCLUDE_PATTERN = re.compile(r'\{\{\s*INCLUDE:([^}]+)\s*\}\}')
@@ -283,41 +284,114 @@ def extract_percentage(value_str: str) -> int:
     return 0
 
 
-def process_list(items, tag='li', class_name=''):
+def editable_attrs(edit_id: str) -> str:
+    """Return stable attributes used by browser-side direct editing."""
+    if not edit_id:
+        return ""
+    return f' data-edit-id="{escape(str(edit_id), quote=True)}"'
+
+
+def merge_inline_style(existing_style: str, new_rules: dict) -> str:
+    rules = {}
+    for part in (existing_style or "").split(';'):
+        if ':' in part:
+            key, value = part.split(':', 1)
+            rules[key.strip()] = value.strip()
+    rules.update({key: value for key, value in new_rules.items() if value})
+    return '; '.join(f'{key}: {value}' for key, value in rules.items())
+
+
+def get_first_value(data: dict, keys: list, default=''):
+    for key in keys:
+        value = data.get(key)
+        if value is not None and value != '':
+            return value
+    return default
+
+
+def apply_style_overrides(rendered_html: str, style_overrides: dict) -> str:
+    if not isinstance(style_overrides, dict) or not style_overrides:
+        return rendered_html
+
+    for edit_id, style in style_overrides.items():
+        if not isinstance(style, dict):
+            continue
+        font_size = style.get('fontSize')
+        if not font_size:
+            continue
+        font_size_value = str(font_size).strip()
+        if '!important' not in font_size_value:
+            font_size_value = f'{font_size_value} !important'
+        pattern = re.compile(r'(<[^>]+data-edit-id="' + re.escape(str(edit_id)) + r'"[^>]*)(>)')
+
+        def replace_tag(match):
+            tag_open = match.group(1)
+            tag_close = match.group(2)
+            style_match = re.search(r'style="([^"]*)"', tag_open)
+            merged_style = merge_inline_style(style_match.group(1) if style_match else "", {'font-size': font_size_value})
+            if style_match:
+                tag_open = tag_open[:style_match.start()] + f'style="{merged_style}"' + tag_open[style_match.end():]
+            else:
+                tag_open = f'{tag_open} style="{merged_style}"'
+            if 'data-style-locked=' not in tag_open:
+                tag_open = f'{tag_open} data-style-locked="true"'
+            return tag_open + tag_close
+
+        rendered_html = pattern.sub(replace_tag, rendered_html)
+    return rendered_html
+
+
+def process_list(items, tag='li', class_name='', edit_key='', default_marker='O', default_marker_class='marker-o', sequential=False):
     """리스트 데이터를 HTML 태그로 변환합니다."""
     if not items:
         return ""
+
+    if sequential:
+        class_name = f"{class_name} fragment" if class_name else "fragment"
 
     cls_attr = f' class="{class_name}"' if class_name else ''
     result = []
 
     for index, item in enumerate(items):
+        item_edit_id = f"{edit_key}[{index}]" if edit_key else ""
+        if tag == 'ox-item':
+            if isinstance(item, dict):
+                text = item.get('text', '')
+                marker = item.get('marker', default_marker)
+                marker_class = item.get('marker_class') or default_marker_class
+            else:
+                text = str(item)
+                marker = default_marker
+                marker_class = default_marker_class
+            result.append(f'<div class="ox-item{" fragment" if sequential else ""}"><span class="ox-marker {marker_class}"{editable_attrs(item_edit_id + ".marker")}>{marker}</span><span class="ox-text"{editable_attrs(item_edit_id + ".text")}>{text}</span></div>')
+            continue
+
         if isinstance(item, str):
-            result.append(f"<{tag}{cls_attr}>{item}</{tag}>")
+            result.append(f"<{tag}{cls_attr}{editable_attrs(item_edit_id)}>{item}</{tag}>")
         elif isinstance(item, dict):
             # 아이콘 불릿 지원: {"icon": "💡", "text": "내용"}
             if 'icon' in item and 'text' in item:
                 icon = item['icon']
                 text = item['text']
-                result.append(f'<li class="icon-bullet"><span class="bullet-icon">{icon}</span><span class="bullet-text">{text}</span></li>')
+                result.append(f'<li class="icon-bullet{" fragment" if sequential else ""}"><span class="bullet-icon">{icon}</span><span class="bullet-text"{editable_attrs(item_edit_id + ".text")}>{text}</span></li>')
             elif tag == 'li':
                 title = item.get('title', item.get('label', ''))
                 desc = item.get('desc', item.get('text', ''))
                 if title or desc:
-                    result.append(f'''<li>
-                        {f'<strong>{title}</strong>' if title else ''}
-                        {f'<span>{desc}</span>' if desc else ''}
+                    result.append(f'''<li class="{"fragment" if sequential else ""}">
+                        {f'<strong{editable_attrs(item_edit_id + ".title")}>{title}</strong>' if title else ''}
+                        {f'<span{editable_attrs(item_edit_id + ".desc")}>{desc}</span>' if desc else ''}
                     </li>''')
             # 복합 객체 처리
             elif tag == 'timeline-item':
                 date = item.get('date', '')
-                date_html = f'<div class="timeline-date">{date}</div>' if date else ''
+                date_html = f'<div class="timeline-date"{editable_attrs(item_edit_id + ".date")}>{date}</div>' if date else ''
                 result.append(f'''<div class="timeline-item">
                     <div class="timeline-marker"><span>{index + 1}</span></div>
                     <div class="timeline-content">
                         {date_html}
-                        <div class="timeline-title">{item.get('title', '')}</div>
-                        <div class="timeline-desc">{item.get('desc', '')}</div>
+                        <div class="timeline-title"{editable_attrs(item_edit_id + ".title")}>{item.get('title', '')}</div>
+                        <div class="timeline-desc"{editable_attrs(item_edit_id + ".desc")}>{item.get('desc', '')}</div>
                     </div>
                 </div>''')
             elif tag == 'stat-item':
@@ -327,29 +401,22 @@ def process_list(items, tag='li', class_name=''):
                 # 수치가 0%인 텍스트인 경우, 클릭 시 100% 차오르게 기본 타겟을 100으로 설정
                 target_percent = percentage if percentage > 0 else 100
                 result.append(f'''<div class="card stat-card-button" onclick="clickStatCard(this, {target_percent})" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; padding: 1.2em 1em; cursor: pointer; transition: all 0.2s ease; flex: 1; max-width: 350px; min-width: 220px;">
-                    <div class="stat-number" style="color: var(--color-accent); font-size: 1.8em; font-weight: 900; line-height: 1.1; margin-bottom: 0.1em;">{value_str}</div>
-                    <div class="stat-label" style="font-size: 0.8em; color: var(--color-text-secondary); font-weight: 500; margin-bottom: 0.6em; word-break: keep-all;">{label_str}</div>
+                    <div class="stat-number"{editable_attrs(item_edit_id + ".value")} style="color: var(--color-accent); font-size: 1.8em; font-weight: 900; line-height: 1.1; margin-bottom: 0.1em;">{value_str}</div>
+                    <div class="stat-label"{editable_attrs(item_edit_id + ".label")} style="font-size: 0.8em; color: var(--color-text-secondary); font-weight: 500; margin-bottom: 0.6em; word-break: keep-all;">{label_str}</div>
                     <div class="stat-gauge-container" style="background: rgba(0,0,0,0.05); border-radius: 4px; height: 8px; overflow: hidden; width: 100%; margin-top: auto;">
                         <div class="stat-gauge-bar" data-target-width="{percentage}%" style="background: var(--color-gradient); height: 100%; width: 0%; border-radius: 4px; transition: width 1.2s cubic-bezier(0.1, 0.8, 0.3, 1);"></div>
                     </div>
                 </div>''')
             elif tag == 'quiz-option':
-                result.append(f'<div class="quiz-option card">{item.get("text", "")}</div>')
+                result.append(f'<div class="quiz-option card"{editable_attrs(item_edit_id + ".text")}>{item.get("text", "")}</div>')
             # matrix 아이템: {"label": "텍스트", "quadrant": 1~4}
             elif tag == 'matrix-item':
                 label = item.get('label', item.get('title', ''))
                 icon = item.get('icon', '')
                 desc = item.get('desc', '')
                 icon_html = f'<div class="matrix-icon">{icon}</div>' if icon else ''
-                desc_html = f'<div class="matrix-desc">{desc}</div>' if desc else ''
-                result.append(f'<div class="matrix-cell card">{icon_html}<div class="matrix-label">{label}</div>{desc_html}</div>')
-            # vs_ox 아이템
-            elif tag == 'ox-item':
-                text = item.get('text', '')
-                marker = item.get('marker', 'O')
-                marker_class = 'marker-o' if marker.upper() == 'O' else 'marker-x'
-                result.append(f'<div class="ox-item"><span class="ox-marker {marker_class}">{marker.upper()}</span><span class="ox-text">{text}</span></div>')
-
+                desc_html = f'<div class="matrix-desc"{editable_attrs(item_edit_id + ".desc")}>{desc}</div>' if desc else ''
+                result.append(f'<div class="matrix-cell card{" fragment" if sequential else ""}">{icon_html}<div class="matrix-label"{editable_attrs(item_edit_id + ".label")}>{label}</div>{desc_html}</div>')
     return "\n".join(result)
 
 
@@ -359,7 +426,7 @@ def render_bottom_takeaway(slide_data: dict) -> str:
     if not takeaway:
         return ''
     return f'''<div class="bottom-takeaway-bar">
-    <div class="takeaway-content">{takeaway}</div>
+    <div class="takeaway-content"{editable_attrs("BOTTOM_TAKEAWAY")}>{takeaway}</div>
 </div>'''
 
 
@@ -368,7 +435,7 @@ def render_section_header(slide_data: dict) -> str:
     header = slide_data.get('SECTION_HEADER', '')
     if not header:
         return ''
-    return f'<div class="section-header-tag">{header}</div>'
+    return f'<div class="section-header-tag"{editable_attrs("SECTION_HEADER")}>{header}</div>'
 
 
 def render_slide(slide_data: dict) -> str:
@@ -411,25 +478,29 @@ def render_slide(slide_data: dict) -> str:
     elif 'TITLE' in data:
         data['DISPLAY_TITLE'] = data.get('TITLE', '')
 
+    if slide_type == 'vs_ox' or 'O_ITEMS' in data or 'X_ITEMS' in data:
+        data['O_MARKER'] = str(get_first_value(data, ['O_MARKER', 'o_marker'], '⭕'))
+        data['X_MARKER'] = str(get_first_value(data, ['X_MARKER', 'x_marker'], '❌'))
+
     if 'BULLET_ITEMS' in data:
-        data['BULLET_ITEMS'] = process_list(data['BULLET_ITEMS'], 'li')
+        data['BULLET_ITEMS'] = process_list(data['BULLET_ITEMS'], 'li', edit_key='BULLET_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'LEFT_ITEMS' in data:
-        data['LEFT_ITEMS'] = process_list(data['LEFT_ITEMS'], 'li')
+        data['LEFT_ITEMS'] = process_list(data['LEFT_ITEMS'], 'li', edit_key='LEFT_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'RIGHT_ITEMS' in data:
-        data['RIGHT_ITEMS'] = process_list(data['RIGHT_ITEMS'], 'li')
+        data['RIGHT_ITEMS'] = process_list(data['RIGHT_ITEMS'], 'li', edit_key='RIGHT_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'SUMMARY_ITEMS' in data:
-        data['SUMMARY_ITEMS'] = process_list(data['SUMMARY_ITEMS'], 'li')
+        data['SUMMARY_ITEMS'] = process_list(data['SUMMARY_ITEMS'], 'li', edit_key='SUMMARY_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'TIMELINE_ITEMS' in data:
         timeline_count = len(data['TIMELINE_ITEMS']) if isinstance(data['TIMELINE_ITEMS'], list) else 0
         data['TIMELINE_DENSITY_CLASS'] = 'timeline-rail' if timeline_count <= 4 else 'timeline-compact'
-        data['TIMELINE_ITEMS'] = process_list(data['TIMELINE_ITEMS'], 'timeline-item')
+        data['TIMELINE_ITEMS'] = process_list(data['TIMELINE_ITEMS'], 'timeline-item', edit_key='TIMELINE_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'STAT_ITEMS' in data:
-        data['STAT_ITEMS'] = process_list(data['STAT_ITEMS'], 'stat-item')
+        data['STAT_ITEMS'] = process_list(data['STAT_ITEMS'], 'stat-item', edit_key='STAT_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'QUIZ_OPTIONS' in data:
         answer_index = data.get('ANSWER_INDEX', 0)
@@ -440,13 +511,13 @@ def render_slide(slide_data: dict) -> str:
             is_correct = "true" if i == answer_index else "false"
             options_html_parts.append(f'''<div class="quiz-option card button-type" onclick="checkQuizAnswer(this, {is_correct})" style="cursor: pointer; transition: all 0.2s ease; margin-bottom: 0.3em; padding: 0.6em 1em; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.8em; border-radius: 12px; background: var(--color-card-bg); border: 1px solid var(--color-card-border); box-shadow: 0 4px 12px rgba(0,0,0,0.03); font-size: 0.8em;">
                 <span class="option-marker" style="display: inline-flex; align-items: center; justify-content: center; width: 1.8em; height: 1.8em; border-radius: 50%; background: rgba(0,0,0,0.05); font-weight: 700; font-size: 0.85em; flex-shrink: 0; transition: background 0.2s ease, color 0.2s ease;">{chr(65+i)}</span>
-                <span class="option-text" style="word-break: keep-all; font-weight: 500; line-height: 1.3; text-align: center;">{option_text}</span>
+                <span class="option-text"{editable_attrs(f'QUIZ_OPTIONS[{i}].text')} style="word-break: keep-all; font-weight: 500; line-height: 1.3; text-align: center;">{option_text}</span>
             </div>''')
         data['QUIZ_OPTIONS'] = '\n'.join(options_html_parts)
 
     # 신규: 매트릭스 아이템
     if 'MATRIX_ITEMS' in data:
-        data['MATRIX_ITEMS'] = process_list(data['MATRIX_ITEMS'], 'matrix-item')
+        data['MATRIX_ITEMS'] = process_list(data['MATRIX_ITEMS'], 'matrix-item', edit_key='MATRIX_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     # 신규: O/X 아이템
     if 'O_ITEMS' in data or 'X_ITEMS' in data:
@@ -470,14 +541,20 @@ def render_slide(slide_data: dict) -> str:
 
     if 'O_ITEMS' in data:
         for item in data['O_ITEMS']:
-            if isinstance(item, dict) and not item.get('marker'):
-                item['marker'] = 'O'
-        data['O_ITEMS'] = process_list(data['O_ITEMS'], 'ox-item')
+            if isinstance(item, dict):
+                if not item.get('marker'):
+                    item['marker'] = data['O_MARKER']
+                if not item.get('marker_class'):
+                    item['marker_class'] = 'marker-o'
+        data['O_ITEMS'] = process_list(data['O_ITEMS'], 'ox-item', edit_key='O_ITEMS', default_marker=data['O_MARKER'], default_marker_class='marker-o', sequential=data.get('SEQUENTIAL', False))
     if 'X_ITEMS' in data:
         for item in data['X_ITEMS']:
-            if isinstance(item, dict) and not item.get('marker'):
-                item['marker'] = 'X'
-        data['X_ITEMS'] = process_list(data['X_ITEMS'], 'ox-item')
+            if isinstance(item, dict):
+                if not item.get('marker'):
+                    item['marker'] = data['X_MARKER']
+                if not item.get('marker_class'):
+                    item['marker_class'] = 'marker-x'
+        data['X_ITEMS'] = process_list(data['X_ITEMS'], 'ox-item', edit_key='X_ITEMS', default_marker=data['X_MARKER'], default_marker_class='marker-x', sequential=data.get('SEQUENTIAL', False))
 
     # 신규: 로드맵 아이템
     if 'ROADMAP_ITEMS' in data:
@@ -487,16 +564,16 @@ def render_slide(slide_data: dict) -> str:
             if isinstance(item, dict):
                 label = item.get('label', f'Step {i+1}')
                 desc = item.get('desc', '')
-                desc_html = f'<div class="roadmap-desc">{desc}</div>' if desc else ''
+                desc_html = f'<div class="roadmap-desc"{editable_attrs(f"ROADMAP_ITEMS[{i}].desc")}>{desc}</div>' if desc else ''
                 roadmap_html_parts.append(f'''<div class="roadmap-step">
                     <div class="roadmap-num">{i+1}</div>
-                    <div class="roadmap-label">{label}</div>
+                    <div class="roadmap-label"{editable_attrs(f"ROADMAP_ITEMS[{i}].label")}>{label}</div>
                     {desc_html}
                 </div>''')
             else:
                 roadmap_html_parts.append(f'''<div class="roadmap-step">
                     <div class="roadmap-num">{i+1}</div>
-                    <div class="roadmap-label">{item}</div>
+                    <div class="roadmap-label"{editable_attrs(f"ROADMAP_ITEMS[{i}]")}>{item}</div>
                 </div>''')
             if i < len(roadmap_items) - 1:
                 roadmap_html_parts.append('<div class="roadmap-connector"></div>')
@@ -551,7 +628,10 @@ def render_slide(slide_data: dict) -> str:
     html = re.sub(r'\{\{\#if [A-Z_]+\}\}(.*?)\{\{\/if\}\}', lambda m: re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)[1] if len(re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)) > 1 else '', html, flags=re.DOTALL)
 
     # 단순 치환
+    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML'}
     for key, value in data.items():
+        if isinstance(value, str) and key not in html_keys:
+            value = value.replace('\n', '<br>')
         html = html.replace(f'{{{{{key}}}}}', str(value))
 
     # 채워지지 않은 변수 지우기
@@ -568,6 +648,8 @@ def render_slide(slide_data: dict) -> str:
     # SECTION_HEADER가 템플릿에 자리가 없으면 <section> 바로 뒤에 주입
     if section_header_html and '{{SECTION_HEADER_HTML}}' not in template and section_header_html not in html:
         html = re.sub(r'(<section[^>]*>)', rf'\1\n{section_header_html}', html, count=1)
+
+    html = apply_style_overrides(html, data.get('STYLE_OVERRIDES', {}))
 
     return html
 
@@ -617,6 +699,9 @@ def build_html(input_json: str, output_html: str) -> None:
     final_html = base_html.replace('{{PRESENTATION_TITLE}}', presentation_title)
     final_html = final_html.replace('{{THEME_CSS}}', theme_css)
     
+    # 슬라이드 본문을 먼저 조립해야, 내부의 클래스(screenshot-frame 등)에 동적 테마 치환이 적용됩니다!
+    final_html = final_html.replace('{{SLIDES_CONTENT}}', slides_content)
+    
     # 테마 에디터와 충돌하지 않도록 모든 프리셋, 패턴, 장식 클래스를 문자열 치환 주입
     if theme_colors:
         frame_preset = theme_colors.get('image_frame_preset', 'business')
@@ -656,7 +741,6 @@ def build_html(input_json: str, output_html: str) -> None:
             if 'tech_grid_lines' in decorations:
                 final_html = final_html.replace('class="decor-techlines"', 'class="decor-techlines active"')
 
-    final_html = final_html.replace('{{SLIDES_CONTENT}}', slides_content)
     assert_no_unresolved_includes(final_html)
 
     # 출력 폴더 생성

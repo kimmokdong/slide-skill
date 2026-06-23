@@ -18,6 +18,10 @@ import subprocess
 import sys
 import tempfile
 import urllib.parse
+import copy
+import re
+import shutil
+import time
 import uuid
 from pathlib import Path
 
@@ -232,6 +236,109 @@ def save_uploaded_image(payload: dict, slide_index: int, target_key: str) -> str
     return f"images/{safe_name}"
 
 
+def read_json_body(handler):
+    content_length = int(handler.headers.get('Content-Length', 0))
+    post_data = handler.rfile.read(content_length)
+    return json.loads(post_data.decode('utf-8') or '{}')
+
+
+
+def apply_edit_to_slide(slide, edit_id, value):
+    scalar_match = re.fullmatch(r'[A-Z_]+', edit_id)
+    if scalar_match:
+        slide[edit_id] = value
+        return
+
+    list_match = re.fullmatch(r'([A-Z_]+)\[(\d+)\](?:\.([A-Za-z_]+))?', edit_id)
+    if not list_match:
+        raise ValueError(f"지원하지 않는 편집 ID입니다: {edit_id}")
+
+    key, index_text, prop = list_match.groups()
+    index = int(index_text)
+    items = slide.get(key)
+    if not isinstance(items, list) or index >= len(items):
+        raise ValueError(f"편집 대상 리스트를 찾을 수 없습니다: {edit_id}")
+
+    if prop:
+        if not isinstance(items[index], dict):
+            items[index] = {"text": str(items[index])}
+        items[index][prop] = value
+    else:
+        items[index] = value
+
+
+def apply_text_edits(plan, edits, style_overrides):
+    slides = plan.get('slides', [])
+    for edit in edits or []:
+        slide_index = edit.get('slideIndex')
+        edit_id = edit.get('editId')
+        value = edit.get('value', '')
+        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"범위를 벗어난 슬라이드 번호입니다: {slide_index}")
+        if not edit_id:
+            continue
+        apply_edit_to_slide(slides[slide_index], edit_id, value)
+
+    for style in style_overrides or []:
+        slide_index = style.get('slideIndex')
+        edit_id = style.get('editId')
+        font_size = style.get('fontSize')
+        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"범위를 벗어난 스타일 슬라이드 번호입니다: {slide_index}")
+        if not edit_id or not font_size:
+            continue
+        overrides = slides[slide_index].setdefault('STYLE_OVERRIDES', {})
+        overrides[edit_id] = {"fontSize": font_size}
+
+
+def apply_edit_to_slide(slide, edit_id, value):
+    scalar_match = re.fullmatch(r'[A-Z_]+', edit_id)
+    if scalar_match:
+        slide[edit_id] = value
+        return
+
+    list_match = re.fullmatch(r'([A-Z_]+)\[(\d+)\](?:\.([A-Za-z_]+))?', edit_id)
+    if not list_match:
+        raise ValueError(f"지원하지 않는 편집 ID입니다: {edit_id}")
+
+    key, index_text, prop = list_match.groups()
+    index = int(index_text)
+    items = slide.get(key)
+    if not isinstance(items, list) or index >= len(items):
+        raise ValueError(f"편집 대상 리스트를 찾을 수 없습니다: {edit_id}")
+
+    if prop:
+        if not isinstance(items[index], dict):
+            items[index] = {"text": str(items[index])}
+        items[index][prop] = value
+    else:
+        items[index] = value
+
+
+def apply_text_edits(plan, edits, style_overrides):
+    slides = plan.get('slides', [])
+    for edit in edits or []:
+        slide_index = edit.get('slideIndex')
+        edit_id = edit.get('editId')
+        value = edit.get('value', '')
+        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"범위를 벗어난 슬라이드 번호입니다: {slide_index}")
+        if not edit_id:
+            continue
+        apply_edit_to_slide(slides[slide_index], edit_id, value)
+
+    for style in style_overrides or []:
+        slide_index = style.get('slideIndex')
+        edit_id = style.get('editId')
+        font_size = style.get('fontSize')
+        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"범위를 벗어난 스타일 슬라이드 번호입니다: {slide_index}")
+        if not edit_id or not font_size:
+            continue
+        overrides = slides[slide_index].setdefault('STYLE_OVERRIDES', {})
+        overrides[edit_id] = {"fontSize": font_size}
+
+
 class DevServerHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
         parsed = urllib.parse.urlparse(path)
@@ -244,7 +351,7 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
             rel_path = clean_path[8:]
             return safe_child_path(Path.cwd() / "output", rel_path)
 
-        for asset_dir in ["images", "diagrams", "includes"]:
+        for asset_dir in ["images", "diagrams", "includes", "audio"]:
             if clean_path.startswith(f"/{asset_dir}/"):
                 return safe_child_path(Path.cwd() / "output", clean_path.lstrip("/"))
 
@@ -290,6 +397,24 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
                 self.handle_save_order()
             elif parsed.path == "/api/upload-image":
                 self.handle_upload_image()
+            elif parsed.path == "/api/save-theme":
+                req_json = self.read_json_payload()
+                theme_colors = req_json.get('theme_colors')
+                plan = load_plan(get_plan_path())
+                plan.setdefault('meta', {})['theme_colors'] = theme_colors
+                save_plan_atomic(get_plan_path(), plan)
+                rebuild = rebuild_outputs()
+                self.send_json_response(200, {"status": "success", "message": "테마 저장 완료", "rebuild": rebuild})
+            elif parsed.path == "/api/save-text-edits":
+                req_json = self.read_json_payload()
+                plan = load_plan(get_plan_path())
+                try:
+                    apply_text_edits(plan, req_json.get('edits', []), req_json.get('style_overrides', []))
+                    save_plan_atomic(get_plan_path(), plan)
+                    rebuild = rebuild_outputs()
+                    self.send_json_response(200, {"status": "success", "message": "텍스트 직접 편집 저장 완료", "rebuild": rebuild})
+                except ValueError as e:
+                    raise ApiError(400, str(e))
             else:
                 raise ApiError(404, "API endpoint was not found.")
         except ApiError as exc:

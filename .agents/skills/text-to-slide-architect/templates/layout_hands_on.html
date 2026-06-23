@@ -9,7 +9,7 @@
             {{else}}
             <div class="slide-title-row">
                 <div class="step-badge hands-on-badge">실습 시간</div>
-                <h2>{{TITLE}}</h2>
+                <h2 data-edit-id="TITLE">{{TITLE}}</h2>
             </div>
             {{/if}}
         </div>
@@ -18,7 +18,7 @@
             <!-- 좌측: 실습 지시사항 -->
             <div class="slide-body hands-on-body">
                 {{#if STEPPER_ITEMS}}
-                <div class="hands-on-current-label">{{TITLE}}</div>
+                <div class="hands-on-current-label" data-edit-id="TITLE">{{TITLE}}</div>
                 {{/if}}
                 <h3 class="instruction-label">실습 순서</h3>
                 {{#if BULLET_ITEMS}}
@@ -30,11 +30,11 @@
                     {{#if TIP}}
                     <div class="tutorial-tip">
                         <span class="tip-icon">💡</span>
-                        <span class="tip-text">{{TIP}}</span>
+                        <span class="tip-text" data-edit-id="TIP">{{TIP}}</span>
                     </div>
                     {{/if}}
                     {{#if DURATION}}
-                    <div class="duration-badge">예상 소요 시간: {{DURATION}}</div>
+                    <div class="duration-badge" data-edit-id="DURATION">예상 소요 시간: {{DURATION}}</div>
                     {{/if}}
                 </div>
             </div>
@@ -58,7 +58,7 @@
                     {{/if}}
                 </div>
                 {{#if RESULT_TEXT}}
-                <div class="hands-on-result-caption">{{RESULT_TEXT}}</div>
+                <div class="hands-on-result-caption" data-edit-id="RESULT_TEXT">{{RESULT_TEXT}}</div>
                 {{/if}}
             </div>
         </div>

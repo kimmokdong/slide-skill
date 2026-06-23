@@ -16,9 +16,9 @@
     </style>
     <div class="center-layout" style="font-size: 44px; padding: 1.2em 1.5em; justify-content: center;">
         <div class="hero-badge" style="margin-bottom: 0.6em;">THANK YOU</div>
-        <h1 style="font-size: 1.6em; margin-bottom: 0.4em; line-height: 1.2;">{{TITLE}}</h1>
+        <h1 data-edit-id="TITLE" style="font-size: 1.6em; margin-bottom: 0.4em; line-height: 1.2;">{{TITLE}}</h1>
         {{#if MESSAGE}}
-        <h2 style="font-size: 1.0em; font-weight: 300; margin-bottom: 0.6em; opacity: 0.85; line-height: 1.4;">{{MESSAGE}}</h2>
+        <h2 data-edit-id="MESSAGE" style="font-size: 1.0em; font-weight: 300; margin-bottom: 0.6em; opacity: 0.85; line-height: 1.4;">{{MESSAGE}}</h2>
         {{/if}}
         {{#if BULLET_ITEMS}}
         <div class="closing-bullets" style="width: 85%; margin: 0.6em auto 0; text-align: center; background: var(--color-card-bg); padding: 0.8em 1.2em; border-radius: 16px; border: 1px solid var(--color-card-border);">
@@ -29,7 +29,7 @@
         {{/if}}
         {{#if CTA}}
         <div class="hero-badge" style="background: var(--color-accent-secondary); margin-top: 0.5em; font-size: 0.75em; padding: 0.4em 1.2em; border-radius: 24px;">
-            {{CTA}}
+            <span data-edit-id="CTA">{{CTA}}</span>
         </div>
         {{/if}}
     </div>

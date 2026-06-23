@@ -10,9 +10,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reset.css">
 
-    <!-- Google Fonts: Noto Sans KR -->
+    <!-- Google Fonts: editor typography presets -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap"
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Montserrat:wght@400;500;700;900&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Noto+Sans+KR:wght@300;400;500;700;900&family=Orbitron:wght@400;700;900&family=Outfit:wght@400;500;700;900&family=Playfair+Display:wght@400;700;900&display=swap"
         rel="stylesheet">
 
     <!-- 공통 레이아웃 및 디자인 시스템 (CSS) -->
@@ -36,6 +37,9 @@
     <!-- 글로벌 플로팅 타이머 버튼 -->
     <button class="timer-toggle-fab" id="timer-fab" onclick="toggleTimerModal()" title="타이머 열기 (단축키: T)">⏱️</button>
 
+    <!-- 단축키 도움말 버튼 -->
+    <button class="help-toggle-fab" onclick="Reveal.toggleHelp()" title="단축키 도움말 (단축키: ?)">❓</button>
+
     <!-- 타이머 오버레이 모달 -->
     <div id="timer-modal" class="timer-modal-overlay" onclick="closeTimerModal()">
         <div class="timer-modal-wrapper" onclick="event.stopPropagation()">
@@ -45,6 +49,7 @@
             </div>
             
             <div class="timer-presets-row">
+                <button class="timer-btn preset" onclick="setTimerPreset(60)">1분</button>
                 <button class="timer-btn preset" onclick="setTimerPreset(180)">3분</button>
                 <button class="timer-btn preset" onclick="setTimerPreset(300)">5분</button>
                 <button class="timer-btn preset" onclick="setTimerPreset(600)">10분</button>
@@ -116,6 +121,7 @@
         <div class="review-tab-nav">
             <button id="tab-btn-feedback" class="review-tab-btn active" onclick="switchReviewTab('feedback')">📝 피드백 작성</button>
             <button id="tab-btn-theme" class="review-tab-btn" onclick="switchReviewTab('theme')">🎨 테마 에디터</button>
+            <button id="tab-btn-direct" class="review-tab-btn" onclick="switchReviewTab('direct')">텍스트 직접 편집</button>
         </div>
 
         <div class="review-content">
@@ -230,7 +236,7 @@
                     <select id="editor-select-highlight" class="editor-select">
                         <option value="friendly" selected>friendly (파스텔 형광펜)</option>
                         <option value="cyber">cyber (HUD 꺾쇠괄호)</option>
-                        <option value="classic">classic (이탤릭 언더라인)</option>
+                        <option value="classic">classic (알약 테두리 태그)</option>
                         <option value="editorial">editorial (반전 블록)</option>
                         <option value="chalkboard">chalkboard (손글씨 물결빨강)</option>
                     </select>
@@ -313,12 +319,32 @@
                     </button>
                 </div>
             </div>
+
+            <div id="pane-direct" class="review-tab-pane">
+                <div class="review-section">
+                    <h3>현재 슬라이드 텍스트 편집</h3>
+                    <p class="direct-edit-hint">슬라이드 안의 점선 영역을 클릭하면 내용을 바로 수정할 수 있습니다. 글자 크기는 선택한 텍스트에만 적용됩니다.</p>
+                    <div class="direct-edit-controls">
+                        <div id="direct-edit-selected" class="direct-edit-selected">선택된 텍스트 없음</div>
+                        <label>
+                            글자 크기
+                            <input id="direct-font-range" type="range" min="12" max="96" step="1" value="32">
+                        </label>
+                        <label>
+                            px
+                            <input id="direct-font-number" type="number" min="12" max="96" step="1" value="32">
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="review-footer" style="display: flex; flex-direction: column; gap: 8px; padding: 15px; box-sizing: border-box;">
             <button id="btn-copy-prompt" class="copy-prompt-btn" onclick="generateAndCopyPrompt()" style="width: 100%;">🤖 AI 프롬프트 복사하기</button>
             <button id="btn-save-layout" class="save-layout-btn" onclick="saveSlideLayoutToServer()" style="background:#4f46e5; color:white; font-weight:800; border:none; padding:10px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; width: 100%; font-size: 14px;">💾 슬라이드 구성 로컬 저장</button>
             <button id="btn-apply-theme" class="apply-theme-btn" style="display:none; width: 100%;" onclick="applyThemeEditorSettings()">🎨 테마 실시간 적용</button>
+            <button id="btn-save-theme" class="apply-theme-btn" style="display:none; width: 100%;" onclick="saveThemeEditorSettings()">테마 영구 저장</button>
+            <button id="btn-save-text-edits" class="save-layout-btn" onclick="saveDirectTextEditsToServer()" style="display:none; background:#0f766e; color:white; font-weight:800; border:none; padding:10px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; width: 100%; font-size: 14px;">텍스트 수정 영구 저장</button>
         </div>
     </aside>
 
@@ -326,14 +352,16 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Reveal.js 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
 
     <script>
 {{INCLUDE:includes/scripts/theme_editor.js}}
 {{INCLUDE:includes/scripts/slide_interactions.js}}
 {{INCLUDE:includes/scripts/reveal_autofit.js}}
 {{INCLUDE:includes/scripts/lightbox.js}}
-{{INCLUDE:includes/scripts/review_tools.js}}
+{{INCLUDE:includes/scripts/review_tools_v2.js}}
 {{INCLUDE:includes/scripts/timer.js}}
+{{INCLUDE:includes/scripts/draggable_fabs.js}}
     </script>
 </body>
 

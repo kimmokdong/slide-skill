@@ -268,7 +268,7 @@
             /* 테마 색상과 충돌하지 않도록 반투명도(40%)를 혼합한 배경 형광펜 */
             background: linear-gradient(transparent 55%, color-mix(in srgb, var(--color-accent-secondary, #a5b4fc) 40%, transparent) 55%);
         }
-        .reveal.highlight-cyber strong {
+        \.reveal.highlight-cyber strong {
             font-weight: 900;
             color: inherit !important;
             text-decoration: underline;
@@ -290,20 +290,25 @@
             margin-left: 2px;
         }
         .reveal.highlight-classic strong {
-            font-style: italic;
-            font-weight: 700;
+            font-weight: 800;
             color: inherit !important;
             text-decoration: none;
-            /* 클래식한 느낌의 옅은 옐로우/골드 반투명 하이라이트 */
-            background: linear-gradient(transparent 55%, color-mix(in srgb, var(--color-accent) 30%, transparent) 55%);
+            background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+            border: 2px solid var(--color-accent);
+            padding: 0.1em 0.4em;
+            border-radius: 50rem;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
         }
         .reveal.highlight-editorial strong {
             font-weight: 900;
-            color: inherit !important;
+            color: var(--color-bg) !important;
+            background-color: var(--color-text);
+            padding: 0.1em 0.3em;
+            border-radius: 4px;
             text-decoration: none;
-            /* 텍스트 색상의 15% 투명도를 배경으로 깔아 세련된 하이라이트 구성 */
-            background: linear-gradient(transparent 55%, color-mix(in srgb, var(--color-text) 15%, transparent) 55%);
         }
+
         .reveal.highlight-chalkboard strong {
             font-weight: 900;
             color: inherit !important;
@@ -389,6 +394,14 @@
         }
 
         /* H. 배경 패턴 및 장식 레이어 CSS */
+        .reveal.autofit-measuring,
+        .reveal.autofit-measuring *,
+        .autofit-measuring,
+        .autofit-measuring * {
+            transition: none !important;
+            animation: none !important;
+        }
+
         .pattern-overlay {
             position: absolute;
             top: 0;

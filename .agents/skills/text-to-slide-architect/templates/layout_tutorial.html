@@ -12,7 +12,7 @@
                 {{#if STEP_NUMBER}}
                 <div class="step-badge tutorial-step-badge">{{STEP_NUMBER}}단계</div>
                 {{/if}}
-                <h2>{{DISPLAY_TITLE}}</h2>
+                <h2 data-edit-id="TITLE">{{DISPLAY_TITLE}}</h2>
             </div>
             {{/if}}
         </div>
@@ -23,7 +23,7 @@
                 <div class="slide-body">
                     {{#if STEPPER_ITEMS}}
                     <!-- 스텝퍼가 제목을 대체했을 경우, 원래 제목은 부제목처럼 작게 표시 -->
-                    <h3 style="font-size: 0.9em; opacity: 0.7; margin-bottom: 1em; font-weight: 500;">{{DISPLAY_TITLE}}</h3>
+                    <h3 data-edit-id="TITLE" style="font-size: 0.9em; opacity: 0.7; margin-bottom: 1em; font-weight: 500;">{{DISPLAY_TITLE}}</h3>
                     {{/if}}
                     {{#if BULLET_ITEMS}}
                     <ul class="bullet-list tutorial-steps">
@@ -33,13 +33,13 @@
                     {{#if TIP}}
                     <div class="tutorial-tip">
                         <span class="tip-icon">💡</span>
-                        <span class="tip-text">{{TIP}}</span>
+                        <span class="tip-text" data-edit-id="TIP">{{TIP}}</span>
                     </div>
                     {{/if}}
                     {{#if WARNING}}
                     <div class="tutorial-warning">
                         <span class="tip-icon">⚠️</span>
-                        <span class="tip-text">{{WARNING}}</span>
+                        <span class="tip-text" data-edit-id="WARNING">{{WARNING}}</span>
                     </div>
                     {{/if}}
                 </div>

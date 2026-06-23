@@ -9,18 +9,30 @@
             if (activePane) activePane.classList.add('active');
 
             const btnCopy = document.getElementById('btn-copy-prompt');
+            const btnSaveLayout = document.getElementById('btn-save-layout');
             const btnApply = document.getElementById('btn-apply-theme');
+            const btnSaveTheme = document.getElementById('btn-save-theme');
+            const btnSaveText = document.getElementById('btn-save-text-edits');
+            [btnCopy, btnSaveLayout, btnApply, btnSaveTheme, btnSaveText].forEach(btn => {
+                if (btn) btn.style.display = 'none';
+            });
+
             if (tabName === 'feedback') {
-                btnCopy.style.display = 'flex';
-                btnApply.style.display = 'none';
-            } else {
-                btnCopy.style.display = 'none';
-                btnApply.style.display = 'flex';
+                if (btnCopy) btnCopy.style.display = 'flex';
+                if (btnSaveLayout && isLocalDevServer()) btnSaveLayout.style.display = 'block';
+                disableDirectEditing();
+            } else if (tabName === 'theme') {
+                if (btnApply) btnApply.style.display = 'flex';
+                if (btnSaveTheme && isLocalDevServer()) btnSaveTheme.style.display = 'flex';
+                disableDirectEditing();
+            } else if (tabName === 'direct') {
+                if (btnSaveText && isLocalDevServer()) btnSaveText.style.display = 'block';
+                enableDirectEditing();
             }
         }
 
         // ===== 테마 에디터 프리셋 설정 수동 매핑 =====
-        function applyPresetToEditor(bg, bgSec, text, textSec, accent, accentSec, card, icon, font, pattern, decors, frame) {
+        function applyPresetToEditor(bg, bgSec, text, textSec, accent, accentSec, card, icon, font, pattern, decors, frame, highlight, takeaway, motion) {
             document.getElementById('editor-color-bg').value = bg;
             document.getElementById('editor-color-bg-secondary').value = bgSec;
             document.getElementById('editor-color-text').value = text;
@@ -31,9 +43,9 @@
             document.getElementById('editor-select-card').value = card;
             document.getElementById('editor-select-icon').value = icon;
             document.getElementById('editor-select-font').value = font;
-            document.getElementById('editor-select-highlight').value = font;
-            document.getElementById('editor-select-takeaway').value = font;
-            document.getElementById('editor-select-motion').value = font;
+            document.getElementById('editor-select-highlight').value = highlight || font;
+            document.getElementById('editor-select-takeaway').value = takeaway || font;
+            document.getElementById('editor-select-motion').value = motion || font;
             document.getElementById('editor-select-frame').value = frame;
             document.getElementById('editor-select-pattern').value = pattern;
 
@@ -117,6 +129,10 @@
         let editorThemeSettings = null;
 
         function applyThemeEditorSettings() {
+            if (typeof captureCurrentSlideThemeAutofitBaseline === 'function') {
+                captureCurrentSlideThemeAutofitBaseline();
+            }
+
             const metaThemeStyle = document.getElementById('meta-theme-style');
             if (metaThemeStyle) {
                 metaThemeStyle.disabled = true;
@@ -151,8 +167,11 @@
 
             const reveal = document.querySelector('.reveal');
             
-            // 기존 프리셋 클래스 리셋 후 재등록
-            reveal.className = 'reveal';
+            ['card-preset-', 'icon-preset-', 'theme-', 'highlight-', 'takeaway-', 'motion-'].forEach(prefix => {
+                [...reveal.classList].forEach(className => {
+                    if (className.startsWith(prefix)) reveal.classList.remove(className);
+                });
+            });
             if (isEditorContrast) reveal.classList.add('contrast-mode');
 
             reveal.classList.add(`card-preset-${card}`);
@@ -172,17 +191,23 @@
 
             const frames = document.querySelectorAll('.screenshot-frame');
             frames.forEach(f => {
-                const keepClasses = ['browser-frame', 'editable-image-frame', 'uploading']
-                    .filter(cls => f.classList.contains(cls));
-                f.className = 'screenshot-frame';
-                keepClasses.forEach(cls => f.classList.add(cls));
+                [...f.classList].forEach(className => {
+                    if (className.startsWith('frame-')) f.classList.remove(className);
+                });
                 f.classList.add(`frame-${frame}`);
             });
 
             const patternOverlay = document.getElementById('patternOverlay');
-            patternOverlay.className = 'pattern-overlay';
-            if (pattern !== 'none') {
-                patternOverlay.classList.add(`pattern-${pattern}`);
+            if (patternOverlay) {
+                [...patternOverlay.classList].forEach(className => {
+                    if (className.startsWith('pattern-') && className !== 'pattern-overlay') {
+                        patternOverlay.classList.remove(className);
+                    }
+                });
+                patternOverlay.classList.add('pattern-overlay');
+                if (pattern !== 'none') {
+                    patternOverlay.classList.add(`pattern-${pattern}`);
+                }
             }
 
             const checkboxIds = {
@@ -207,16 +232,10 @@
                 });
             });
 
-            Reveal.layout();
-            autoFitAllSlides();
-
-            // 비동기 폰트 다운로드 완료 시점 2차 재정합 (Layout Shift 방어)
-            if (document.fonts && document.fonts.ready) {
-                document.fonts.ready.then(() => {
-                    console.log("[AutoFit] Fonts fully rendered after theme apply. Refitting...");
-                    autoFitAllSlides();
-                    Reveal.layout();
-                });
+            if (typeof stabilizeCurrentSlideAfterThemeChange === 'function') {
+                stabilizeCurrentSlideAfterThemeChange();
+            } else {
+                Reveal.layout();
             }
 
             const btnApply = document.getElementById('btn-apply-theme');
@@ -228,5 +247,148 @@
                 btnApply.style.background = "";
             }, 1500);
         }
+
+        function getThemeEditorPayload() {
+            if (!editorThemeSettings) {
+                applyThemeEditorSettings();
+            }
+            if (!editorThemeSettings) return null;
+            return {
+                bg: editorThemeSettings.bg,
+                bg_secondary: editorThemeSettings.bgSec,
+                text: editorThemeSettings.text,
+                text_secondary: editorThemeSettings.textSec,
+                accent: editorThemeSettings.accent,
+                accent_secondary: editorThemeSettings.accentSec,
+                card_style_preset: editorThemeSettings.card,
+                icon_preset: editorThemeSettings.icon,
+                font_preset: editorThemeSettings.font,
+                highlight_style: editorThemeSettings.highlight,
+                takeaway_style: editorThemeSettings.takeaway,
+                motion_preset: editorThemeSettings.motion,
+                image_frame_preset: editorThemeSettings.frame,
+                bg_pattern_style: editorThemeSettings.pattern,
+                decorations: editorThemeSettings.decors || []
+            };
+        }
+
+        function saveThemeEditorSettings() {
+            if (!isLocalDevServer()) {
+                alert('로컬 개발 서버에서 열었을 때만 저장할 수 있습니다.');
+                return;
+            }
+            const payload = getThemeEditorPayload();
+            if (!payload) return;
+
+            const btn = document.getElementById('btn-save-theme');
+            const originalText = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.innerHTML = '저장 중...';
+                btn.disabled = true;
+            }
+
+            fetch('/api/save-theme', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ theme_colors: payload })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('HTTP error ' + response.status);
+                return response.json();
+            })
+            .then(() => {
+                if (btn) {
+                    btn.innerHTML = '저장 완료';
+                    btn.style.background = '#22c55e';
+                }
+            })
+            .catch(err => {
+                console.error('Theme save error:', err);
+                if (btn) {
+                    btn.innerHTML = '저장 실패';
+                    btn.style.background = '#ef4444';
+                    btn.disabled = false;
+                }
+            })
+            .finally(() => {
+                if (!btn) return;
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                }, 1800);
+            });
+        }
+
+        // ===== 초기 로드시 현재 활성 테마 변수/클래스를 에디터에 동기화 =====
+        function syncThemeEditorWithCurrentState() {
+            const style = getComputedStyle(document.documentElement);
+            const getHex = (varName) => style.getPropertyValue(varName).trim();
+            
+            // 색상 동기화
+            const bg = getHex('--color-bg');
+            if (bg) document.getElementById('editor-color-bg').value = bg;
+            const bgSec = getHex('--color-bg-secondary');
+            if (bgSec) document.getElementById('editor-color-bg-secondary').value = bgSec;
+            const text = getHex('--color-text');
+            if (text) document.getElementById('editor-color-text').value = text;
+            const textSec = getHex('--color-text-secondary');
+            if (textSec) document.getElementById('editor-color-text-secondary').value = textSec;
+            const accent = getHex('--color-accent');
+            if (accent) document.getElementById('editor-color-accent').value = accent;
+            const accentSec = getHex('--color-accent-secondary');
+            if (accentSec) document.getElementById('editor-color-accent-secondary').value = accentSec;
+
+            // 클래스 기반 셀렉트박스 동기화
+            const revealEl = document.querySelector('.reveal');
+            if (revealEl) {
+                const classes = Array.from(revealEl.classList);
+                const setSelectByPrefix = (prefix, selectId) => {
+                    const matched = classes.find(c => c.startsWith(prefix));
+                    if (matched) {
+                        const val = matched.replace(prefix, '');
+                        const select = document.getElementById(selectId);
+                        if (select && select.querySelector(`option[value="${val}"]`)) select.value = val;
+                    }
+                };
+                setSelectByPrefix('card-preset-', 'editor-select-card');
+                setSelectByPrefix('icon-preset-', 'editor-select-icon');
+                setSelectByPrefix('theme-', 'editor-select-font');
+                setSelectByPrefix('highlight-', 'editor-select-highlight');
+                setSelectByPrefix('takeaway-', 'editor-select-takeaway');
+                setSelectByPrefix('motion-', 'editor-select-motion');
+            }
+
+            const frameEl = document.querySelector('.screenshot-frame');
+            if (frameEl) {
+                const frameClass = Array.from(frameEl.classList).find(c => c.startsWith('frame-'));
+                if (frameClass) document.getElementById('editor-select-frame').value = frameClass.replace('frame-', '');
+            }
+
+            const patternEl = document.querySelector('.pattern-overlay');
+            if (patternEl) {
+                const patternClass = Array.from(patternEl.classList).find(c => c.startsWith('pattern-') && c !== 'pattern-overlay');
+                if (patternClass) {
+                    document.getElementById('editor-select-pattern').value = patternClass.replace('pattern-', '');
+                } else {
+                    document.getElementById('editor-select-pattern').value = 'none';
+                }
+            }
+
+            // 장식 체크박스 동기화
+            const checkDecor = (decorId, checkboxId) => {
+                const el = document.getElementById(decorId);
+                const cb = document.getElementById(checkboxId);
+                if (el && cb) cb.checked = el.classList.contains('active');
+            };
+            checkDecor('decorTL', 'editor-check-decor-corner'); 
+            checkDecor('decorCircle1', 'editor-check-decor-circles');
+            checkDecor('decorHudL', 'editor-check-decor-brackets');
+            checkDecor('decorWavy', 'editor-check-decor-wavy');
+            checkDecor('decorShape1', 'editor-check-decor-shapes');
+            checkDecor('decorTechlines', 'editor-check-decor-techlines');
+        }
+
+        window.addEventListener('load', syncThemeEditorWithCurrentState);
 
         // 퀴즈 정답/오답 확인 함수

@@ -2,7 +2,7 @@
 <section>
     <div class="slide-container">
         <div class="slide-header">
-            <h2>{{TITLE}}</h2>
+            <h2 data-edit-id="TITLE">{{TITLE}}</h2>
         </div>
         
         <!-- BOTTOM_TAKEAWAY 가 있으면 has-takeaway 클래스 동적 부여 -->
@@ -22,7 +22,7 @@
                     </div>
                     {{#if LEFT_DESC}}
                     <div class="card description-card">
-                        <p>{{LEFT_DESC}}</p>
+                        <p data-edit-id="LEFT_DESC">{{LEFT_DESC}}</p>
                     </div>
                     {{/if}}
                 </div>
@@ -41,7 +41,7 @@
                     </div>
                     {{#if RIGHT_DESC}}
                     <div class="card description-card">
-                        <p>{{RIGHT_DESC}}</p>
+                        <p data-edit-id="RIGHT_DESC">{{RIGHT_DESC}}</p>
                     </div>
                     {{/if}}
                 </div>

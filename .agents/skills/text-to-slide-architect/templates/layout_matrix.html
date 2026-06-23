@@ -1,9 +1,9 @@
 <!-- 레이아웃: 4분면 매트릭스 (matrix) -->
 <section>
     <div class="slide-container">
-        <div class="slide-header" style="text-align: center;">
-            <h2>{{TITLE}}</h2>
-            {{#if SUBTITLE}}<p style="opacity: 0.7; margin-top: 0.2em;">{{SUBTITLE}}</p>{{/if}}
+        <div class="slide-header matrix-header">
+            <h2 data-edit-id="TITLE">{{TITLE}}</h2>
+            {{#if SUBTITLE}}<p class="matrix-subtitle" data-edit-id="SUBTITLE">{{SUBTITLE}}</p>{{/if}}
         </div>
         <div class="slide-body matrix-body">
             <div class="matrix-grid">

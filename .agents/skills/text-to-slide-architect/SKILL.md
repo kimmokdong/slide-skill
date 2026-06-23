@@ -243,15 +243,17 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
     {
       "type": "vs_ox",
       "TITLE": "효과적인 AI 활용법 O/X",
+      "O_MARKER": "✅",
       "O_TITLE": "이렇게 하세요",
       "O_ITEMS": [
-        {"marker": "O", "text": "학생이 직접 질문을 설계"},
-        {"marker": "O", "text": "AI 결과를 비판적으로 검증"}
+        {"text": "학생이 직접 질문을 설계"},
+        {"text": "AI 결과를 비판적으로 검증"}
       ],
+      "X_MARKER": "⛔",
       "X_TITLE": "이것은 피하세요",
       "X_ITEMS": [
-        {"marker": "X", "text": "AI 답변을 그대로 복사"},
-        {"marker": "X", "text": "교사 없이 AI에만 의존"}
+        {"text": "AI 답변을 그대로 복사"},
+        {"text": "교사 없이 AI에만 의존"}
       ],
       "SPEAKER_NOTES": "O/X 비교 설명..."
     },
@@ -360,7 +362,7 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `hands_on` | 실습 지시 및 예상 결과 | `TITLE`, `STEPPER_ITEMS` (label, state) | `BULLET_ITEMS`, `TIP`, `DURATION`, `IMAGE_SRC`, `RESULT_TEXT`, `SPEAKER_NOTES` |
 | `fullbleed` | 전체 화면 이미지 배경 | `TITLE`, `IMAGE_SRC` | `SUBTITLE`, `STEPPER_ITEMS`, `SPEAKER_NOTES` |
 | `matrix` | 2x2 아이콘 매트릭스 | `TITLE`, `MATRIX_ITEMS` (icon, label, desc) | `SPEAKER_NOTES` |
-| `vs_ox` | O/X 행동 비교 가이드 | `TITLE`, `O_TITLE`, `O_ITEMS` (marker, text), `X_TITLE`, `X_ITEMS` | `SPEAKER_NOTES` |
+| `vs_ox` | 2단 행동/가치 대비 가이드 | `TITLE`, `O_TITLE`, `O_ITEMS` (marker, text), `X_TITLE`, `X_ITEMS` | `O_MARKER`, `X_MARKER`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `roadmap` | 3~5단계 가로 로드맵 카드 | `TITLE`, `ROADMAP_ITEMS` (label, desc) | `SUBTITLE`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 
 *(참고: 모든 레이아웃 공통으로 `SECTION_HEADER`와 `BOTTOM_TAKEAWAY`는 원할 경우 선택 변수로 추가 가능합니다.)*
