@@ -129,6 +129,10 @@
         let editorThemeSettings = null;
 
         function applyThemeEditorSettings() {
+            if (typeof captureCurrentSlideThemeAutofitBaseline === 'function') {
+                captureCurrentSlideThemeAutofitBaseline();
+            }
+
             const metaThemeStyle = document.getElementById('meta-theme-style');
             if (metaThemeStyle) {
                 metaThemeStyle.disabled = true;
@@ -187,14 +191,23 @@
 
             const frames = document.querySelectorAll('.screenshot-frame');
             frames.forEach(f => {
-                f.className = 'screenshot-frame';
+                [...f.classList].forEach(className => {
+                    if (className.startsWith('frame-')) f.classList.remove(className);
+                });
                 f.classList.add(`frame-${frame}`);
             });
 
             const patternOverlay = document.getElementById('patternOverlay');
-            patternOverlay.className = 'pattern-overlay';
-            if (pattern !== 'none') {
-                patternOverlay.classList.add(`pattern-${pattern}`);
+            if (patternOverlay) {
+                [...patternOverlay.classList].forEach(className => {
+                    if (className.startsWith('pattern-') && className !== 'pattern-overlay') {
+                        patternOverlay.classList.remove(className);
+                    }
+                });
+                patternOverlay.classList.add('pattern-overlay');
+                if (pattern !== 'none') {
+                    patternOverlay.classList.add(`pattern-${pattern}`);
+                }
             }
 
             const checkboxIds = {

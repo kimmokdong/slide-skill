@@ -319,13 +319,16 @@ def apply_style_overrides(rendered_html: str, style_overrides: dict) -> str:
         font_size = style.get('fontSize')
         if not font_size:
             continue
+        font_size_value = str(font_size).strip()
+        if '!important' not in font_size_value:
+            font_size_value = f'{font_size_value} !important'
         pattern = re.compile(r'(<[^>]+data-edit-id="' + re.escape(str(edit_id)) + r'"[^>]*)(>)')
 
         def replace_tag(match):
             tag_open = match.group(1)
             tag_close = match.group(2)
             style_match = re.search(r'style="([^"]*)"', tag_open)
-            merged_style = merge_inline_style(style_match.group(1) if style_match else "", {'font-size': font_size})
+            merged_style = merge_inline_style(style_match.group(1) if style_match else "", {'font-size': font_size_value})
             if style_match:
                 tag_open = tag_open[:style_match.start()] + f'style="{merged_style}"' + tag_open[style_match.end():]
             else:

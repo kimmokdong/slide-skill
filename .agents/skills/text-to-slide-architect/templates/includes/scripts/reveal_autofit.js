@@ -22,7 +22,15 @@
         function hasLayoutBox(el) {
             const style = getComputedStyle(el);
             if (style.display === 'none' || style.visibility === 'hidden') return false;
-            if (el.clientWidth <= 0 || el.clientHeight <= 0) return false;
+            const rect = el.getBoundingClientRect();
+            if (
+                el.clientWidth <= 0 &&
+                el.clientHeight <= 0 &&
+                rect.width <= 0 &&
+                rect.height <= 0
+            ) {
+                return false;
+            }
             return true;
         }
 
@@ -30,7 +38,6 @@
             if (!hasLayoutBox(el)) return false;
             const style = getComputedStyle(el);
             if (style.position === 'absolute' || style.position === 'fixed') return false;
-            if (style.display === 'inline') return false;
 
             const rect = el.getBoundingClientRect();
             const clipsX = style.overflowX !== 'visible';
@@ -45,6 +52,39 @@
                 rect.bottom > boundaryRect.bottom + 2;
 
             return boxOverflow || boundaryOverflow;
+        }
+
+        const MAIN_AUTOFIT_SELECTOR = '.slide-header h2, .takeaway-content, .slide-body';
+        const BAD_WRAP_SELECTOR = [
+            '.stat-number',
+            '.stat-label',
+            '.bullet-text',
+            '.comparison-card-title',
+            '.matrix-label',
+            '.roadmap-label',
+            '.ox-text',
+            '.timeline-date',
+            '.timeline-title',
+            '.summary-card-title',
+            '.hands-on-steps li',
+            '.tutorial-steps li',
+            '.tutorial-tip .tip-text',
+            '.tutorial-warning .tip-text'
+        ].join(',');
+
+        function bodyOverflows(body) {
+            if (!body) return false;
+            const boundaryRect = body.getBoundingClientRect();
+            if (
+                body.scrollHeight > body.clientHeight + 2 ||
+                body.scrollWidth > body.clientWidth + 2
+            ) {
+                return true;
+            }
+
+            return Array.from(body.querySelectorAll('*'))
+                .filter(hasLayoutBox)
+                .some(child => elementOverflows(child, boundaryRect));
         }
 
         function isTextSizeLocked(el) {
@@ -64,7 +104,92 @@
             });
         }
 
-        function restoreOriginalFontSize(el) {
+        function themeBaselineTargets(container) {
+            if (!container) return [];
+            return Array.from(new Set([
+                ...container.querySelectorAll(MAIN_AUTOFIT_SELECTOR),
+                ...container.querySelectorAll(BAD_WRAP_SELECTOR)
+            ]));
+        }
+
+        function isMainAutofitTarget(el) {
+            return Boolean(el && el.matches && el.matches(MAIN_AUTOFIT_SELECTOR));
+        }
+
+        function currentFontSizePx(el) {
+            const value =
+                parseFloat(el.style.fontSize) ||
+                parseFloat(el.dataset.autofitSize) ||
+                parseFloat(getComputedStyle(el).fontSize);
+            return Number.isFinite(value) ? value : null;
+        }
+
+        function clearThemeAutofitBaseline(container) {
+            if (!container) return;
+            delete container.dataset.themeAutofitBaselineCaptured;
+            themeBaselineTargets(container).forEach(el => {
+                delete el.dataset.themeBaselineFontSize;
+                delete el.dataset.themeBaselineInlineFontSize;
+                delete el.dataset.themeBaselineInlineFontPriority;
+                delete el.dataset.badWrapOriginalFontSize;
+                delete el.dataset.badWrapOriginalFontPriority;
+            });
+        }
+
+        function storeThemeAutofitBaseline(container, options = {}) {
+            if (!container) return;
+            if (container.dataset.themeAutofitBaselineCaptured === 'true' && !options.force) return;
+            themeBaselineTargets(container).forEach(el => {
+                if (isTextSizeLocked(el)) return;
+                el.dataset.themeBaselineInlineFontSize = el.style.getPropertyValue('font-size') || '';
+                el.dataset.themeBaselineInlineFontPriority = el.style.getPropertyPriority('font-size') || '';
+                const size = currentFontSizePx(el);
+                if (size) el.dataset.themeBaselineFontSize = String(size);
+            });
+            container.dataset.themeAutofitBaselineCaptured = 'true';
+        }
+
+        function captureThemeAutofitBaseline(container) {
+            if (!container || container.dataset.themeAutofitBaselineCaptured === 'true') return;
+            storeThemeAutofitBaseline(container);
+        }
+
+        function restoreThemeAutofitBaseline(container) {
+            themeBaselineTargets(container).forEach(el => {
+                if (isTextSizeLocked(el)) return;
+                const size = parseFloat(el.dataset.themeBaselineFontSize);
+                if (!Object.prototype.hasOwnProperty.call(el.dataset, 'themeBaselineInlineFontSize')) return;
+
+                el.style.removeProperty('font-size');
+                if (el.dataset.themeBaselineInlineFontSize) {
+                    el.style.setProperty(
+                        'font-size',
+                        el.dataset.themeBaselineInlineFontSize,
+                        el.dataset.themeBaselineInlineFontPriority || ''
+                    );
+                } else if (isMainAutofitTarget(el) && Number.isFinite(size)) {
+                    el.style.fontSize = size + 'px';
+                }
+
+                if (el.classList.contains('slide-body')) {
+                    if (Number.isFinite(size)) el.dataset.autofitSize = String(Math.round(size));
+                }
+            });
+        }
+
+        function restoreOriginalFontSize(el, options = {}) {
+            if (options.useThemeBaseline && Object.prototype.hasOwnProperty.call(el.dataset, 'themeBaselineInlineFontSize')) {
+                el.style.removeProperty('font-size');
+                if (el.dataset.themeBaselineInlineFontSize) {
+                    el.style.setProperty(
+                        'font-size',
+                        el.dataset.themeBaselineInlineFontSize,
+                        el.dataset.themeBaselineInlineFontPriority || ''
+                    );
+                }
+                return;
+            }
+
             if (!Object.prototype.hasOwnProperty.call(el.dataset, 'badWrapOriginalFontSize')) {
                 el.dataset.badWrapOriginalFontSize = el.style.getPropertyValue('font-size') || '';
                 el.dataset.badWrapOriginalFontPriority = el.style.getPropertyPriority('font-size') || '';
@@ -82,6 +207,19 @@
 
         function setAutofitFontSize(el, px) {
             el.style.setProperty('font-size', px + 'px', 'important');
+        }
+
+        function withStableAutofitMeasurement(container, callback) {
+            const reveal = document.querySelector('.reveal');
+            if (reveal) reveal.classList.add('autofit-measuring');
+            if (container) container.classList.add('autofit-measuring');
+
+            try {
+                return callback();
+            } finally {
+                if (container) container.classList.remove('autofit-measuring');
+                if (reveal) reveal.classList.remove('autofit-measuring');
+            }
         }
 
         function autoFitAllSlides(options = {}) {
@@ -103,6 +241,46 @@
             ) {
                 el.style.fontSize = (parseFloat(el.style.fontSize) - 1) + 'px';
             }
+        }
+
+        function fitSingleLineShrinkOnly(el, minVar, minFallback) {
+            if (!el || isTextSizeLocked(el)) return;
+            const computed = getComputedStyle(el);
+            const minSize = cssNumber(el, minVar, minFallback);
+            let currentSize = parseFloat(el.style.fontSize) || parseFloat(computed.fontSize) || minSize;
+
+            el.style.whiteSpace = 'nowrap';
+            el.style.fontSize = currentSize + 'px';
+
+            while (
+                (el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 2) &&
+                currentSize > minSize
+            ) {
+                currentSize -= 1;
+                el.style.fontSize = currentSize + 'px';
+            }
+        }
+
+        function shrinkBodyUntilFits(container) {
+            const body = container.querySelector('.slide-body');
+            if (!body) return;
+
+            const computed = getComputedStyle(body);
+            const minSize = Math.max(12, cssNumber(body, '--autofit-min', 18));
+            let currentSize =
+                parseFloat(body.style.fontSize) ||
+                parseFloat(body.dataset.autofitSize) ||
+                parseFloat(computed.fontSize) ||
+                minSize;
+
+            body.style.fontSize = currentSize + 'px';
+
+            while (bodyOverflows(body) && currentSize > minSize) {
+                currentSize -= 1;
+                body.style.fontSize = currentSize + 'px';
+            }
+
+            body.dataset.autofitSize = String(Math.round(currentSize));
         }
 
         function autoFitContainer(container, options = {}) {
@@ -166,6 +344,7 @@
             fixBadVerticalWraps(container);
             if (options.preserveEditedText) restoreLockedFontSizes(lockedSnapshot);
             container.dataset.autofitDone = 'true';
+            storeThemeAutofitBaseline(container, { force: true });
             
             // Fragment 원상 복구
             hiddenFragments.forEach(f => {
@@ -198,26 +377,10 @@
         }
 
         function fixBadVerticalWraps(container) {
-            const selector = [
-                '.stat-number',
-                '.stat-label',
-                '.bullet-text',
-                '.comparison-card-title',
-                '.matrix-label',
-                '.roadmap-label',
-                '.ox-text',
-                '.timeline-date',
-                '.timeline-title',
-                '.summary-card-title',
-                '.hands-on-steps li',
-                '.tutorial-steps li',
-                '.tutorial-tip .tip-text',
-                '.tutorial-warning .tip-text'
-            ].join(',');
-
-            container.querySelectorAll(selector).forEach(el => {
+            const options = arguments[1] || {};
+            container.querySelectorAll(BAD_WRAP_SELECTOR).forEach(el => {
                 if (isTextSizeLocked(el)) return;
-                restoreOriginalFontSize(el);
+                restoreOriginalFontSize(el, options);
                 el.style.wordBreak = 'keep-all';
                 el.style.overflowWrap = 'normal';
                 el.style.wordWrap = 'normal';
@@ -240,6 +403,51 @@
                 force: true,
                 preserveEditedText: options.preserveEditedText !== false
             });
+        }
+
+        function stabilizeSlideContainerShrinkOnly(container, options = {}) {
+            if (!container) return;
+
+            const hiddenFragments = Array.from(container.querySelectorAll('.fragment:not(.visible)'));
+            hiddenFragments.forEach(f => {
+                f.style.transition = 'none';
+                f.classList.add('visible', 'autofit-temp');
+            });
+
+            const lockedSnapshot = options.preserveEditedText === false ? [] : snapshotLockedFontSizes(container);
+
+            withStableAutofitMeasurement(container, () => {
+                restoreThemeAutofitBaseline(container);
+
+                container.querySelectorAll('.slide-header h2').forEach(h2 => {
+                    fitSingleLineShrinkOnly(h2, '--title-fit-min', 34);
+                });
+
+                container.querySelectorAll('.takeaway-content').forEach(tc => {
+                    fitSingleLineShrinkOnly(tc, '--takeaway-fit-min', 20);
+                });
+
+                shrinkBodyUntilFits(container);
+                fixBadVerticalWraps(container, { useThemeBaseline: true });
+            });
+
+            if (options.preserveEditedText !== false) restoreLockedFontSizes(lockedSnapshot);
+            container.dataset.autofitDone = 'true';
+
+            hiddenFragments.forEach(f => {
+                f.classList.remove('visible', 'autofit-temp');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        f.style.transition = '';
+                    });
+                });
+            });
+        }
+
+        function captureCurrentSlideThemeAutofitBaseline() {
+            const slide = Reveal.getCurrentSlide();
+            const container = slide && slide.querySelector('.slide-container, .center-layout');
+            captureThemeAutofitBaseline(container);
         }
 
         function stabilizeAfterPaint(container, delay = 0) {
@@ -266,19 +474,19 @@
             const container = slide && slide.querySelector('.slide-container, .center-layout');
             if (!container) return;
 
-            stabilizeSlideContainer(container, { preserveEditedText: true });
+            stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
             Reveal.layout();
 
             if (document.fonts && document.fonts.ready) {
                 document.fonts.ready.then(() => {
-                    stabilizeSlideContainer(container, { preserveEditedText: true });
+                    stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
                     Reveal.layout();
                 });
             }
 
             clearTimeout(container.themeStabilizeTimer);
             container.themeStabilizeTimer = setTimeout(() => {
-                stabilizeSlideContainer(container, { preserveEditedText: true });
+                stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
                 Reveal.layout();
             }, 520);
         }
@@ -348,6 +556,7 @@
             const container = event.target.closest('.slide-container, .center-layout');
             if (container) {
                 container.dataset.autofitDone = 'false';
+                clearThemeAutofitBaseline(container);
                 clearTimeout(container.autofitTimer);
                 container.autofitTimer = setTimeout(() => {
                     autoFitContainer(container, { force: true, preserveEditedText: true });

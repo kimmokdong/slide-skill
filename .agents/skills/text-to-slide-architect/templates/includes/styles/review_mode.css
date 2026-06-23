@@ -241,7 +241,7 @@
             width: 100%;
         }
 
-        .direct-edit-selected {
+        #direct-edit-selected {
             min-height: 32px;
             padding: 8px 10px;
             border-radius: 8px;

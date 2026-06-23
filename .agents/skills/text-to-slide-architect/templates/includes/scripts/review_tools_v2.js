@@ -351,7 +351,7 @@
         }
 
         function disableDirectEditing() {
-            getCurrentEditableElements().forEach(el => {
+            document.querySelectorAll('.direct-editable, [contenteditable="true"]').forEach(el => {
                 el.classList.remove('direct-editable', 'direct-edit-selected');
                 el.removeAttribute('contenteditable');
             });
@@ -411,7 +411,7 @@
         function applySelectedFontSize(value) {
             if (!selectedEditable) return;
             const clamped = Math.max(12, Math.min(96, Number(value) || 32));
-            selectedEditable.style.fontSize = `${clamped}px`;
+            selectedEditable.style.setProperty('font-size', `${clamped}px`, 'important');
             selectedEditable.dataset.styleLocked = 'true';
             syncFontControls(clamped);
 
