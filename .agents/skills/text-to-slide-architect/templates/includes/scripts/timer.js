@@ -94,6 +94,11 @@ function startTimer() {
         if (timerSeconds > 0) {
             timerSeconds--;
             updateTimerDisplay();
+            
+            // 0초가 되는 즉시 알람을 울리도록 수정 (1초 지연 제거)
+            if (timerSeconds <= 0) {
+                triggerTimerEnd();
+            }
         } else {
             triggerTimerEnd();
         }
@@ -139,63 +144,39 @@ function playTimerFinishedSound() {
     try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // 브라우저 자동재생 제한 완화를 위해 상태 확인 후 재개
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
         
-        // 청아한 실로폰 멜로디 (도 - 미 - 솔 - 높은도: C5, E5, G5, C6)
-        const playMelody = (startDelay) => {
-            const freqs = [523.25, 659.25, 783.99, 1046.50]; // 도, 미, 솔, 도
-            freqs.forEach((freq, idx) => {
-                // 음 간격을 0.22초로 벌려서 스타카토 형식으로 명확하게 딩-동-댕-동 리듬을 줌
-                const timeOffset = startDelay + (idx * 0.22);
-                
-                // 실로폰 특유의 맑고 가벼운 통울림을 위해 Triangle 파형 사용
-                const osc = audioCtx.createOscillator();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + timeOffset);
-                
-                // 실로폰의 금속성 맑은 고음 배음을 위해 1옥타브 위 Sine 파형 믹싱
-                const oscOverTone = audioCtx.createOscillator();
-                oscOverTone.type = 'sine';
-                oscOverTone.frequency.setValueAtTime(freq * 2, audioCtx.currentTime + timeOffset);
-                
-                const gainNode = audioCtx.createGain();
-                const gainOverToneNode = audioCtx.createGain();
-                
-                osc.connect(gainNode);
-                oscOverTone.connect(gainOverToneNode);
-                
-                gainNode.connect(audioCtx.destination);
-                gainOverToneNode.connect(audioCtx.destination);
-                
-                const now = audioCtx.currentTime + timeOffset;
-                
-                // 타격 순간(어택)은 극히 짧고 감쇄가 빠른 실로폰의 음량 엔벨로프
-                gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01); // 빠르게 타격
-                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.35); // 0.35초 동안 맑게 소멸
-                
-                gainOverToneNode.gain.setValueAtTime(0, now);
-                gainOverToneNode.gain.linearRampToValueAtTime(0.1, now + 0.01);
-                gainOverToneNode.gain.exponentialRampToValueAtTime(0.001, now + 0.18); // 배음은 더 빠르게 감쇄
-                
-                osc.start(now);
-                oscOverTone.start(now);
-                
-                // 소리가 완전히 사라진 후 리소스 해제
-                osc.stop(now + 0.4);
-                oscOverTone.stop(now + 0.4);
-            });
+        // 부드럽지만 크고 확실한 디지털 알람 소리 (빠른 삐빅- 삐빅-)
+        const playBeep = (timeOffset) => {
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine'; // 부드러운 사인파 유지
+            osc.frequency.setValueAtTime(980, audioCtx.currentTime + timeOffset); // 살짝 높은 음으로 잘 들리게
+            
+            const gainNode = audioCtx.createGain();
+            
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime + timeOffset;
+            
+            // 어택은 짧고 강하게, 릴리즈는 아주 짧게 끊어서 경쾌하게
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.9, now + 0.01); // 최고 음량을 0.9로 대폭 상향
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.08); // 0.08초만에 아주 짧고 명확하게 소리 끊음
+            
+            osc.start(now);
+            osc.stop(now + 0.1);
         };
         
-        // 1.0초 간격을 두고 총 3회 연속 "딩동댕동" 재생 (0초, 1.0초, 2.0초)
-        playMelody(0);
-        playMelody(1.0);
-        playMelody(2.0);
+        // 간격을 확 좁힌 삐빅 (0.0, 0.12) 쌍을 반복 (반복 주기도 0.8초로 좁혀서 긴박감)
+        for (let i = 0; i < 5; i++) {
+            playBeep(i * 0.8);        // 첫 번째 삐
+            playBeep(i * 0.8 + 0.12); // 아주 짧은 간격 뒤 두 번째 빅
+        }
     } catch (e) {
-        console.warn("웹 오디오 알림 출력 에러:", e);
+        console.warn("오디오 재생 에러:", e);
     }
 }
 

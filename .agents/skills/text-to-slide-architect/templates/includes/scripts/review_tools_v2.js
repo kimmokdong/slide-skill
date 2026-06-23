@@ -42,9 +42,16 @@
 
         loadReviewState();
 
+        function scheduleReviewLayout() {
+            if (typeof Reveal === 'undefined' || !Reveal.layout) return;
+            requestAnimationFrame(() => Reveal.layout());
+            setTimeout(() => Reveal.layout(), 80);
+            setTimeout(() => Reveal.layout(), 430);
+        }
+
         function toggleReviewMode() {
             document.body.classList.toggle('review-active');
-            setTimeout(() => Reveal.layout(), 80);
+            scheduleReviewLayout();
 
             if (document.body.classList.contains('review-active')) {
                 initSlideSorter();

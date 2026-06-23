@@ -8,27 +8,50 @@
             background-color: #1e293b;
         }
 
+        :root {
+            --review-sidebar-width: 400px;
+        }
+
         .reveal-container-wrapper {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
             height: 100%;
             width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: #0f172a;
             transition: right 0.4s cubic-bezier(0.2, 0, 0, 1);
         }
 
         body.review-active .reveal-container-wrapper {
-            right: 400px;
+            right: var(--review-sidebar-width);
             width: auto;
             height: 100%;
+        }
+
+        body.review-active .reveal-container-wrapper .reveal {
+            width: min(calc(100vw - var(--review-sidebar-width)), calc(100vh * 16 / 9)) !important;
+            height: min(100vh, calc((100vw - var(--review-sidebar-width)) * 9 / 16)) !important;
+            max-width: calc(100vw - var(--review-sidebar-width));
+            max-height: 100vh;
+            flex: 0 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            :root {
+                --review-sidebar-width: 360px;
+            }
         }
 
         .review-sidebar {
             position: fixed;
             top: 0;
-            right: -400px;
-            width: 400px;
+            right: calc(-1 * var(--review-sidebar-width));
+            width: var(--review-sidebar-width);
             height: 100%;
             background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(20px);

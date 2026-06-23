@@ -242,13 +242,13 @@
             position: fixed;
             bottom: 85px;
             right: 30px;
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-            background: var(--color-card-bg, rgba(255, 255, 255, 0.7));
-            border: 1px solid var(--color-card-border, rgba(0, 0, 0, 0.1));
-            color: var(--color-text);
-            font-size: 26px;
+            width: 46px;
+            height: 46px;
+            border-radius: 23px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1.2rem;
             cursor: pointer;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             display: flex;
@@ -256,15 +256,39 @@
             justify-content: center;
             z-index: 999;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .timer-toggle-fab:hover {
+            background: rgba(15, 23, 42, 0.85);
+            transform: scale(1.05);
         }
 
-        .timer-toggle-fab:hover {
-            transform: scale(1.1) rotate(15deg);
-            background: var(--color-accent);
+        /* 도움말 버튼 */
+        .help-toggle-fab {
+            position: fixed;
+            bottom: 150px; /* 타이머 버튼 위 */
+            right: 30px;
+            width: 46px;
+            height: 46px;
+            border-radius: 23px;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
-            border-color: var(--color-accent);
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .help-toggle-fab:hover {
+            background: rgba(15, 23, 42, 0.85);
+            transform: scale(1.05);
         }
 
         /* 타이머 모달 오버레이 */

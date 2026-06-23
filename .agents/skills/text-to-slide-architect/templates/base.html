@@ -37,6 +37,9 @@
     <!-- 글로벌 플로팅 타이머 버튼 -->
     <button class="timer-toggle-fab" id="timer-fab" onclick="toggleTimerModal()" title="타이머 열기 (단축키: T)">⏱️</button>
 
+    <!-- 단축키 도움말 버튼 -->
+    <button class="help-toggle-fab" onclick="Reveal.toggleHelp()" title="단축키 도움말 (단축키: ?)">❓</button>
+
     <!-- 타이머 오버레이 모달 -->
     <div id="timer-modal" class="timer-modal-overlay" onclick="closeTimerModal()">
         <div class="timer-modal-wrapper" onclick="event.stopPropagation()">
@@ -46,6 +49,7 @@
             </div>
             
             <div class="timer-presets-row">
+                <button class="timer-btn preset" onclick="setTimerPreset(60)">1분</button>
                 <button class="timer-btn preset" onclick="setTimerPreset(180)">3분</button>
                 <button class="timer-btn preset" onclick="setTimerPreset(300)">5분</button>
                 <button class="timer-btn preset" onclick="setTimerPreset(600)">10분</button>
@@ -226,7 +230,8 @@
                         <option value="chalkboard">chalkboard (Caveat/PenScript)</option>
                     </select>
                 </div>
-                <div class="editor-form-group">
+
+                <div class="editor-form-group">
                     <label>강조 텍스트 스타일</label>
                     <select id="editor-select-highlight" class="editor-select">
                         <option value="friendly" selected>friendly (파스텔 형광펜)</option>
@@ -347,6 +352,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <!-- Reveal.js 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
 
     <script>
 {{INCLUDE:includes/scripts/theme_editor.js}}
@@ -355,6 +361,7 @@
 {{INCLUDE:includes/scripts/lightbox.js}}
 {{INCLUDE:includes/scripts/review_tools_v2.js}}
 {{INCLUDE:includes/scripts/timer.js}}
+{{INCLUDE:includes/scripts/draggable_fabs.js}}
     </script>
 </body>
 

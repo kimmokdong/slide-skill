@@ -1,3 +1,11 @@
+## 2026-06-23: Reveal.js 기반 슬라이드 엔진 고도화 (타이머, 발표자 노트, 플로팅 UI)
+- **발표자 노트 (Speaker Notes)**: Reveal.js 환경에서 S키를 눌러 발표자 노트를 띄우려면 ase.html에 
+otes.js 플러그인을 로드하고, Reveal.initialize의 plugins 배열에 RevealNotes를 반드시 등록해야 함.
+- **로컬 스토리지 기반 플로팅 UI 드래그**: 마우스/터치 이벤트로 UI를 화면 내에서 자유롭게 배치할 때, 클릭 오동작 방지를 위해 이동 거리가 3px 이상이면 이벤트를 캡처(capture: true)하여 무시(stopPropagation) 처리. 변경된 좌표는 localStorage에 저장하여 새로고침 시에도 유지.
+- **Web Audio API 알람 튜닝**: 듣기 좋은 전자 알람 소리를 내려면 OscillatorNode를 sine 파형으로 설정. 어택/릴리즈 시 틱(Tick) 잡음을 막기 위해 gainNode.gain.linearRampToValueAtTime과 exponentialRampToValueAtTime을 짧게(0.01~0.08초) 부여하면 맑고 경쾌한 삐빅 소리를 구현 가능.
+- **정밀한 코드 수정**: HTML/CSS 블록 수정 시 터미널 상의 파워쉘 인코딩이나 특수문자 에러를 피하기 위해, 직접 Python 스크립트 파일을 생성하여 
+e.sub로 정밀 타격하고 실행한 뒤 삭제하는 방식이 가장 안전함.
+
 ﻿# 챗봇 프롬프트 & 개발 히스토리
 
 ## 🏆 [2026-06-23] 테마 에디터 로컬 서버 아키텍처 개선 및 오디오/애니메이션 버그 픽스 (29차 보완)

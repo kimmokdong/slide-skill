@@ -11,6 +11,7 @@
             margin: 0,
             minScale: 0.2,
             maxScale: 2.0,
+            plugins: [ RevealNotes ]
         });
 
         function cssNumber(el, name, fallback) {
