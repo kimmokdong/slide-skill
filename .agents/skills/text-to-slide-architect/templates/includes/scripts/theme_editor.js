@@ -172,7 +172,10 @@
 
             const frames = document.querySelectorAll('.screenshot-frame');
             frames.forEach(f => {
+                const keepClasses = ['browser-frame', 'editable-image-frame', 'uploading']
+                    .filter(cls => f.classList.contains(cls));
                 f.className = 'screenshot-frame';
+                keepClasses.forEach(cls => f.classList.add(cls));
                 f.classList.add(`frame-${frame}`);
             });
 

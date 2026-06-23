@@ -10,7 +10,7 @@
             <div class="image-comparison-layout{{#if BOTTOM_TAKEAWAY}} has-takeaway{{/if}}">
                 <!-- 왼쪽 컬럼 -->
                 <div class="comparison-column">
-                    <div class="comparison-image-wrapper">
+                    <div class="comparison-image-wrapper editable-image-frame" data-slide-index="{{SLIDE_INDEX}}" data-target-key="LEFT_IMAGE_SRC">
                         {{#if LEFT_IMAGE_SRC}}
                         <img src="{{LEFT_IMAGE_SRC}}" alt="{{LEFT_DESC}}" class="comparison-img">
                         {{else}}
@@ -29,7 +29,7 @@
 
                 <!-- 오른쪽 컬럼 -->
                 <div class="comparison-column">
-                    <div class="comparison-image-wrapper">
+                    <div class="comparison-image-wrapper editable-image-frame" data-slide-index="{{SLIDE_INDEX}}" data-target-key="RIGHT_IMAGE_SRC">
                         {{#if RIGHT_IMAGE_SRC}}
                         <img src="{{RIGHT_IMAGE_SRC}}" alt="{{RIGHT_DESC}}" class="comparison-img">
                         {{else}}

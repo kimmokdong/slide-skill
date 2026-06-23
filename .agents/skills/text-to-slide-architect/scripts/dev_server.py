@@ -1,182 +1,438 @@
 #!/usr/bin/env python3
-"""경량 로컬 개발 서버 및 슬라이드 순서/삭제 동기화 서버.
+"""Local preview server for slide projects.
 
-사용법:
-    프로젝트 폴더(예: 260619_grade3_history) 안에서 실행:
+Run from a project directory that contains slide_plan.json:
     python ../.agents/skills/text-to-slide-architect/scripts/dev_server.py
 """
 
+import base64
+import binascii
+import datetime as dt
 import http.server
-import socketserver
 import json
 import os
-import sys
+import re
+import shutil
+import socketserver
 import subprocess
+import sys
+import tempfile
 import urllib.parse
+import uuid
+from pathlib import Path
 
+
+HOST = "127.0.0.1"
 PORT = 8000
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-BUILD_HTML_PY = os.path.join(SCRIPT_DIR, 'build_html.py')
+SCRIPT_DIR = Path(__file__).resolve().parent
+BUILD_HTML_PY = SCRIPT_DIR / "build_html.py"
+CAPTURE_PNG_PY = SCRIPT_DIR / "capture_png.py"
+EXPORT_IMAGE_PPTX_PY = SCRIPT_DIR / "export_image_pptx.py"
+
+MAX_JSON_BODY_BYTES = 26 * 1024 * 1024
+MAX_IMAGE_BYTES = 15 * 1024 * 1024
+ALLOWED_IMAGE_KEYS = {"IMAGE_SRC", "LEFT_IMAGE_SRC", "RIGHT_IMAGE_SRC"}
+ALLOWED_IMAGE_MIME = {
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/gif",
+    "image/webp",
+}
+
+
+class ApiError(Exception):
+    def __init__(self, status_code, message):
+        super().__init__(message)
+        self.status_code = status_code
+        self.message = message
+
+
+def get_plan_path() -> Path:
+    return Path.cwd() / "slide_plan.json"
+
+
+def safe_child_path(root: Path, rel_path: str) -> str:
+    root = root.resolve()
+    candidate = (root / rel_path).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return str(root / "__not_found__")
+    return str(candidate)
+
+
+def load_plan(plan_path: Path) -> dict:
+    if not plan_path.exists():
+        raise ApiError(
+            404,
+            "slide_plan.json was not found. Start the server from a slide project directory.",
+        )
+
+    with plan_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def backup_plan(plan_path: Path) -> Path:
+    timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = plan_path.with_name(f"slide_plan.backup.{timestamp}.json")
+    if backup_path.exists():
+        backup_path = plan_path.with_name(
+            f"slide_plan.backup.{timestamp}.{uuid.uuid4().hex[:8]}.json"
+        )
+    shutil.copy2(plan_path, backup_path)
+    return backup_path
+
+
+def save_plan_atomic(plan_path: Path, plan: dict) -> None:
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{plan_path.name}.",
+        suffix=".tmp",
+        dir=str(plan_path.parent),
+        text=True,
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(plan, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        os.replace(tmp_name, plan_path)
+    finally:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+
+
+def run_command(cmd, label: str):
+    print(f"[SYS] {label}: {' '.join(str(part) for part in cmd)}")
+    result = subprocess.run(
+        [str(part) for part in cmd],
+        cwd=str(Path.cwd()),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="ignore",
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout or "").strip()
+        raise ApiError(500, f"{label} failed: {details}")
+    return result
+
+
+def rebuild_outputs() -> dict:
+    plan_path = get_plan_path()
+    output_dir = Path.cwd() / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    output_html = output_dir / "index.html"
+    run_command([sys.executable, BUILD_HTML_PY, plan_path, output_html], "HTML build")
+
+    captured_dir = output_dir / "captured_images"
+    run_command([sys.executable, CAPTURE_PNG_PY, output_html, captured_dir], "Slide capture")
+
+    output_pptx = output_dir / "presentation.pptx"
+    run_command(
+        [sys.executable, EXPORT_IMAGE_PPTX_PY, captured_dir, output_pptx],
+        "Image PPTX build",
+    )
+
+    return {
+        "html": "output/index.html",
+        "captures": "output/captured_images",
+        "pptx": "output/presentation.pptx",
+    }
+
+
+def parse_host_name(raw_host: str) -> str:
+    host = (raw_host or "").strip().lower()
+    if host.startswith("[") and "]" in host:
+        return host[1 : host.index("]")]
+    return host.split(":", 1)[0]
+
+
+def is_local_host(raw_host: str) -> bool:
+    return parse_host_name(raw_host) in {"localhost", "127.0.0.1", "::1"}
+
+
+def detect_image_type(raw: bytes):
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png", ".png"
+    if raw.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg", ".jpg"
+    if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
+        return "image/gif", ".gif"
+    if len(raw) >= 12 and raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp", ".webp"
+    return None, None
+
+
+def sanitize_filename_stem(filename: str) -> str:
+    name = os.path.basename(filename or "image")
+    stem = os.path.splitext(name)[0]
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "_", stem).strip("._-")
+    return (stem or "image")[:48]
+
+
+def decode_upload_image(image_data: str, filename: str, file_type: str = ""):
+    if not isinstance(image_data, str) or not image_data:
+        raise ApiError(400, "image_data is required.")
+
+    declared_mime = (file_type or "").lower()
+    base64_part = image_data
+
+    if image_data.startswith("data:"):
+        header, separator, data = image_data.partition(",")
+        if separator != ",":
+            raise ApiError(400, "Invalid image data URL.")
+
+        match = re.match(r"^data:([^;]+);base64$", header, flags=re.IGNORECASE)
+        if not match:
+            raise ApiError(400, "Only base64 image data URLs are supported.")
+
+        declared_mime = match.group(1).lower()
+        base64_part = data
+
+    if declared_mime and declared_mime not in ALLOWED_IMAGE_MIME:
+        raise ApiError(415, "Unsupported image type. Use PNG, JPG, GIF, or WebP.")
+
+    try:
+        raw = base64.b64decode(base64_part, validate=True)
+    except (binascii.Error, ValueError):
+        raise ApiError(400, "Invalid base64 image data.")
+
+    if not raw:
+        raise ApiError(400, "The uploaded image is empty.")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise ApiError(413, "The image is too large. Maximum size is 15 MB.")
+
+    detected_mime, extension = detect_image_type(raw)
+    if not detected_mime:
+        raise ApiError(415, "Unsupported or invalid image file.")
+
+    if declared_mime and declared_mime not in {"image/jpg", detected_mime}:
+        raise ApiError(415, "The image content does not match the declared file type.")
+
+    stem = sanitize_filename_stem(filename)
+    return raw, detected_mime, extension, stem
+
+
+def save_uploaded_image(payload: dict, slide_index: int, target_key: str) -> str:
+    raw, _mime, extension, stem = decode_upload_image(
+        payload.get("image_data", ""),
+        payload.get("filename", ""),
+        payload.get("file_type", ""),
+    )
+
+    images_dir = Path.cwd() / "output" / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    key_part = target_key.lower()
+    safe_name = f"upload_s{slide_index + 1}_{key_part}_{timestamp}_{uuid.uuid4().hex[:8]}_{stem}{extension}"
+    image_path = images_dir / safe_name
+    image_path.write_bytes(raw)
+    return f"images/{safe_name}"
 
 
 class DevServerHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        """루트('/') 요청 시 output/index.html을 서빙하도록 랩핑하고,
-        에셋 리소스도 프로젝트 구조에 맞게 매핑해줍니다."""
         parsed = urllib.parse.urlparse(path)
         clean_path = parsed.path
 
-        # 루트 경로 요청 시 output/index.html 제공
-        if clean_path == '/':
-            return os.path.join(os.getcwd(), 'output', 'index.html')
-            
-        # /output/ 으로 시작하는 리소스
-        if clean_path.startswith('/output/'):
-            rel_path = clean_path[8:] # /output/ 제거
-            return os.path.join(os.getcwd(), 'output', rel_path)
-            
-        # /images/ 또는 /diagrams/ 등의 에셋 매핑 지원 (HTML 상에서 images/name.png 로 가리키는 경우)
-        for asset_dir in ['images', 'diagrams', 'includes']:
-            if clean_path.startswith(f'/{asset_dir}/'):
-                return os.path.join(os.getcwd(), 'output', clean_path.lstrip('/'))
+        if clean_path == "/":
+            return str(Path.cwd() / "output" / "index.html")
+
+        if clean_path.startswith("/output/"):
+            rel_path = clean_path[8:]
+            return safe_child_path(Path.cwd() / "output", rel_path)
+
+        for asset_dir in ["images", "diagrams", "includes"]:
+            if clean_path.startswith(f"/{asset_dir}/"):
+                return safe_child_path(Path.cwd() / "output", clean_path.lstrip("/"))
 
         return super().translate_path(path)
 
+    def read_json_payload(self) -> dict:
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            raise ApiError(400, "Invalid Content-Length header.")
+
+        if content_length <= 0:
+            raise ApiError(400, "Request body is required.")
+        if content_length > MAX_JSON_BODY_BYTES:
+            raise ApiError(413, "Request body is too large.")
+
+        post_data = self.rfile.read(content_length)
+        try:
+            payload = json.loads(post_data.decode("utf-8"))
+        except json.JSONDecodeError:
+            raise ApiError(400, "Invalid JSON payload.")
+
+        if not isinstance(payload, dict):
+            raise ApiError(400, "JSON payload must be an object.")
+        return payload
+
+    def require_local_request(self):
+        if not is_local_host(self.headers.get("Host", "")):
+            raise ApiError(403, "Only local requests are allowed.")
+
+        origin = self.headers.get("Origin")
+        if origin:
+            origin_host = urllib.parse.urlparse(origin).netloc
+            if not is_local_host(origin_host):
+                raise ApiError(403, "Only local origins are allowed.")
+
     def do_POST(self):
-        """POST /api/save-order API 요청을 처리합니다."""
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path == '/api/save-order':
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
-            
-            try:
-                req_json = json.loads(post_data.decode('utf-8'))
-                indices = req_json.get('indices', [])
-                
-                # slide_plan.json 정렬 및 삭제 저장
-                plan_path = os.path.join(os.getcwd(), 'slide_plan.json')
-                if not os.path.exists(plan_path):
-                    self.send_error_response(404, "slide_plan.json 파일을 찾을 수 없습니다. 현재 프로젝트 폴더 내에서 서버가 실행되었는지 확인해 주세요.")
-                    return
-                
-                with open(plan_path, 'r', encoding='utf-8') as f:
-                    plan = json.load(f)
-                
-                original_slides = plan.get('slides', [])
-                
-                # 인덱스 검증
-                new_slides = []
-                for idx in indices:
-                    if 0 <= idx < len(original_slides):
-                        new_slides.append(original_slides[idx])
-                    else:
-                        print(f"[경고] 올바르지 않은 슬라이드 인덱스 무시: {idx}")
-                
-                # 저장
-                plan['slides'] = new_slides
-                with open(plan_path, 'w', encoding='utf-8') as f:
-                    json.dump(plan, f, ensure_ascii=False, indent=2)
-                
-                print(f"[API] slide_plan.json 슬라이드 구성 갱신 완료 (남은 슬라이드: {len(new_slides)}장)")
-                
-                # html 빌더 실행 (build_html.py)
-                output_html = os.path.join(os.getcwd(), 'output', 'index.html')
-                cmd = [sys.executable, BUILD_HTML_PY, plan_path, output_html]
-                
-                print(f"[SYS] HTML 빌드 자동 실행: {' '.join(cmd)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore')
-                
-                if result.returncode != 0:
-                    print(f"[오류] 빌드 실패: {result.stderr}")
-                    self.send_error_response(500, f"HTML 빌드 실패: {result.stderr}")
-                    return
-                
-                # 1. 네이티브 PPTX 자동 재생성
-                output_pptx = os.path.join(os.getcwd(), 'output', 'presentation.pptx')
-                export_pptx_py = os.path.join(SCRIPT_DIR, 'export_pptx.py')
-                pptx_cmd = [sys.executable, export_pptx_py, plan_path, output_pptx, os.path.join(os.getcwd(), 'output')]
-                print(f"[SYS] 네이티브 PPTX 빌드 자동 실행: {' '.join(pptx_cmd)}")
-                subprocess.run(pptx_cmd, capture_output=True)
-                
-                # 2. 슬라이드 스크린샷(PNG) 자동 캡처
-                output_images_dir = os.path.join(os.getcwd(), 'output', 'captured_images')
-                capture_png_py = os.path.join(SCRIPT_DIR, 'capture_png.py')
-                capture_cmd = [sys.executable, capture_png_py, output_html, output_images_dir]
-                print(f"[SYS] 슬라이드 스크린샷 캡처 자동 실행: {' '.join(capture_cmd)}")
-                capture_res = subprocess.run(capture_cmd, capture_output=True)
-                
-                # 3. 이미지형 PPTX 자동 재생성 (캡처 성공 시)
-                if capture_res.returncode == 0:
-                    output_image_pptx = os.path.join(os.getcwd(), 'output', 'presentation_images.pptx')
-                    export_img_pptx_py = os.path.join(SCRIPT_DIR, 'export_image_pptx.py')
-                    img_pptx_cmd = [sys.executable, export_img_pptx_py, output_images_dir, output_image_pptx]
-                    print(f"[SYS] 이미지형 PPTX 빌드 자동 실행: {' '.join(img_pptx_cmd)}")
-                    subprocess.run(img_pptx_cmd, capture_output=True)
-                
-                # 성공 응답
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                response = {"status": "success", "message": "슬라이드 정렬 및 삭제 완료, HTML/PPTX/이미지 빌드 성공!"}
-                self.wfile.write(json.dumps(response).encode('utf-8'))
-                
-            except Exception as e:
-                print(f"[오류] 요청 처리 중 예외 발생: {e}")
-                self.send_error_response(500, f"서버 처리 오류: {str(e)}")
-        else:
-            self.send_error_response(404, "API 엔드포인트를 찾을 수 없습니다.")
+        try:
+            self.require_local_request()
+
+            if parsed.path == "/api/save-order":
+                self.handle_save_order()
+            elif parsed.path == "/api/upload-image":
+                self.handle_upload_image()
+            else:
+                raise ApiError(404, "API endpoint was not found.")
+        except ApiError as exc:
+            self.send_error_response(exc.status_code, exc.message)
+        except Exception as exc:
+            print(f"[ERROR] Request failed: {exc}")
+            self.send_error_response(500, f"Server error: {exc}")
+
+    def handle_save_order(self):
+        payload = self.read_json_payload()
+        indices = payload.get("indices", [])
+        if not isinstance(indices, list):
+            raise ApiError(400, "indices must be an array.")
+
+        plan_path = get_plan_path()
+        plan = load_plan(plan_path)
+        original_slides = plan.get("slides", [])
+        if not isinstance(original_slides, list):
+            raise ApiError(400, "slide_plan.json must contain a slides array.")
+
+        new_slides = []
+        for idx in indices:
+            if isinstance(idx, bool) or not isinstance(idx, int):
+                raise ApiError(400, "indices must contain integers only.")
+            if idx < 0 or idx >= len(original_slides):
+                raise ApiError(400, f"Invalid slide index: {idx}")
+            new_slides.append(original_slides[idx])
+
+        backup_path = backup_plan(plan_path)
+        plan["slides"] = new_slides
+        save_plan_atomic(plan_path, plan)
+        rebuild = rebuild_outputs()
+
+        self.send_json_response(
+            200,
+            {
+                "status": "success",
+                "message": "Slide order saved and outputs rebuilt.",
+                "backup": backup_path.name,
+                "rebuild": rebuild,
+            },
+        )
+
+    def handle_upload_image(self):
+        payload = self.read_json_payload()
+
+        slide_index = payload.get("slide_index")
+        target_key = payload.get("target_key")
+
+        if isinstance(slide_index, bool) or not isinstance(slide_index, int):
+            raise ApiError(400, "slide_index must be an integer.")
+        if target_key not in ALLOWED_IMAGE_KEYS:
+            raise ApiError(400, "target_key is not allowed.")
+
+        plan_path = get_plan_path()
+        plan = load_plan(plan_path)
+        slides = plan.get("slides", [])
+        if not isinstance(slides, list):
+            raise ApiError(400, "slide_plan.json must contain a slides array.")
+        if slide_index < 0 or slide_index >= len(slides):
+            raise ApiError(400, "slide_index is out of range.")
+
+        slide = slides[slide_index]
+        if not isinstance(slide, dict):
+            raise ApiError(400, "The selected slide is not an object.")
+
+        slide_type = slide.get("layout", slide.get("type", ""))
+        if slide_type == "image_comparison":
+            if target_key not in {"LEFT_IMAGE_SRC", "RIGHT_IMAGE_SRC"}:
+                raise ApiError(400, "image_comparison only accepts LEFT_IMAGE_SRC or RIGHT_IMAGE_SRC.")
+        elif target_key != "IMAGE_SRC":
+            raise ApiError(400, "This slide layout only accepts IMAGE_SRC.")
+
+        image_src = save_uploaded_image(payload, slide_index, target_key)
+        backup_path = backup_plan(plan_path)
+        slide[target_key] = image_src
+        save_plan_atomic(plan_path, plan)
+        rebuild = rebuild_outputs()
+
+        self.send_json_response(
+            200,
+            {
+                "status": "success",
+                "message": "Image uploaded and outputs rebuilt.",
+                "image_src": image_src,
+                "backup": backup_path.name,
+                "rebuild": rebuild,
+            },
+        )
+
+    def send_json_response(self, code, payload):
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def send_error_response(self, code, message):
-        self.send_response(code)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        err_res = {"status": "error", "message": message}
-        self.wfile.write(json.dumps(err_res).encode('utf-8'))
+        self.send_json_response(code, {"status": "error", "message": message})
 
 
 class ThreadingHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
-    """멀티스레딩 지원 서버로 브라우저의 다중 정적 파일 로드 병목을 방지합니다."""
     daemon_threads = True
 
 
 def run(port=PORT):
-    # slide_plan.json 존재 여부 체크 가이드
-    plan_path = os.path.join(os.getcwd(), 'slide_plan.json')
-    if not os.path.exists(plan_path):
-        print("[주의] 현재 작업 디렉터리에 slide_plan.json이 존재하지 않습니다.")
-        print("  반드시 슬라이드 프로젝트 폴더(예: 260619_grade3_history) 안으로 CWD를 맞춰 실행해 주세요.")
-        print("  예: cd 260619_grade3_history && python ../.agents/skills/text-to-slide-architect/scripts/dev_server.py")
+    plan_path = get_plan_path()
+    if not plan_path.exists():
+        print("[WARN] slide_plan.json was not found in the current directory.")
+        print("       Run this server from a slide project directory.")
+        print("       Example: cd 260619_grade3_history")
         sys.exit(1)
-        
+
     current_port = port
     max_attempts = 20
     httpd = None
-    
-    # 포트 충돌 시 자동으로 다음 포트 감지 및 전환
-    for i in range(max_attempts):
+
+    for _ in range(max_attempts):
         try:
-            server_address = ('', current_port)
+            server_address = (HOST, current_port)
             httpd = ThreadingHTTPServer(server_address, DevServerHandler)
             break
         except OSError:
-            print(f"[알림] 포트 {current_port}번이 사용 중입니다. 다음 포트({current_port + 1}번)로 자동 조회를 시도합니다.")
+            print(f"[INFO] Port {current_port} is in use. Trying {current_port + 1}.")
             current_port += 1
-            
+
     if not httpd:
-        print("[오류] 가용한 로컬 포트를 할당받지 못했습니다.")
+        print("[ERROR] Could not allocate a local preview port.")
         sys.exit(1)
-        
-    print("[SUCCESS] 바이브코딩 로컬 개발 서버가 구동되었습니다!")
-    print(f"   * 슬라이드 보기: http://localhost:{current_port}")
-    print(f"   * 프로젝트 폴더: {os.getcwd()}")
-    print("   * 종료하려면 Ctrl+C를 누르세요.")
-    
+
+    print("[SUCCESS] Slide local preview server is running.")
+    print(f"   * Preview: http://localhost:{current_port}")
+    print(f"   * Bound to: {HOST}:{current_port}")
+    print(f"   * Project: {Path.cwd()}")
+    print("   * Stop: Ctrl+C")
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\n서버를 안전하게 종료합니다.")
+        print("\nServer stopped.")
         httpd.server_close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

@@ -592,7 +592,8 @@ def build_html(input_json: str, output_html: str) -> None:
     # 슬라이드 렌더링
     rendered_slides = []
     current_section_header = ""
-    for slide in slides_data:
+    for idx, slide in enumerate(slides_data):
+        slide['SLIDE_INDEX'] = idx
         if 'SECTION_HEADER' in slide:
             current_section_header = slide['SECTION_HEADER']
         elif current_section_header:

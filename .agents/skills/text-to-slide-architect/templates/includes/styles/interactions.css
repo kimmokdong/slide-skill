@@ -99,6 +99,67 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
         }
 
+        .editable-image-frame {
+            position: relative;
+        }
+
+        body.review-active .editable-image-frame {
+            cursor: pointer;
+            outline: 2px solid transparent;
+            outline-offset: -2px;
+            transition: outline-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        body.review-active .editable-image-frame img {
+            cursor: pointer;
+        }
+
+        body.review-active .editable-image-frame img:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        body.review-active .editable-image-frame:hover {
+            outline-color: var(--color-accent);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16);
+        }
+
+        body.review-active .editable-image-frame::after {
+            content: "+";
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--color-accent);
+            color: #fff;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(4px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 20;
+        }
+
+        body.review-active .editable-image-frame:hover::after,
+        body.review-active .editable-image-frame.uploading::after {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        body.review-active .editable-image-frame.uploading::after {
+            content: "...";
+            font-size: 16px;
+            letter-spacing: 0;
+        }
+
         /* 퀴즈 버튼형 피드백 효과 */
         .quiz-option.button-type:hover {
             transform: translateY(-2px);

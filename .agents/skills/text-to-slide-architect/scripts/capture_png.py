@@ -1,32 +1,60 @@
-import sys
-import os
 import asyncio
+import os
+import sys
+from pathlib import Path
+
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import async_playwright
 
+
+async def capture_slide(locator, out_file):
+    for attempt in range(3):
+        try:
+            bbox = await locator.bounding_box()
+            if not bbox or bbox["width"] <= 0 or bbox["height"] <= 0:
+                return False
+            await locator.screenshot(path=out_file, animations="disabled")
+            return True
+        except PlaywrightError as exc:
+            if attempt == 2:
+                print(f"[WARN] Skipped unstable slide: {exc}")
+                return False
+            await locator.page.wait_for_timeout(250)
+    return False
+
+
 async def capture_pngs(html_path, out_dir):
-    os.makedirs(out_dir, exist_ok=True)
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    for stale_file in out_path.glob("slide-*.png"):
+        stale_file.unlink()
+
     html_url = f"file:///{os.path.abspath(html_path).replace(os.sep, '/')}?print-pdf"
-    
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        # 16:9 해상도 설정
         page = await browser.new_page(viewport={"width": 1280, "height": 720})
         await page.goto(html_url, wait_until="networkidle")
-        
-        # 슬라이드 요소 찾기 (.slide-container를 감싸는 section 캡처)
-        slides = await page.query_selector_all("section")
-        count = 0
-        for slide in slides:
-            # Reveal.js의 pdf 모드에서는 숨겨진 section이나 빈 section이 있을 수 있으므로 필터링
-            bbox = await slide.bounding_box()
-            if bbox and bbox['width'] > 0 and bbox['height'] > 0:
-                out_file = os.path.join(out_dir, f"slide-{count+1:03d}.png")
-                await slide.screenshot(path=out_file)
-                print(f"[CAPTURE] Slide-{count+1:03d}: {out_file}")
-                count += 1
-            
+        await page.wait_for_timeout(750)
+
+        slides = page.locator("section")
+        total = await slides.count()
+        captured = 0
+
+        for index in range(total):
+            out_file = out_path / f"slide-{captured + 1:03d}.png"
+            if await capture_slide(slides.nth(index), str(out_file)):
+                print(f"[CAPTURE] Slide-{captured + 1:03d}: {out_file}")
+                captured += 1
+
         await browser.close()
-        print(f"[SUCCESS] Captured total {count} slides!")
+
+    if captured == 0:
+        raise RuntimeError("No visible slides were captured.")
+
+    print(f"[SUCCESS] Captured total {captured} slides!")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
