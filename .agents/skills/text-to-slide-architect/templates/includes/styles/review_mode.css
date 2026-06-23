@@ -313,7 +313,3 @@
             transform: scale(1.05);
         }
 
-        body.review-active .review-toggle-fab {
-            opacity: 0;
-            pointer-events: none;
-        }

@@ -13,6 +13,104 @@
         let selectedEditable = null;
         let directEditBound = false;
 
+        const MAX_UPLOAD_IMAGE_BYTES = 15 * 1024 * 1024;
+
+        document.addEventListener('click', (event) => {
+            const frame = event.target.closest ? event.target.closest('.editable-image-frame') : null;
+            if (!frame || !document.body.classList.contains('review-active')) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            triggerImageUpload(frame);
+        }, true);
+
+        function triggerImageUpload(element) {
+            if (!element || element.dataset.uploading === "true") {
+                return;
+            }
+
+            const slideIndex = Number.parseInt(element.dataset.slideIndex, 10);
+            const targetKey = element.dataset.targetKey;
+            if (!Number.isInteger(slideIndex) || !targetKey) {
+                alert("이미지 위치 정보를 찾을 수 없습니다. HTML을 다시 빌드한 뒤 시도해 주세요.");
+                return;
+            }
+
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/png,image/jpeg,image/gif,image/webp';
+            input.style.display = 'none';
+
+            input.addEventListener('change', () => {
+                const file = input.files && input.files[0];
+                input.remove();
+                if (!file) return;
+
+                uploadEditableImage(element, slideIndex, targetKey, file);
+            }, { once: true });
+
+            document.body.appendChild(input);
+            input.click();
+        }
+
+        function readImageAsDataUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error || new Error("이미지를 읽지 못했습니다."));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function uploadEditableImage(element, slideIndex, targetKey, file) {
+            if (file.size > MAX_UPLOAD_IMAGE_BYTES) {
+                alert("이미지 파일은 15MB 이하만 업로드할 수 있습니다.");
+                return;
+            }
+
+            element.dataset.uploading = "true";
+            element.classList.add('uploading');
+
+            try {
+                const imageData = await readImageAsDataUrl(file);
+                const response = await fetch('/api/upload-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        slide_index: slideIndex,
+                        target_key: targetKey,
+                        filename: file.name,
+                        file_type: file.type,
+                        image_data: imageData,
+                    }),
+                });
+
+                const rawText = await response.text();
+                let data = {};
+                try {
+                    data = rawText ? JSON.parse(rawText) : {};
+                } catch (_err) {
+                    data = {};
+                }
+
+                if (!response.ok) {
+                    throw new Error(data.message || rawText || `HTTP error ${response.status}`);
+                }
+
+                window.location.reload();
+            } catch (err) {
+                alert(`이미지 업로드에 실패했습니다.\n${err.message || err}`);
+                console.error("Image upload error:", err);
+                element.dataset.uploading = "false";
+                element.classList.remove('uploading');
+            }
+        }
+
         function isLocalDevServer() {
             return location.protocol === 'http:' && ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
         }
