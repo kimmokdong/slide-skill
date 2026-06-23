@@ -25,7 +25,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 │   ├── slide_plan.json              ← [핵심] 에이전트가 작성하는 단일 진실 원천(SSOT)
 │   └── output/                      ← 생성된 슬라이드 출력물
 │       ├── index.html               ← build_html.py가 생성
-│       ├── presentation.pptx        ← export_pptx.py가 생성
+│       ├── presentation.pptx        ← export_image_pptx.py가 통이미지로 생성
 │       ├── images/                  ← 사용자가 제공한 원본 복사본 및 AI 생성 이미지
 │       └── diagrams/                ← Mermaid 다이어그램 (SVG)
 ```
@@ -402,15 +402,18 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 
 ---
 
-## 모듈 6: 최종 파일 추출 (PPTX)
+## 모듈 6: 최종 파일 추출 (통이미지 PPTX)
 
 사용자에게 배포용 납품 파일인 PPTX를 생성합니다.
-`export_pptx.py`는 JSON을 읽어들여 좌표 기반으로 PptxGenJS 수준의 네이티브(편집 가능한 텍스트 상자와 도형) PPTX를 생성합니다.
+HTML 프리뷰의 완벽한 레이아웃과 렌더링(반투명 형광펜, 오토핏 등)을 깨짐 없이 보존하기 위해, 슬라이드를 이미지로 캡처한 뒤 통이미지 기반의 PPTX를 생성합니다. (세부 수정은 HTML/JSON 에디터 환경에서 수행하는 것을 원칙으로 합니다.)
 
 ```bash
-python "{스킬폴더}/scripts/export_pptx.py" "slide_plan.json" "output/presentation.pptx" "output"
+# 1. HTML을 고해상도 PNG 이미지로 캡처
+python "{스킬폴더}/scripts/capture_png.py" "output/index.html" "output/captures"
+
+# 2. 캡처된 이미지들을 와이드 PPTX로 묶어서 생성
+python "{스킬폴더}/scripts/export_image_pptx.py" "output/captures" "output/presentation.pptx"
 ```
-(마지막 인자 `output`은 이미지 상대 경로의 기준 디렉토리입니다)
 
 완성되면 사용자에게 HTML 프리뷰 링크와 PPTX 파일 경로를 안내하며 작업을 마칩니다.
 
