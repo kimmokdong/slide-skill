@@ -451,6 +451,8 @@
             captureThemeAutofitBaseline(container);
         }
 
+        window.stabilizeSlideContainerShrinkOnly = stabilizeSlideContainerShrinkOnly;
+
         function stabilizeAfterPaint(container, delay = 0) {
             const run = () => {
                 if (container) {
@@ -554,6 +556,9 @@
         });
 
         document.addEventListener('input', event => {
+            if (event.target.closest('[contenteditable="true"], .direct-editable')) {
+                return;
+            }
             const container = event.target.closest('.slide-container, .center-layout');
             if (container) {
                 container.dataset.autofitDone = 'false';

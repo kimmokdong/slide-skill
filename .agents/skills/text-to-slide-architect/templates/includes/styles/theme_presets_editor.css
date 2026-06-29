@@ -261,6 +261,16 @@
         }
 
         /* E. 강조 텍스트(strong) 프리셋 5종 (근본적 형광펜 기법) */
+        .reveal strong {
+            display: inline;
+            white-space: normal;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+            line-height: inherit;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
+        }
+
         .reveal.highlight-friendly strong {
             font-weight: 800;
             color: inherit !important;
@@ -268,7 +278,7 @@
             /* 테마 색상과 충돌하지 않도록 반투명도(40%)를 혼합한 배경 형광펜 */
             background: linear-gradient(transparent 55%, color-mix(in srgb, var(--color-accent-secondary, #a5b4fc) 40%, transparent) 55%);
         }
-        \.reveal.highlight-cyber strong {
+        .reveal.highlight-cyber strong {
             font-weight: 900;
             color: inherit !important;
             text-decoration: underline;

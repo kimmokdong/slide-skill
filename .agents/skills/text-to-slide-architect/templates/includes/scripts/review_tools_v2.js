@@ -46,13 +46,11 @@
 
             input.addEventListener('change', () => {
                 const file = input.files && input.files[0];
-                input.remove();
                 if (!file) return;
 
                 uploadEditableImage(element, slideIndex, targetKey, file);
             }, { once: true });
 
-            document.body.appendChild(input);
             input.click();
         }
 
@@ -501,8 +499,16 @@
             persistReviewState();
         }
 
-        function onDirectEditableBlur() {
+        function onDirectEditableBlur(event) {
             Reveal.configure({ keyboard: true });
+            const container = event.currentTarget.closest('.slide-container, .center-layout');
+            clearTimeout(container && container.directEditStabilizeTimer);
+            if (container && typeof stabilizeSlideContainerShrinkOnly === 'function') {
+                container.directEditStabilizeTimer = setTimeout(() => {
+                    stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
+                    Reveal.layout();
+                }, 120);
+            }
         }
 
         function syncFontControls(value) {

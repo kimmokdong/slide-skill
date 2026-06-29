@@ -45,6 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
             initialX = rect.left;
             initialY = rect.top;
 
+            // right/top 기반 FAB를 left/top 좌표로 먼저 고정해야 첫 클릭 때 위치가 튀지 않는다.
+            fab.style.left = initialX + 'px';
+            fab.style.top = initialY + 'px';
+
             // 드래그 중에는 hover 트랜지션이나 크기 변화가 방해되지 않도록 설정
             fab.style.transition = 'none'; 
             fab.style.right = 'auto';
