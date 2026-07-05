@@ -115,6 +115,16 @@
             return location.protocol === 'http:' && ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
         }
 
+        function getSourceIndexForSlide(slide, fallback) {
+            const rawIndex = slide && slide.dataset ? slide.dataset.pageIndex : null;
+            const parsed = Number.parseInt(rawIndex, 10);
+            return Number.isInteger(parsed) ? parsed : fallback;
+        }
+
+        function getCurrentSourceIndex(fallback = currentSlideIndex) {
+            return getSourceIndexForSlide(Reveal.getCurrentSlide && Reveal.getCurrentSlide(), fallback);
+        }
+
         function loadReviewState() {
             try {
                 const saved = JSON.parse(localStorage.getItem(REVIEW_STATE_STORAGE_KEY) || '{}');
@@ -169,7 +179,7 @@
         });
 
         Reveal.on('slidechanged', event => {
-            currentSlideIndex = event.indexh;
+            currentSlideIndex = getCurrentSourceIndex(event.indexh);
             const container = event.currentSlide.querySelector('.slide-container, .center-layout');
             if (container && container.dataset.autofitDone !== "true") {
                 autoFitContainer(container, { preserveEditedText: true });
@@ -182,7 +192,7 @@
             Reveal.layout();
         });
 
-        function updateSaveButtonAvailability() {
+                function updateSaveButtonAvailability() {
             ['btn-save-layout', 'btn-save-theme', 'btn-save-text-edits'].forEach(id => {
                 const btn = document.getElementById(id);
                 if (!btn) return;
@@ -193,9 +203,23 @@
 
         function updateCurrentSlideFeedbackView() {
             const label = document.getElementById('current-slide-label');
+            const layoutBadges = document.querySelectorAll('.current-layout-badge');
             const textarea = document.getElementById('local-feedback');
             if (!label || !textarea) return;
             label.textContent = `${currentSlideIndex + 1}번`;
+            
+            const currentSlide = Reveal.getCurrentSlide();
+            const layoutName = currentSlide ? currentSlide.getAttribute('data-layout-name') : null;
+            
+            layoutBadges.forEach(badge => {
+                if (layoutName) {
+                    badge.textContent = `(${layoutName})`;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            });
+
             textarea.value = reviewState.local[currentSlideIndex] || "";
             textarea.oninput = (e) => {
                 reviewState.local[currentSlideIndex] = e.target.value;
@@ -216,15 +240,20 @@
             const slides = Reveal.getSlides();
             const sorterList = document.getElementById('slide-sorter');
             if (!sorterList) return;
+            const slideItems = slides.map((slide, index) => ({
+                slide,
+                sourceIndex: getSourceIndexForSlide(slide, index)
+            }));
+            const validSourceIndexes = new Set(slideItems.map(item => item.sourceIndex));
 
-            const invalidOrder = reviewState.order.length !== slides.length ||
-                reviewState.order.some(item => typeof item.originalIndex !== 'number' || item.originalIndex < 0 || item.originalIndex >= slides.length);
+            const invalidOrder = reviewState.order.length !== slideItems.length ||
+                reviewState.order.some(item => typeof item.originalIndex !== 'number' || !validSourceIndexes.has(item.originalIndex));
 
             if (invalidOrder) {
-                reviewState.order = slides.map((slide, index) => {
+                reviewState.order = slideItems.map(({ slide, sourceIndex }, index) => {
                     const titleEl = slide.querySelector('h1, h2, h3');
                     const title = titleEl ? titleEl.innerText.trim() : `슬라이드 ${index + 1}`;
-                    return { originalIndex: index, title, isDeleted: false };
+                    return { originalIndex: sourceIndex, title, isDeleted: false };
                 });
                 persistReviewState();
             }
@@ -388,11 +417,11 @@
         }
 
         function validateActiveIndices(activeIndices) {
-            const total = Reveal.getSlides().length;
+            const validSourceIndexes = new Set(Reveal.getSlides().map((slide, index) => getSourceIndexForSlide(slide, index)));
             if (!activeIndices.length) return '최소 1장의 슬라이드는 남아 있어야 합니다.';
             const unique = new Set(activeIndices);
             if (unique.size !== activeIndices.length) return '중복된 슬라이드 인덱스가 있습니다.';
-            if (activeIndices.some(idx => idx < 0 || idx >= total)) return '범위를 벗어난 슬라이드 인덱스가 있습니다.';
+            if (activeIndices.some(idx => !validSourceIndexes.has(idx))) return '범위를 벗어난 슬라이드 인덱스가 있습니다.';
             return "";
         }
 
@@ -492,9 +521,10 @@
 
         function onDirectEditableInput(event) {
             const editId = event.currentTarget.dataset.editId;
-            const key = getEditKey(currentSlideIndex, editId);
+            const sourceIndex = getCurrentSourceIndex();
+            const key = getEditKey(sourceIndex, editId);
             reviewState.textEdits[key] = {
-                slideIndex: currentSlideIndex,
+                slideIndex: sourceIndex,
                 editId,
                 value: event.currentTarget.innerText.trim()
             };
@@ -504,10 +534,18 @@
         function onDirectEditableBlur(event) {
             Reveal.configure({ keyboard: true });
             const container = event.currentTarget.closest('.slide-container, .center-layout');
+            const wsPage = event.currentTarget.closest('.worksheet-page');
             clearTimeout(container && container.directEditStabilizeTimer);
             if (container && typeof stabilizeSlideContainerShrinkOnly === 'function') {
                 container.directEditStabilizeTimer = setTimeout(() => {
                     stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
+                    Reveal.layout();
+                }, 120);
+            }
+            if (wsPage && typeof shrinkWorksheet === 'function') {
+                clearTimeout(wsPage._wsStabilizeTimer);
+                wsPage._wsStabilizeTimer = setTimeout(() => {
+                    shrinkWorksheet();
                     Reveal.layout();
                 }, 120);
             }
@@ -529,13 +567,33 @@
             syncFontControls(clamped);
 
             const editId = selectedEditable.dataset.editId;
-            const key = getEditKey(currentSlideIndex, editId);
+            const sourceIndex = getCurrentSourceIndex();
+            const key = getEditKey(sourceIndex, editId);
             reviewState.styleOverrides[key] = {
-                slideIndex: currentSlideIndex,
+                slideIndex: sourceIndex,
                 editId,
                 fontSize: `${clamped}px`
             };
             persistReviewState();
+
+            // 활동지 재조정
+            const wsPage = selectedEditable.closest('.worksheet-page');
+            if (wsPage && typeof shrinkWorksheet === 'function') {
+                clearTimeout(wsPage._wsResizeTimer);
+                wsPage._wsResizeTimer = setTimeout(() => {
+                    shrinkWorksheet();
+                    Reveal.layout();
+                }, 80);
+            }
+            // 일반 슬라이드 재조정
+            const container = selectedEditable.closest('.slide-container, .center-layout');
+            if (container && typeof stabilizeSlideContainerShrinkOnly === 'function') {
+                clearTimeout(container._fontResizeTimer);
+                container._fontResizeTimer = setTimeout(() => {
+                    stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
+                    Reveal.layout();
+                }, 80);
+            }
         }
 
         function bindDirectEditControls() {
@@ -588,3 +646,17 @@
         }
 
         updateSaveButtonAvailability();
+
+        // ===== 지능형 인쇄 처리 (Ctrl+P) =====
+        window.addEventListener('beforeprint', () => {
+            if (typeof Reveal !== 'undefined') {
+                const currentSlide = Reveal.getCurrentSlide();
+                if (currentSlide && (currentSlide.dataset.pageType === 'worksheet' || currentSlide.dataset.pageType === 'answer_key')) {
+                    document.body.classList.add('printing-worksheet');
+                }
+            }
+        });
+
+        window.addEventListener('afterprint', () => {
+            document.body.classList.remove('printing-worksheet');
+        });

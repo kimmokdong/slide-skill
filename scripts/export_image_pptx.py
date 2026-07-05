@@ -44,7 +44,12 @@ def export_image_pptx(image_dir: str, output_pptx: str) -> None:
         
         # 여백 없이 슬라이드 전체에 꽉 차게 이미지 추가
         try:
-            slide.shapes.add_picture(img_path, Inches(0), Inches(0), width=Inches(13.333), height=Inches(7.5))
+            pic = slide.shapes.add_picture(img_path, Inches(0), Inches(0), height=Inches(7.5))
+            # 센터 정렬 로직
+            # python-pptx는 height만 지정하면 width를 비율에 맞춰 자동 조정함
+            # 슬라이드 전체 너비는 13.333인치
+            if pic.width.inches < 13.33:
+                pic.left = Inches((13.333 - pic.width.inches) / 2)
             print(f"[EXPORT] {f} 슬라이드 삽입 완료")
         except Exception as e:
             print(f"[ERROR] {f} 이미지 삽입 중 에러 발생: {e}")

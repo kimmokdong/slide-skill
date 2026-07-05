@@ -271,7 +271,6 @@
             background: rgba(255, 255, 255, 0.06);
             color: #f8fafc;
             font-size: 0.82rem;
-            word-break: keep-all;
         }
 
         .reveal [data-edit-id].direct-editable {

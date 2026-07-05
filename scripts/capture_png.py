@@ -73,17 +73,63 @@ async def capture_pngs(html_path, out_dir):
 
         for index in range(total):
             out_file = out_path / f"slide-{index + 1:03d}.png"
-            await page.evaluate(
-                """(index) => {
-                    const slide = Reveal.getSlides()[index];
-                    const indices = Reveal.getIndices(slide);
-                    Reveal.slide(indices.h, indices.v, indices.f || 0);
-                    Reveal.layout();
-                }""",
-                index,
-            )
+            await page.evaluate("""(index) => {
+                const slide = Reveal.getSlides()[index];
+                const indices = Reveal.getIndices(slide);
+                Reveal.slide(indices.h, indices.v, indices.f || 0);
+                Reveal.layout();
+            }""", index)
             await page.wait_for_timeout(350)
-            await page.screenshot(path=str(out_file), full_page=False, animations="disabled")
+            
+            is_worksheet = await page.evaluate("""(index) => {
+                const slide = Reveal.getSlides()[index];
+                return slide.querySelector('.worksheet-page') !== null;
+            }""", index)
+            
+            if is_worksheet:
+                # Resize Playwright Viewport so Chromium renders the entire height natively!
+                await page.set_viewport_size({"width": 1280, "height": 1200})
+                await page.wait_for_timeout(100)
+                
+                # Remove transform and margin for high-res crop
+                await page.evaluate("""(index) => {
+                    const slide = Reveal.getSlides()[index];
+                    const ws = slide.querySelector('.worksheet-page');
+                    
+                    ws.dataset.origTransform = ws.style.transform || '';
+                    ws.dataset.origMargin = ws.style.margin || '';
+                    ws.style.setProperty('transform', 'none', 'important');
+                    ws.style.setProperty('margin', '0', 'important');
+                    
+                    // Prevent centering
+                    slide.dataset.origTop = slide.style.top || '';
+                    slide.style.setProperty('top', '0', 'important');
+                    slide.style.setProperty('height', 'auto', 'important');
+                }""", index)
+                
+                await page.wait_for_timeout(200)
+                
+                element = await page.evaluate_handle("""(index) => {
+                    return Reveal.getSlides()[index].querySelector('.worksheet-page');
+                }""", index)
+                await element.screenshot(path=str(out_file))
+                
+                # Restore
+                await page.evaluate("""(index) => {
+                    const slide = Reveal.getSlides()[index];
+                    const ws = slide.querySelector('.worksheet-page');
+                    ws.style.transform = ws.dataset.origTransform;
+                    ws.style.margin = ws.dataset.origMargin;
+                    
+                    slide.style.top = slide.dataset.origTop;
+                }""", index)
+                
+                # Revert Viewport
+                await page.set_viewport_size({"width": 1280, "height": 720})
+                await page.wait_for_timeout(100)
+            else:
+                await page.screenshot(path=str(out_file), full_page=False, animations="disabled")
+            
             print(f"[CAPTURE] Slide-{index + 1:03d}: {out_file}")
             captured += 1
 

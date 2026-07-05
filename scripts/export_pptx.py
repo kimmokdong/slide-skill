@@ -31,7 +31,13 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
     with open(input_json, "r", encoding="utf-8") as f:
         plan = json.load(f)
 
-    slides_data = plan.get('slides', [])
+    
+    try:
+        from build_html import normalize_pages
+        slides_data = [p for p in normalize_pages(plan) if p.get('page_type') == 'slide']
+    except ImportError:
+        slides_data = plan.get('pages', plan.get('slides', []))
+        
     theme_name = plan.get('meta', {}).get('theme', 'tech_blue')
     
     if not html_dir:
@@ -458,6 +464,42 @@ def export_pptx(input_json: str, output_path: str, html_dir: str = None) -> None
                 rtp.text = data['RESULT_TEXT']
                 rtp.font.size = Pt(20)
                 rtp.font.color.rgb = rgb(c['ink'])
+
+        elif stype in ['video_hook', 'video_link_card']:
+            add_title(data.get('TITLE', '영상 자료'))
+            
+            # Thumbnail Placeholder Box
+            box_thumb = slide.shapes.add_textbox(Inches(3.0), Inches(2.0), Inches(7.3), Inches(3.5))
+            fill_thumb = box_thumb.fill
+            fill_thumb.solid()
+            fill_thumb.fore_color.rgb = rgb(c['muted'])
+            
+            # Text inside Thumbnail
+            tp = box_thumb.text_frame.paragraphs[0]
+            tp.text = "▶ YouTube 영상"
+            tp.font.size = Pt(36)
+            tp.font.bold = True
+            tp.font.color.rgb = RGBColor(255, 255, 255)
+            tp.alignment = PP_ALIGN.CENTER
+            
+            # Watch Link / Purpose
+            box_info = slide.shapes.add_textbox(Inches(0.9), Inches(5.8), Inches(11.5), Inches(1.2))
+            info_p = box_info.text_frame.paragraphs[0]
+            info_p.text = data.get('PURPOSE', '')
+            info_p.font.size = Pt(24)
+            info_p.font.bold = True
+            info_p.font.color.rgb = rgb(c['accent'])
+            info_p.alignment = PP_ALIGN.CENTER
+            
+            if data.get('WATCH_URL'):
+                link_p = box_info.text_frame.add_paragraph()
+                link_p.text = data.get('WATCH_URL')
+                link_p.font.size = Pt(20)
+                link_p.font.color.rgb = rgb(c['muted'])
+                link_p.alignment = PP_ALIGN.CENTER
+                # Add hyperlink to URL
+                run = link_p.runs[0]
+                run.hyperlink.address = data.get('WATCH_URL')
 
         elif stype == 'fullbleed':
             # 풀블리드: 배경 이미지 + 오버레이 텍스트

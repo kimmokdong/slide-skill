@@ -1,6 +1,6 @@
-        /* ===== 7가지 레이아웃별 상세 CSS ===== */
+        /* ===== 7媛吏 ?덉씠?꾩썐蹂??곸꽭 CSS ===== */
 
-        /* 1. bullet 레이아웃 */
+        /* 1. bullet ?덉씠?꾩썐 */
         .bullet-list {
             list-style: none;
             padding: 0;
@@ -18,7 +18,6 @@
             display: flex;
             align-items: flex-start;
             gap: 0.6em;
-            word-break: keep-all;
         }
 
         .bullet-list li.icon-bullet {
@@ -36,7 +35,7 @@
             flex: 1;
         }
 
-        /* 2. matrix 레이아웃 */
+        /* 2. matrix ?덉씠?꾩썐 */
         .matrix-header {
             flex-direction: column;
             align-items: flex-start;
@@ -56,7 +55,6 @@
             line-height: 1.2;
             font-weight: 500;
             color: var(--color-text-secondary);
-            word-break: keep-all;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -99,17 +97,15 @@
             margin-bottom: 0.2em;
             color: var(--color-text);
             overflow: visible;
-            word-break: keep-all;
         }
 
         .matrix-desc {
             font-size: 0.82em;
             opacity: 0.75;
             line-height: 1.24;
-            word-break: keep-all;
         }
 
-        /* 3. vs_ox 레이아웃 */
+        /* 3. vs_ox ?덉씠?꾩썐 */
         .ox-layout {
             display: grid;
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -182,10 +178,10 @@
         .ox-column-body {
             display: flex;
             flex-direction: column;
-            justify-content: center; /* 세로 중앙 정렬 추가 */
+            justify-content: center; /* ?몃줈 以묒븰 ?뺣젹 異붽? */
             align-items: center;
             gap: 0.75em;
-            flex: 1;
+            flex: 1 1 0%;
             min-height: 0;
             overflow: hidden;
             min-width: 0;
@@ -209,7 +205,7 @@
             font-size: 32px;
         }
 
-        /* 📝 실습 및 튜토리얼 리스트 폰트/간격 강화 */
+        /* ?뱷 ?ㅼ뒿 諛??쒗넗由ъ뼹 由ъ뒪???고듃/媛꾧꺽 媛뺥솕 */
         .hands-on-steps, .tutorial-steps {
             display: flex;
             flex-direction: column;
@@ -221,7 +217,6 @@
             font-size: 1.22em !important;
             line-height: 1.42 !important;
             color: var(--color-text) !important;
-            word-break: keep-all !important;
         }
 
         .ox-item {
@@ -232,7 +227,6 @@
             font-size: 30px;
             line-height: 1.32;
             text-align: left;
-            word-break: keep-all;
             white-space: normal;
             width: 100%;
             min-width: 0;
@@ -245,7 +239,6 @@
             min-width: 0;
             max-width: 100%;
             overflow: visible;
-            word-break: keep-all;
             overflow-wrap: normal;
         }
 
@@ -264,7 +257,7 @@
             color: #EF4444;
         }
 
-        /* 4. roadmap 레이아웃 */
+        /* 4. roadmap ?덉씠?꾩썐 */
         .roadmap-track {
             display: flex;
             align-items: stretch;
@@ -324,14 +317,12 @@
             font-weight: 700;
             margin-bottom: 0.3em;
             color: var(--color-text);
-            word-break: keep-all;
         }
 
         .roadmap-desc {
             font-size: 0.7em;
             opacity: 0.7;
             line-height: 1.4;
-            word-break: keep-all;
         }
 
         .roadmap-connector {
@@ -357,11 +348,11 @@
             border-left: 8px solid var(--color-accent);
         }
 
-        /* 5. split / tutorial 레이아웃 */
+        /* 5. split / tutorial ?덉씠?꾩썐 */
         .split-layout {
             display: flex;
             width: 100%;
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
             gap: 1.2em;
             align-items: stretch;
@@ -388,7 +379,7 @@
             height: 100%;
         }
 
-        /* 브라우저/스크린샷 프레임 */
+        /* 釉뚮씪?곗?/?ㅽ겕由곗꺑 ?꾨젅??*/
         .screenshot-frame {
             width: 100%;
             height: 100%;
@@ -493,10 +484,10 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            /* 잘림 없이 비율 유지하며 전체 맞춤 */
+            /* ?섎┝ ?놁씠 鍮꾩쑉 ?좎??섎ŉ ?꾩껜 留욎땄 */
             background-color: rgba(0, 0, 0, 0.01);
-            /* 여백 발생 시 자연스럽게 처리 */
-            flex: 1;
+            /* ?щ갚 諛쒖깮 ???먯뿰?ㅻ읇寃?泥섎━ */
+            flex: 1 1 auto;
             min-height: 0;
         }
 
@@ -511,7 +502,6 @@
             margin-top: 0.6em;
             font-size: 0.75em;
             line-height: 1.4;
-            word-break: keep-all;
             box-sizing: border-box;
         }
 
@@ -526,7 +516,6 @@
             margin-top: 0.6em;
             font-size: 0.75em;
             line-height: 1.4;
-            word-break: keep-all;
             box-sizing: border-box;
         }
 
@@ -535,7 +524,7 @@
             flex-shrink: 0;
         }
 
-        /* 6. grid2x2 / summary 레이아웃 */
+        /* 6. grid2x2 / summary ?덉씠?꾩썐 */
         .grid-2x2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -557,7 +546,6 @@
             font-size: 0.85em;
             line-height: 1.6;
             font-weight: 400;
-            word-break: keep-all;
         }
 
         .summary-slide .summary-header {
@@ -613,7 +601,6 @@
             line-height: 1.25;
             font-weight: 500;
             text-align: center;
-            word-break: keep-all;
             overflow: visible;
         }
 
@@ -632,7 +619,7 @@
             line-height: 1.28;
         }
 
-        /* 7. quote 레이아웃 */
+        /* 7. quote ?덉씠?꾩썐 */
         .quote-box {
             position: relative;
             max-width: 85%;
@@ -652,7 +639,6 @@
             line-height: 1.6;
             font-weight: 300;
             margin-bottom: 0.6em;
-            word-break: keep-all;
         }
 
         .quote-author {
@@ -662,7 +648,7 @@
             margin: 0;
         }
 
-        /* ===== 기타 전용 스타일 ===== */
+        /* ===== 湲고? ?꾩슜 ?ㅽ???===== */
         .step-badge {
             display: inline-flex;
             background: var(--color-accent);
@@ -754,7 +740,7 @@
             display: grid;
             grid-template-columns: minmax(0, 1.02fr) minmax(0, 1.12fr);
             gap: 1em;
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
             width: 100%;
             overflow: hidden;
@@ -830,7 +816,7 @@
         }
 
         .hands-on-result .screenshot-frame {
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
         }
 
@@ -869,7 +855,6 @@
             font-size: 22px;
             line-height: 1.3;
             font-weight: 700;
-            word-break: keep-all;
             overflow: hidden;
         }
 
@@ -921,13 +906,11 @@
         .stats-grid .stat-number {
             font-size: 2.05em !important;
             white-space: nowrap;
-            word-break: keep-all;
         }
 
         .stats-grid .stat-label {
             font-size: 0.92em !important;
             line-height: 1.3 !important;
-            word-break: keep-all !important;
             overflow-wrap: normal !important;
         }
 
@@ -935,7 +918,7 @@
             height: 12px !important;
         }
 
-        /* 슬라이드 번호 */
+        /* ?щ씪?대뱶 踰덊샇 */
         .slide-number {
             position: absolute;
             bottom: 0.8rem;
@@ -945,18 +928,18 @@
             z-index: 5;
         }
 
-        /* 발표자 노트 숨김 */
+        /* 諛쒗몴???명듃 ?④? */
         aside.notes {
             display: none;
         }
 
-        /* 8. image_comparison 레이아웃 */
+        /* 8. image_comparison ?덉씠?꾩썐 */
         .image-comparison-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1.5em;
             width: 100%;
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
             box-sizing: border-box;
             overflow: hidden;
@@ -978,7 +961,7 @@
         }
 
         .comparison-image-wrapper {
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
             display: flex;
             align-items: center;
@@ -1014,7 +997,6 @@
             font-size: 0.68em;
             line-height: 1.45;
             font-weight: 700;
-            word-break: keep-all;
             color: var(--color-text);
         }
 
@@ -1101,11 +1083,10 @@
             align-items: center;
             min-width: 0;
             overflow: hidden;
-            word-break: keep-all;
         }
 
         .comparison-card .bullet-list {
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
             justify-content: center;
             gap: 0.55em;
@@ -1145,7 +1126,6 @@
             line-height: 1.25;
             opacity: 0.75;
             margin: 0.55em 0 0 0;
-            word-break: keep-all;
         }
 
         .timeline {
@@ -1227,7 +1207,6 @@
         .timeline-desc {
             min-width: 0;
             overflow: hidden;
-            word-break: keep-all;
         }
 
         .timeline-date {
@@ -1294,3 +1273,837 @@
             --autofit-max: 38;
             justify-content: stretch;
         }
+
+        /* ===== ?섏뾽 ?쒕룞 ?곕룞 MVP ===== */
+        .activity-instruction-layout,
+        .ox-reveal-layout {
+            --autofit-min: 18;
+            --autofit-max: 40;
+        }
+
+        .activity-instruction-body {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 1.1em;
+            height: 100%;
+            min-height: 0;
+            align-items: stretch;
+        }
+
+        .activity-instruction-card,
+        .activity-think-question {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+            min-height: 0;
+            padding: 1.2em;
+            border-radius: 16px;
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-card-border);
+        }
+
+        .activity-kicker {
+            color: var(--color-accent);
+            font-size: 0.72em;
+            font-weight: 900;
+            margin-bottom: 0.45em;
+        }
+
+        .activity-main-instruction {
+            color: var(--color-text);
+            font-size: 1.15em;
+            line-height: 1.32;
+            font-weight: 850;
+            margin: 0;
+        }
+
+        .activity-timer {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0.5em;
+            margin-top: 0.85em;
+            color: var(--color-text-secondary);
+        }
+
+        .activity-timer strong {
+            color: var(--color-accent);
+            font-size: 1.45em;
+            font-weight: 950;
+        }
+
+        .activity-think-question span {
+            color: var(--color-accent);
+            font-size: 0.72em;
+            font-weight: 900;
+            margin-bottom: 0.6em;
+        }
+
+        .activity-think-question p {
+            margin: 0;
+            color: var(--color-text);
+            font-size: 0.88em;
+            line-height: 1.42;
+            font-weight: 750;
+        }
+
+        .ox-reveal-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55em;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .ox-reveal-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 4.2em;
+            gap: 0.65em;
+            align-items: center;
+            padding: 0.58em 0.75em;
+            border-radius: 14px;
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-card-border);
+        }
+
+        .ox-reveal-statement {
+            display: flex;
+            gap: 0.55em;
+            min-width: 0;
+            color: var(--color-text);
+            font-size: 0.76em;
+            line-height: 1.32;
+            font-weight: 700;
+        }
+
+        .ox-reveal-num {
+            flex: 0 0 auto;
+            color: var(--color-accent);
+            font-weight: 950;
+        }
+
+        .ox-reveal-answer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.25em;
+            height: 2.25em;
+            justify-self: end;
+            border-radius: 999px;
+            background: var(--color-gradient);
+            color: white;
+            font-size: 0.9em;
+            font-weight: 950;
+        }
+
+        .ox-reveal-explanation {
+            grid-column: 1 / -1;
+            color: var(--color-text-secondary);
+            font-size: 0.58em;
+            line-height: 1.35;
+            padding-left: 2.2em;
+        }
+
+        .reveal .slides section.worksheet-section {
+    background: #f3f4f6;
+    display: flex !important;
+    justify-content: center;
+    align-items: center;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
+}
+
+        .worksheet-page {
+            width: 760px;
+            height: 1075px;
+            transform: scale(0.65);
+            transform-origin: center center;
+            flex-shrink: 0;
+            background: white;
+            color: #111827;
+            border: 1px solid #d1d5db;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+            font-family: 'Noto Sans KR', sans-serif;
+            overflow: hidden;
+            padding: 34px 40px;
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            margin: -188.5px -133px;
+            font-size: 14px;
+            line-height: 1.6;
+            letter-spacing: -0.01em;
+}
+
+        .worksheet-page,
+        .worksheet-page * {
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-wrap: anywhere;
+            word-break: keep-all;
+        }
+
+        .worksheet-page p,
+        .worksheet-page li,
+        .worksheet-page td,
+        .worksheet-page th,
+        .worksheet-page span,
+        .worksheet-page div {
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        .worksheet-page-header {
+            border-bottom: 3px solid #111827;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .worksheet-page-label {
+            color: #475569;
+            font-size: 13px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .worksheet-page h1 {
+            margin: 0;
+            color: #111827;
+            font-size: 30px;
+            font-weight: 900;
+        }
+
+        .worksheet-student-info {
+            display: flex;
+            justify-content: flex-end;
+            gap: 20px;
+            font-size: 14px;
+            color: #475569;
+            margin-top: 10px;
+        }
+        
+        .worksheet-student-info .info-box {
+            font-family: 'Noto Sans KR', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .worksheet-page-body {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            flex: 1 1 0%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .worksheet-block {
+            border: 1px solid #dbe2ea;
+            border-radius: 12px;
+            padding: 16px 18px;
+            break-inside: avoid;
+            display: flex;
+            flex-direction: column;
+            flex: 1 0 auto;
+            overflow: visible;
+            }
+
+        .worksheet-block-header h2 {
+            margin: 0 0 5px;
+            color: #111827;
+            font-size: 1.1em;
+            line-height: 1.25;
+            font-weight: 900;
+        }
+
+        .worksheet-block-header p {
+            margin: 0 0 10px;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .worksheet-block ol {
+            margin: 0;
+            padding-left: 22px;
+        }
+
+        .worksheet-block li {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 16px;
+            align-items: center;
+            margin: 9px 0;
+            color: #111827;
+            font-size: 1em;
+            line-height: 1.4;
+        }
+
+        .worksheet-answer-slot {
+            white-space: nowrap;
+        }
+
+        .worksheet-ox-choice {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            margin-left: 6px;
+            border: 2px solid #111827;
+            border-radius: 999px;
+            font-weight: 900;
+        }
+
+        .worksheet-answer-line {
+            height: 30px;
+            border-bottom: 1.6px solid #94a3b8;
+        }
+
+        .worksheet-sample-answer,
+        .worksheet-placeholder {
+            color: #334155;
+            font-size: 14px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+        }
+        
+        .answer-key-block {
+            margin-bottom: 24px;
+        }
+        
+        .answer-key-block-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1d4ed8;
+            margin-bottom: 8px;
+        }
+        
+        .answer-key-content {
+            font-size: 14px;
+            color: #111827;
+            line-height: 1.6;
+            padding-left: 12px;
+            border-left: 3px solid #bfdbfe;
+        }
+
+        .answer-key-match-row {
+            display: grid;
+            grid-template-columns: 24px minmax(0, 1fr) 24px minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+            margin: 6px 0;
+            padding: 8px 10px;
+            border: 1px solid #dbe2ea;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .answer-key-match-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #1d4ed8;
+            margin-bottom: 8px;
+        }
+        
+        .answer-key-content {
+            font-size: 14px;
+            color: #111827;
+            line-height: 1.6;
+            padding-left: 12px;
+            border-left: 3px solid #bfdbfe;
+        }
+
+        .answer-key-match-row {
+            display: grid;
+            grid-template-columns: 24px minmax(0, 1fr) 24px minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+            margin: 6px 0;
+            padding: 8px 10px;
+            border: 1px solid #dbe2ea;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .answer-key-match-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: #2563eb;
+            color: white;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .answer-key-match-arrow,
+        .answer-key-match-right {
+            color: #2563eb;
+        }
+
+        .answer-key-page {
+            border-color: #2563eb;
+        }
+
+
+/* ===== 신규 학습지 블록 및 Reveal 슬라이드 추가 스타일 ===== */
+
+/* 1. sample_answer_reveal */
+.sample-answer-reveal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5em;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+.sample-answer-prompt {
+    font-size: 1.2em;
+    font-weight: 700;
+}
+.sample-answer-box {
+    background: var(--color-card-bg);
+    border: 2px solid var(--color-accent);
+    padding: 1.5em;
+    border-radius: 12px;
+    width: 80%;
+}
+.sample-answer-label {
+    font-size: 0.8em;
+    color: var(--color-accent);
+    font-weight: bold;
+    margin-bottom: 0.5em;
+    text-transform: uppercase;
+}
+.sample-answer-text {
+    font-size: 1.1em;
+    color: var(--color-text);
+}
+
+/* 2. cloze_reveal */
+.cloze-word-bank {
+    padding: 1em;
+    margin-bottom: 0.5em;
+    display: inline-block;
+    border-radius: 12px;
+}
+.cloze-words {
+    display: flex;
+    gap: 1em;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.cloze-word {
+    background: rgba(0,0,0,0.05);
+    padding: 0.3em 0.8em;
+    border-radius: 20px;
+    font-weight: bold;
+    border: 1px solid var(--color-card-border);
+}
+/* cloze_reveal 전용: 콘텐츠 영역 먼저 확보 후 내용 배치 */
+.cloze-reveal-layout .slide-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.cloze-reveal-layout .cloze-word-bank {
+    flex-shrink: 0;
+}
+.cloze-reveal-list {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: center;
+    gap: 0.8em;
+    font-size: 1.7em;
+    line-height: 1.35;
+}
+.cloze-blank-reveal {
+    display: inline-block;
+    min-width: 100px;
+    border-bottom: 2px solid var(--color-accent);
+    color: var(--color-accent);
+    font-weight: bold;
+    text-align: center;
+    padding: 0 0.5em;
+}
+
+/* 3. matching_reveal */
+.matching-reveal-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    width: 100%;
+    align-items: center;
+}
+.matching-reveal-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5em;
+    font-size: 1.1em;
+    background: var(--color-card-bg);
+    padding: 0.6em 2em;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.match-arrow {
+    color: var(--color-accent);
+    font-weight: bold;
+}
+
+/* 4. table_reveal */
+.table-reveal-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+.reveal-table th, .reveal-table td {
+    border: 2px solid var(--color-card-border);
+    padding: 0.8em 1.2em;
+    text-align: center;
+}
+.reveal-table th {
+    background: rgba(0,0,0,0.05);
+    font-weight: bold;
+}
+
+/* 5. share_prompt */
+.share-prompt-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2em;
+}
+.share-prompt-card {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    padding: 1.5em;
+    border-radius: 12px;
+}
+.share-icon {
+    font-size: 2.5em;
+}
+.share-instruction {
+    font-size: 1.3em;
+    font-weight: bold;
+}
+.share-questions {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    font-size: 1.1em;
+}
+.share-question {
+    background: rgba(255,255,255,0.5);
+    padding: 1em;
+    border-radius: 8px;
+    border-left: 4px solid var(--color-accent);
+}
+
+/* Worksheet Blocks */
+.worksheet-block-cloze .word-bank-box {
+    margin: 1em 0;
+    padding: 1em;
+    border: 1px dashed #aaa;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1em;
+}
+.worksheet-block-cloze .cloze-sentences {
+    line-height: 2;
+    padding-left: 1.5em;
+    font-size: 1em;
+}
+.cloze-sentences li {
+    display: list-item;
+}
+
+.cloze-blank {
+    display: inline-block;
+    width: 80px;
+    border-bottom: 1px solid #333;
+}
+.worksheet-block-matching .matching-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+    margin-top: 1em;
+    font-size: 1em;
+    min-width: 0;
+}
+.matching-pair {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+.matching-left, .matching-right {
+    width: 40%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.matching-dot {
+    width: 8px;
+    height: 8px;
+    background: #555;
+    border-radius: 50%;
+}
+.matching-space {
+    flex: 1;
+    min-width: 24px;
+}
+.matching-line-answer {
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+    color: var(--color-accent);
+}
+.worksheet-match-answer-list {
+    margin-top: 10px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    font-size: 13px;
+}
+.worksheet-match-answer-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) 20px minmax(0, 1fr);
+    gap: 6px;
+    align-items: center;
+    margin: 4px 0;
+}
+.worksheet-match-answer-row span {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--color-accent, #f97316);
+    color: white;
+    font-size: 11px;
+    font-weight: 800;
+}
+.worksheet-match-answer-row b,
+.worksheet-match-answer-row em {
+    color: var(--color-accent, #f97316);
+    font-style: normal;
+    font-weight: 800;
+}
+.worksheet-block-table .worksheet-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-top: 1em;
+    font-size: 0.8em;
+}
+.worksheet-block-table th, .worksheet-block-table td {
+    border: 1px solid #999;
+    padding: 0.5em;
+    text-align: center;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+}
+.worksheet-block-table th {
+    background: #f0f0f0;
+}
+.worksheet-block-reflection .reflection-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 1em;
+}
+.worksheet-block-reflection li {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 0.5em;
+}
+.worksheet-block-reflection .check-box {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #666;
+    border-radius: 3px;
+}
+
+
+/* ===== 6차 작업: 인터랙티브 애니메이션 고도화 ===== */
+/* 1. OX Stamp Animation */
+@keyframes stamp-in {
+    0% { transform: scale(3) rotate(-15deg); opacity: 0; }
+    50% { transform: scale(0.8) rotate(-5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.ox-reveal-answer.fragment.visible {
+    animation: stamp-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* 2. Word Fly-in Animation */
+@keyframes fly-in-down {
+    0% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+    60% { transform: translateY(5px) scale(0.9); opacity: 1; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.cloze-blank-reveal.fragment.visible {
+    /* 자체 애니메이션 제거: JS가 보기(word bank) 단어를 직접 이동시키므로
+       빈칸 안의 텍스트는 투명 유지하여 이중 표시 방지 */
+    color: transparent !important;
+    border-bottom-color: transparent;
+}
+
+/* 3. SVG Drawing Animation for matching lines */
+.match-arrow-container {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    min-width: 150px;
+}
+.match-svg {
+    width: 100%;
+    height: 20px;
+    overflow: visible;
+}
+
+.match-item-box {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.5);
+    border: 2px solid var(--color-card-border);
+    border-radius: 8px;
+    padding: 10px 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 60px;
+    
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+.match-item-box .match-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    margin: 0 10px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+}
+.match-col-left .match-item-box { justify-content: space-between; }
+.match-col-right .match-item-box { justify-content: flex-start; }
+
+.pop-glow-reveal.visible {
+    animation: pop-glow 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes pop-glow {
+    0% { transform: scale(0.5); opacity: 0; background: rgba(var(--color-accent-rgb), 0); }
+    50% { transform: scale(1.2); opacity: 1; background: rgba(0, 0, 0, 0.1); border-radius: 4px; }
+    100% { transform: scale(1); opacity: 1; background: transparent; }
+}
+
+.cloze-clone {
+    position: absolute;
+    color: white;
+    background: var(--color-accent);
+    padding: 0.1em 0.5em;
+    border-radius: 6px;
+    font-weight: bold;
+    z-index: 9999;
+    pointer-events: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.match-left, .match-right {
+    flex-grow: 1;
+}
+.match-col-right .match-right {
+    text-align: left;
+    padding-left: 10px;
+}
+
+/* Cloze fixed box layout */
+.cloze-sentence {
+    background: rgba(255, 255, 255, 0.5);
+    border: 2px solid var(--color-card-border);
+    border-radius: 8px;
+    padding: 15px 25px;
+    margin-bottom: 20px;
+    width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    line-height: 1.6;
+}
+
+/* Table layout adjustments for Korean typography */
+.table-fill th, .table-fill td {
+    line-height: 1.4;
+}
+.table-fill td {
+    font-size: 0.9em;
+}
+
+/* Cloze Fragment Override */
+.cloze-blank-reveal.fragment {
+    opacity: 1 !important;
+    visibility: visible !important;
+    color: transparent !important;
+    transition: border-bottom-color 0.3s;
+}
+
+
+/* =========================================================================
+   TEXT ALIGNMENT OVERRIDES (세부 영역별 정렬 강제 지정)
+   ========================================================================= */
+
+/* 1. 전면 타이틀 및 커버류 (가운데 정렬) */
+section[data-layout-name="layout_title"] h1, 
+section[data-layout-name="layout_title"] h2,
+section[data-layout-name="layout_hero"] h1, 
+section[data-layout-name="layout_hero"] h2, 
+section[data-layout-name="layout_hero"] .presenter,
+section[data-layout-name="layout_closing"] h1, 
+section[data-layout-name="layout_closing"] h2, 
+section[data-layout-name="layout_closing"] span,
+section[data-layout-name="layout_fullbleed"] h1, 
+section[data-layout-name="layout_fullbleed"] h2 {
+    text-align: center;
+}
+
+/* 2. 상단 헤더 + 중앙 카드 하이브리드 (카드 본문만 가운데 정렬) */
+.activity-main-instruction,
+.quote-text,
+.share-instruction, 
+section[data-layout-name="layout_share_prompt"] ul,
+section[data-layout-name="layout_share_prompt"] ol {
+    text-align: center;
+}
+
+/* 3. 퀴즈 및 비교 레이아웃 (레이블/발문 가운데 정렬) */
+section[data-layout-name="layout_quiz"] h2[data-edit-id="QUESTION"],
+section[data-layout-name="layout_ox_reveal"] h2[data-edit-id="QUESTION"] {
+    text-align: center;
+}
+section[data-layout-name="layout_comparison"] span[data-edit-id="LEFT_TITLE"],
+section[data-layout-name="layout_comparison"] span[data-edit-id="RIGHT_TITLE"],
+section[data-layout-name="layout_vs_ox"] span.ox-header-marker,
+section[data-layout-name="layout_vs_ox"] h3 {
+    text-align: center;
+}
+
+/* 4. 실습 레이아웃 등 (뱃지, 팁 등 부가요소 가운데 정렬) */
+.duration-badge,
+.hands-on-result-caption,
+.tip-text {
+    text-align: center;
+}

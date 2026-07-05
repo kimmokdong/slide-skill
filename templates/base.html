@@ -118,6 +118,15 @@
             <button class="close-review-btn" onclick="toggleReviewMode()">✕</button>
         </div>
         
+        <div class="review-mode-selector" style="padding: 10px 15px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px;">
+            <label style="font-size: 12px; font-weight: bold; color: #64748b;">보기 모드 전환 (페이지가 새로고침됩니다)</label>
+            <div style="display: flex; gap: 5px;">
+                <button onclick="window.location.search='?mode=presentation'" style="flex:1; padding: 6px; font-size:12px; border:1px solid #cbd5e1; border-radius:4px; background:white; cursor:pointer;" class="mode-btn-presentation">발표 전용</button>
+                <button onclick="window.location.search='?mode=worksheet'" style="flex:1; padding: 6px; font-size:12px; border:1px solid #cbd5e1; border-radius:4px; background:white; cursor:pointer;" class="mode-btn-worksheet">학습지 전용</button>
+                <button onclick="window.location.search='?mode=teacher'" style="flex:1; padding: 6px; font-size:12px; border:1px solid #cbd5e1; border-radius:4px; background:white; cursor:pointer;" class="mode-btn-teacher">전체(교사용)</button>
+            </div>
+        </div>
+        
         <div class="review-tab-nav">
             <button id="tab-btn-feedback" class="review-tab-btn active" onclick="switchReviewTab('feedback')">📝 피드백 작성</button>
             <button id="tab-btn-theme" class="review-tab-btn" onclick="switchReviewTab('theme')">🎨 테마 에디터</button>
@@ -144,7 +153,7 @@
 
                 <div class="review-section"
                     style="border-color: rgba(59, 130, 246, 0.4); background: rgba(59, 130, 246, 0.05);">
-                    <h3>📝 <span id="current-slide-label">1번</span> 슬라이드 수정</h3>
+                    <h3>📝 <span id="current-slide-label">1번</span> 슬라이드 수정 <span class="current-layout-badge" style="font-size: 0.6em; color: var(--color-accent); font-weight: 500; margin-left: 8px; background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; display:none;"></span></h3>
                     <textarea id="local-feedback" class="review-textarea"
                         placeholder="현재 보고 있는 슬라이드에 대한 구체적인 수정/추가 요청을 적어주세요."></textarea>
                 </div>
@@ -152,6 +161,9 @@
 
             <!-- 2. 테마 에디터 탭 패널 -->
             <div id="pane-theme" class="review-tab-pane">
+                <div class="review-section" style="padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 15px;">
+                    <h3 style="margin-bottom: 0;">🎨 현재 슬라이드 <span class="current-layout-badge" style="font-size: 0.6em; color: var(--color-accent); font-weight: 500; margin-left: 8px; background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; display:none;"></span></h3>
+                </div>
                 <!-- A. 조합 데모 프리셋 -->
                 <div class="editor-form-group">
                     <label>조합 프리셋 데모</label>
@@ -322,7 +334,7 @@
 
             <div id="pane-direct" class="review-tab-pane">
                 <div class="review-section">
-                    <h3>현재 슬라이드 텍스트 편집</h3>
+                    <h3>현재 슬라이드 텍스트 편집 <span class="current-layout-badge" style="font-size: 0.6em; color: var(--color-accent); font-weight: 500; margin-left: 8px; background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; display:none;"></span></h3>
                     <p class="direct-edit-hint">슬라이드 안의 점선 영역을 클릭하면 내용을 바로 수정할 수 있습니다. 글자 크기는 선택한 텍스트에만 적용됩니다.</p>
                     <div class="direct-edit-controls">
                         <div id="direct-edit-selected" class="direct-edit-selected">선택된 텍스트 없음</div>
@@ -357,12 +369,197 @@
     <script>
 {{INCLUDE:includes/scripts/theme_editor.js}}
 {{INCLUDE:includes/scripts/slide_interactions.js}}
+(function applyPageOutputMode() {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode') || 'teacher';
+    const allowedModes = new Set(['presentation', 'worksheet', 'teacher']);
+    const outputMode = allowedModes.has(mode) ? mode : 'teacher';
+    document.body.dataset.outputMode = outputMode;
+    
+    const activeBtn = document.querySelector(`.mode-btn-${outputMode}`);
+    if(activeBtn) {
+        activeBtn.style.background = '#e0f2fe';
+        activeBtn.style.borderColor = '#0284c7';
+        activeBtn.style.color = '#0369a1';
+        activeBtn.style.fontWeight = 'bold';
+    }
+    
+    if (outputMode === 'teacher') return;
+
+    document.querySelectorAll('.reveal .slides section[data-page-type]').forEach(section => {
+        const pageType = section.dataset.pageType || 'slide';
+        const keep =
+            (outputMode === 'presentation' && pageType === 'slide') ||
+            (outputMode === 'worksheet' && pageType !== 'slide');
+        if (!keep) section.remove();
+    });
+})();
+
+(function setupWorksheetPrintMode() {
+    function getCurrentSection() {
+        if (window.Reveal && typeof Reveal.getCurrentSlide === 'function') {
+            return Reveal.getCurrentSlide();
+        }
+        return document.querySelector('.reveal .slides section.present');
+    }
+})();
 {{INCLUDE:includes/scripts/reveal_autofit.js}}
 {{INCLUDE:includes/scripts/lightbox.js}}
 {{INCLUDE:includes/scripts/review_tools_v2.js}}
 {{INCLUDE:includes/scripts/timer.js}}
 {{INCLUDE:includes/scripts/draggable_fabs.js}}
     </script>
+
+<script>
+    // JS Animation Engine for Interactive Slide Reveal
+    
+    // Helper: Get offset relative to a specific container
+    function getRelativePos(element, container) {
+        let x = 0, y = 0;
+        let el = element;
+        while (el && el !== container && el !== document.body) {
+            x += el.offsetLeft;
+            y += el.offsetTop;
+            el = el.offsetParent;
+        }
+        return { x: x, y: y };
+    }
+
+    Reveal.on('fragmentshown', event => {
+        const frag = event.fragment;
+        
+        // 1. Cloze Fly-in Animation (True Move without Clone)
+        if (frag.classList.contains('js-cloze-anim')) {
+            const word = frag.getAttribute('data-word');
+            const wbWord = document.querySelector(`.cloze-wb-word[data-word="${word}"]`);
+            if (wbWord) {
+                const currentTransform = wbWord.style.transform;
+                const currentTrans = wbWord.style.transition;
+                wbWord.style.transition = 'none';
+                wbWord.style.transform = 'none';
+                
+                const rectStart = wbWord.getBoundingClientRect();
+                const rectEnd = frag.getBoundingClientRect();
+                const scale = typeof Reveal !== 'undefined' ? Reveal.getScale() : 1;
+                
+                const dx = (rectEnd.left + rectEnd.width/2 - (rectStart.left + rectStart.width/2)) / scale;
+                const dy = (rectEnd.top + rectEnd.height/2 - (rectStart.top + rectStart.height/2)) / scale;
+                
+                // Restore if it was already animated, or just animate to new position
+                if(currentTransform && currentTransform !== 'none') {
+                    wbWord.style.transform = currentTransform;
+                }
+                
+                // Force reflow
+                wbWord.offsetHeight;
+                
+                // 동적 스케일링: 보기 단어 폰트 크기 대비 문장 빈칸 폰트 크기 비율을 계산 (최소 0.5 ~ 최대 2배)
+                const startFontSize = parseFloat(window.getComputedStyle(wbWord).fontSize);
+                const endFontSize = parseFloat(window.getComputedStyle(frag).fontSize);
+                let targetScale = 1.1; // 기본값
+                if (startFontSize > 0 && endFontSize > 0) {
+                    targetScale = endFontSize / startFontSize;
+                }
+                
+                wbWord.style.position = 'relative';
+                wbWord.style.zIndex = '100';
+                wbWord.style.transition = 'all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                wbWord.style.transform = `translate(${dx}px, ${dy}px) scale(${targetScale})`;
+                // 옵션 1: 도착 시 배경과 테두리를 투명하게 날림 (텍스트만 남김)
+                wbWord.style.background = 'transparent';
+                wbWord.style.borderColor = 'transparent';
+                wbWord.style.color = 'var(--color-accent)';
+                
+                frag.style.borderBottomColor = 'var(--color-accent)';
+            }
+        }
+        
+        // 2. Matching Drawing Animation with Arrowhead tracking
+        if (frag.classList.contains('js-match-anim')) {
+            const startId = frag.getAttribute('data-start');
+            const endId = frag.getAttribute('data-end');
+            const startTarget = document.querySelector(startId);
+            const endTarget = document.querySelector(endId);
+            const startEl = startTarget?.classList.contains('match-dot') ? startTarget : startTarget?.querySelector('.match-dot');
+            const endEl = endTarget?.classList.contains('match-dot') ? endTarget : endTarget?.querySelector('.match-dot');
+            
+            if (startEl && endEl) {
+                const container = frag.closest('.matching-columns-container');
+                const svg = frag.closest('.match-svg-overlay');
+                
+                // Ensure SVG covers container exactly
+                
+                
+                
+                const startPos = getRelativePos(startEl, container);
+                const endPos = getRelativePos(endEl, container);
+                
+                // center of dots
+                const startX = startPos.x + (startEl.offsetWidth / 2);
+                const startY = startPos.y + (startEl.offsetHeight / 2);
+                const endX = endPos.x + (endEl.offsetWidth / 2);
+                const endY = endPos.y + (endEl.offsetHeight / 2);
+                
+                const path = frag.querySelector('.match-svg-line');
+                const arrow = frag.querySelector('.match-svg-arrowhead');
+                
+                let startTime = null;
+                const duration = 600; 
+                
+                function draw(time) {
+                    if (!startTime) startTime = time;
+                    let progress = (time - startTime) / duration;
+                    if (progress > 1) progress = 1;
+                    
+                    let ease = 1 - Math.pow(1 - progress, 3);
+                    
+                    const curX = startX + (endX - startX) * ease;
+                    const curY = startY + (endY - startY) * ease;
+                    
+                    path.setAttribute('d', `M${startX},${startY} L${curX},${curY}`);
+                    
+                    // calculate arrowhead rotation
+                    const angle = Math.atan2(endY - startY, endX - startX) * (180 / Math.PI);
+                    // transform arrow to follow point and rotate
+                    arrow.setAttribute('transform', `translate(${curX}, ${curY}) rotate(${angle})`);
+                    // arrowhead relative coordinates: pointing right, centered at 0,0
+                    arrow.setAttribute('points', `-16,-10 6,0 -16,10`); // Thicker, larger arrowhead
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(draw);
+                    }
+                }
+                requestAnimationFrame(draw);
+            }
+        }
+    });
+
+    Reveal.on('fragmenthidden', event => {
+        const frag = event.fragment;
+        if (frag.classList.contains('js-cloze-anim')) {
+            const word = frag.getAttribute('data-word');
+            const wbWord = document.querySelector(`.cloze-wb-word[data-word="${word}"]`);
+            if (wbWord) {
+                wbWord.style.transform = 'none';
+                wbWord.style.background = 'rgba(0,0,0,0.05)';
+                wbWord.style.borderColor = '';
+                wbWord.style.color = 'inherit';
+                wbWord.style.padding = '';
+                frag.style.borderBottomColor = 'var(--color-accent)';
+            }
+        }
+        if (frag.classList.contains('js-match-anim')) {
+            const path = frag.querySelector('.match-svg-line');
+            const arrow = frag.querySelector('.match-svg-arrowhead');
+            if (path) path.setAttribute('d', '');
+            if (arrow) {
+                arrow.setAttribute('points', ''); 
+                arrow.setAttribute('transform', '');
+            }
+        }
+    });
+</script>
+
 </body>
 
 </html>

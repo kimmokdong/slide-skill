@@ -36,7 +36,8 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 ```
 [모듈 0] 사전 컨텍스트 (Intake) → [모듈 1] 레퍼런스 파싱 및 리서치 보강
-→ [모듈 2] 모드 분기 및 서사 구조화 → [모듈 3] Deck Planner (slide_plan.json 작성)
+→ [모듈 2] 모드 분기 및 서사 구조화 → [모듈 2.5] 수업 활동 설계(content_blueprint/activity_packages)
+→ [모듈 3] Deck Planner (slide_plan.json 작성)
 → [모듈 4] 도식/이미지 에셋 생성 → [모듈 5] HTML 렌더링 및 검수 → [모듈 6] 최종 파일(PPTX) 추출
 ```
 
@@ -46,14 +47,85 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 **[최우선 필수 작업]** 사용자가 제공한 원본 대본이나 시나리오 메모 텍스트는 유실되지 않도록 반드시 프로젝트 폴더 내에 `raw_script.md` 파일로 가장 먼저 저장해 두어야 합니다.
 
-이후 사용 가능한 사용자 입력/질문 도구를 사용하거나 주어진 텍스트를 분석하여 아래 필수 변수를 수집하고 `slide_context.yaml`에 저장합니다.
-1. `audience_level` (청중 수준): 초등/중고등/교원/학부모/일반인
-2. `lecture_duration_min` (강의 시간)
-3. `slide_count` (슬라이드 장수) - 시간/장수 중 하나만 입력되면 `3분/장` 기준으로 자동 보정 제안
-4. `tone` (톤앤매너): 공식적/친근/유머러스/영감
-5. `category` (카테고리): 교과교육/교원연수/보고서/제안서 등
-6. `presentation_mode` (발표 환경): 대면/비대면/하이브리드
-7. `theme_preference` (테마 선택): AI 알아서 맞춤(동적 테마) / 귀여운 바인더 노트(cute_note) / 공공/기술(tech_blue) / 따뜻한 교육(warm_edu) 중 선택
+**[핵심 워크플로우 규칙]** 사용자가 `/text-to-slide-architect` 스킬을 호출하면, 에이전트는 기획안(implementation_plan) 작성 전 **무조건 `ask_question` 도구를 호출하여 사용자에게 모달창(UI)을 띄워 필수 정보를 물어보아야 합니다.** 
+이 모달창 질의응답 과정이 이 스킬 파이프라인의 **가장 핵심적인 단계**입니다. 사용자가 명시하지 않은 정보를 에이전트가 임의로 가정하여 넘기지 말고, 반드시 모달창을 통해 선택지를 제공하세요.
+
+### 0-A. 모달창(`ask_question`) 필수 질문 항목
+에이전트는 `ask_question` 도구의 단일/다중 선택 기능(`is_multi_select`)을 활용하여, 아래의 필수 변수들을 사용자가 클릭으로 편하게 선택할 수 있도록 모달창을 띄워야 합니다.
+
+1. `audience_level` (대상 수준): 초등학교 저학년 / 고학년 / 중고등 / 성인 등
+2. `lecture_duration_min` & `slide_count` (강의 시간 및 예상 장수): 10분(5장) / 40분(15장) 등 묶어서 질문
+3. `tone` (톤앤매너): 공식적이고 진지하게 / 친근하고 부드럽게 / 유머러스하게
+4. `theme_preference` (테마 선택): AI 동적 맞춤 테마 / 귀여운 바인더 노트(cute_note) / 공공·기술(tech_blue) / 따뜻한 교육(warm_edu)
+5. **학습지 활동 추가 여부 (다중 선택 가능)**: 
+   - [ ] ❌ 학습지 제외 (슬라이드만 생성)
+   - [ ] 빈칸 채우기 (`cloze_word_bank` / `cloze_reveal`)
+   - [ ] 선 잇기 (`matching_lines` / `matching_reveal`)
+   - [ ] 표 채우기 (`table_fill` / `table_answer_reveal`)
+   - [ ] 짧은 답 쓰기 (`short_answer` / `sample_answer_reveal`)
+6. **외부 영상 사용 여부 (단일 선택)**:
+   - ( ) 사용 안 함
+   - ( ) 유튜브 링크 직접 입력 (입력 시 URL 문자열 받기)
+   - ( ) **에이전트가 자동 검색 및 추천** (선택 시, 에이전트가 주제에 맞춰 유튜브를 검색하여 상위 영상을 묻는 2차 모달창을 띄웁니다.)
+7. **영상 표시 방식 (단일 선택, 영상을 사용하는 경우)**:
+   - ( ) 링크 카드 (기본값)
+   - ( ) 슬라이드 안에 임베드 (iframe)
+8. **영상 연결 위치 (단일 선택, 영상을 사용하는 경우)**:
+   - ( ) AI가 자동 추천
+   - ( ) 도입에 넣기
+   - ( ) 활동 전에 넣기
+   - ( ) 정리 단계에 넣기
+
+### 0-A-2. 유튜브 자동 검색 워크플로우 (모달창에서 자동 검색 선택 시)
+1. 에이전트는 사용자의 주제에 맞는 검색어를 생성합니다. (예: "가짜뉴스 구별법 초등")
+2. `scripts/search_youtube.py "[검색어]"` 스크립트를 실행하여 결과를 JSON으로 받습니다.
+3. **2차 모달창(`ask_question`)**을 띄워 검색된 상위 영상 3~5개를 선택지로 제공합니다.
+   - 예시: `1. [제목] (채널: OO, 3분 20초) - 1,500회 시청`
+4. 사용자가 선택한 영상의 URL을 추출하여 `media` 객체의 `url` 필드에 매핑합니다.
+
+모달창을 통해 사용자의 선택을 모두 응답받은 직후에만 다음 모듈로 넘어가며, 수집된 응답은 `slide_context.yaml`에 저장됩니다.
+
+> ⚠️ **중요 (활동과 슬라이드의 1:1 페어링)**: 사용자가 학습지 활동을 선택했다면, 에이전트는 마지막 `worksheet` 페이지에 해당 블록들을 넣는 것에 그쳐서는 안 됩니다. 반드시 **발표 슬라이드 흐름 중간중간 적절한 타이밍에 해당 활동의 정답을 아이들과 확인하는 전용 Reveal 슬라이드(예: `cloze_reveal`, `matching_reveal`)를 한 세트로 묶어서 자연스럽게 배치**해야 합니다.
+
+### 0-B. 초기 파일 생성
+수집한 답변은 프로젝트 폴더의 세 파일로 반드시 먼저 고정합니다.
+
+```txt
+raw_script.md
+slide_context.yaml
+slide_plan.json
+```
+
+반복 가능한 초기화를 위해 로컬 스킬의 helper를 사용할 수 있습니다.
+
+```bash
+python ".agents/skills/text-to-slide-architect/scripts/init_lesson_project.py" --answers answers.json
+```
+
+`--answers`를 생략하면 터미널에서 질문을 순서대로 묻습니다. Codex의 질문 UI를 사용할 수 있는 환경에서는 먼저 사용자에게 질문하고, 답변을 `answers.json` 또는 동등한 내부 데이터로 정리한 뒤 위 helper와 같은 구조의 파일을 생성합니다.
+
+`answers.json` 예시:
+
+```json
+{
+  "project_name": "fake_news_lesson",
+  "raw_script": "초등 5학년 국어 수업. 주제는 가짜뉴스를 구별하는 방법.",
+  "audience_level": "초등 5학년",
+  "grade": "초등 5학년",
+  "subject": "국어",
+  "topic": "가짜뉴스를 구별하는 방법",
+  "duration_minutes": 40,
+  "slide_count": 5,
+  "tone": "친근",
+  "category": "교과교육",
+  "presentation_mode": "대면",
+  "theme_preference": "AI 알아서 맞춤",
+  "goal": "정보의 출처와 근거를 확인할 수 있다.",
+  "big_question": "이 정보는 믿어도 될까?",
+  "activity_title": "가짜뉴스 구별 OX 퀴즈",
+  "work_time_minutes": 2
+}
+```
 
 ### 0.5. 이미지 에셋 풀(Asset Pool) 처리 지침 및 재배치 규칙
 사용자가 연수 자료에 들어갈 캡처 이미지들을 워크스페이스 상위 폴더(예: `test_images`) 등에 미리 업로드해 둔 경우, 아래 규칙을 철저히 엄수하여 오배치를 방지합니다.
@@ -110,6 +182,52 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 | **Summary 모드** | 강의 원고, 연수 대본, 에세이 | 교육학적 기승전결 구조로 재배치. 핵심만 남기고 과감히 압축. |
 
 사용자에게 **"목차(개요) 및 모드"**를 보여주고 승인을 받습니다.
+
+---
+
+## 모듈 2.5: 수업 활동 설계 (Lesson Activity Blueprint)
+
+학생용 활동지가 필요한 수업형 자료는 `slides`만 바로 만들지 말고 아래 흐름을 따릅니다.
+
+```txt
+user_input → content_blueprint → activity_packages → pages(slide + worksheet + answer_key)
+```
+
+`content_blueprint`는 수업 전체의 목표, 큰 질문, 단계별 교사/학생 행동, 학습지 역할을 담는 공통 설계도입니다. `activity_packages`는 활동 하나를 `worksheet_block`, `activity_instruction` 슬라이드, `ox_reveal` 같은 확인 슬라이드, `answer_key`, `teacher_prompt`로 묶는 실제 수업 단위입니다.
+
+학습지가 있는 자료는 `slide_plan.json`에 기존 `slides` 대신 `pages`를 우선 사용합니다. 렌더러는 기존 `slides`도 계속 지원합니다.
+
+지원 `page_type`:
+- `slide`: 기존 16:9 발표 슬라이드
+- `worksheet`: A4 학생용 활동지
+- `answer_key`: A4 교사용 정답지
+
+출력 모드:
+- 기본 URL: 발표 모드, `slide`만 표시
+- `?mode=teacher`: 슬라이드 + 학습지 + 정답지 모두 표시
+- `?mode=worksheet`: 학습지/정답지 확인 및 인쇄용
+
+초기 학습지 블록은 `short_answer`, `ox_check`, `cloze_word_bank`, `matching_lines`, `table_fill`, `reflection_checklist`를 허용합니다. MVP 렌더링은 `short_answer`와 `ox_check`를 완성하고, 나머지는 placeholder로 열어둡니다.
+
+### 외부 미디어(YouTube) 연결 규칙
+사용자가 유튜브 링크를 입력한 경우, `activity_package` (또는 개별 슬라이드 전 단계) 안에 `media` 객체를 추가해야 합니다.
+```json
+{
+  "media": {
+    "enabled": true,
+    "type": "youtube_video",
+    "url": "https://youtu.be/VIDEO_ID",
+    "title": "영상 제목",
+    "purpose": "수업 도입에서 문제 상황 제시",
+    "placement": "hook", // hook, activity_intro, activity_review, summary 중 택 1
+    "display_mode": "link_card", // 또는 "embed"
+    "teacher_check_required": true,
+    "student_task": "영상을 보고 의심되는 정보 표현을 찾아 학습지에 적는다."
+  }
+}
+```
+- `media`가 있는 패키지는 해당 영상을 기반으로 한 학생 활동(학습지 블록) 및 교사용 발문(`teacher_prompt`)을 반드시 함께 설계해야 합니다.
+- `build_html.py` 렌더러가 `media` 객체를 읽어 `video_hook`, `video_activity_prompt` 등의 슬라이드와 PPTX용 링크 카드를 자동 생성합니다.
 
 ---
 
@@ -337,7 +455,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 - `BOTTOM_TAKEAWAY`: 슬라이드 하단에 그라데이션 띠로 표시되는 핵심 요약 한 줄
 - `SECTION_HEADER`: 슬라이드 좌상단에 작게 표시되는 현재 섹션명 (네비게이션 용)
 
-*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `image_comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`
+*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `image_comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`, `activity_instruction`, `ox_reveal`
 
 ### 📚 레이아웃별 필수/선택 변수명 사전 (Schema Dictionary)
 AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에서 정확히 인식할 수 있도록, **반드시 아래 표에 명시된 변수명(대문자)만을 사용**해야 합니다. (임의의 변수명 지어내기 엄금)
@@ -364,6 +482,8 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `matrix` | 2x2 아이콘 매트릭스 | `TITLE`, `MATRIX_ITEMS` (icon, label, desc) | `SPEAKER_NOTES` |
 | `vs_ox` | 2단 행동/가치 대비 가이드 | `TITLE`, `O_TITLE`, `O_ITEMS` (marker, text), `X_TITLE`, `X_ITEMS` | `O_MARKER`, `X_MARKER`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `roadmap` | 3~5단계 가로 로드맵 카드 | `TITLE`, `ROADMAP_ITEMS` (label, desc) | `SUBTITLE`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
+| `activity_instruction` | 학습지 활동 안내 | `TITLE`, `INSTRUCTION` | `WORKSHEET_REF`, `TIMER_MINUTES`, `THINK_QUESTION`, `SPEAKER_NOTES` |
+| `ox_reveal` | OX 정답 순차 공개 | `TITLE`, `ITEMS` (`statement`, `answer`, `explanation`) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 
 *(참고: 모든 레이아웃 공통으로 `SECTION_HEADER`와 `BOTTOM_TAKEAWAY`는 원할 경우 선택 변수로 추가 가능합니다.)*
 
@@ -434,6 +554,15 @@ python "{스킬폴더}/scripts/export_image_pptx.py" "output/captures" "output/p
   - 공통 스킬 폴더 내의 `templates`나 `scripts` 파일을 직접 수정합니다.
   - 수정 완료 즉시 **글로벌 룰**에 따라 옵시디언 금고 및 시스템 config 스킬 폴더로 **전체 동기화(덮어쓰기)**를 진행하여 다음 프로젝트에서도 이 기능이 보존되도록 합니다.
 
+
+### 3. 새로운 레이아웃/블록 추가 시 텍스트 편집 연동 규칙 (필수)
+* **상황**: 새로운 `block_type`이나 인터랙티브 슬라이드 레이아웃을 `build_html.py`의 `render_worksheet_block` 등에 추가할 때.
+* **작업 요령 (에디터 연동 유지)**: 
+  - 텍스트가 표시되는 모든 HTML 요소(표 셀, 빈칸, 설명글 등)에는 절대로 `contenteditable="true"` 속성을 직접 하드코딩하지 마세요. (이렇게 하면 우측 텍스트 에디터 패널과의 데이터 연결이 끊어져 점선 박스나 글자 크기 조절이 작동하지 않습니다.)
+  - 반드시 파이썬 스크립트 상에서 **`editable_attrs(f"{prefix}.경로")`** 함수를 호출하여 태그에 주입해야 합니다.
+  - 예시: `<h2{editable_attrs(f"{prefix}.title")}>{title}</h2>`
+  - 이렇게 처리해야 "텍스트 직접편집" 탭에 진입했을 때만 점선 박스가 켜지고, 클릭 시 에디터 패널과 완벽히 동기화됩니다.
+
 ### 2. Project Isolation 대상 (개별 프로젝트 폴더 내 격리)
 * **판단 기준**:
   - 특정 프로젝트에서만 유효한 **일회성 데이터 연산 및 전처리** (예: 특정 CSV/나이스 출결 데이터를 슬라이드로 변환하는 2차 가공 스크립트).
@@ -444,3 +573,8 @@ python "{스킬폴더}/scripts/export_image_pptx.py" "output/captures" "output/p
   - 복잡한 로컬 전처리는 프로젝트 폴더 내에 전용 파이썬 스크립트(예: `custom_helper.py`)를 따로 작성하여 격리 실행합니다.
 
 #바이브코딩 #프레젠테이션 #슬라이드 #Antigravity #교육 #SSOT
+
+
+## 🎨 CSS 및 레이아웃 전역 규칙 (CSS & Layout Global Rules)
+
+- **한국어 텍스트 줄바꿈 (Word Breaking)**: 모든 레이아웃에서 한글 텍스트는 반드시 단어 단위(Word-level)로 줄바꿈 되어야 합니다. 전역 컨테이너(.reveal 등)에 word-break: keep-all;을 선언하여 사용하고, 레이아웃별로 word-break: keep-all;을 사용하는 것을 엄격히 금지합니다. 추후 새로운 레이아웃을 추가할 때도 이 전역 규칙이 유지되어야 합니다.

@@ -223,7 +223,56 @@
             }
         }
 
+        
+        function shrinkWorksheet() {
+            document.querySelectorAll('.worksheet-page').forEach(page => {
+                const body = page.querySelector('.worksheet-page-body');
+                if (!body) return;
+                
+                // 사용자가 수동으로 잠근 폰트 크기 요소 보존
+                const lockedEls = body.querySelectorAll('[data-style-locked="true"]');
+                const lockedSizes = new Map();
+                lockedEls.forEach(el => {
+                    lockedSizes.set(el, el.style.fontSize);
+                });
+                
+                // 측정을 위해 overflow 임시 해제
+                const origOverflow = body.style.overflow;
+                body.style.overflow = 'visible';
+                
+                // 페이지 내부 사용 가능 높이 계산
+                const pageStyle = getComputedStyle(page);
+                const pageHeight = page.clientHeight 
+                    - parseFloat(pageStyle.paddingTop) 
+                    - parseFloat(pageStyle.paddingBottom);
+                const header = page.querySelector('.worksheet-page-header');
+                const headerHeight = header ? header.offsetHeight + parseFloat(getComputedStyle(header).marginBottom || 0) : 0;
+                const availableHeight = pageHeight - headerHeight;
+                
+                let currentSize = 20;
+                body.style.fontSize = currentSize + 'px';
+                
+                // 잠긴 폰트 크기 복원
+                lockedSizes.forEach((size, el) => {
+                    if (size) el.style.fontSize = size;
+                });
+                
+                // body의 scrollHeight가 사용 가능 영역을 초과하면 축소
+                while (body.scrollHeight > availableHeight + 2 && currentSize > 10) {
+                    currentSize -= 0.5;
+                    body.style.fontSize = currentSize + 'px';
+                    // 잠긴 폰트 크기 매번 재복원
+                    lockedSizes.forEach((size, el) => {
+                        if (size) el.style.fontSize = size;
+                    });
+                }
+                
+                body.style.overflow = origOverflow || 'hidden';
+            });
+        }
+
         function autoFitAllSlides(options = {}) {
+            shrinkWorksheet();
             document.querySelectorAll('.slide-container, .center-layout').forEach(container => {
                 autoFitContainer(container, { force: true, ...options });
             });
@@ -429,6 +478,7 @@
                 });
 
                 shrinkBodyUntilFits(container);
+                if(typeof shrinkWorksheet === 'function') shrinkWorksheet();
                 fixBadVerticalWraps(container, { useThemeBaseline: true });
             });
 
@@ -553,6 +603,7 @@
         Reveal.on('slidechanged', event => {
             const container = event.currentSlide && event.currentSlide.querySelector('.slide-container, .center-layout');
             if (container) stabilizeAfterPaint(container, 180);
+            setTimeout(drawWorksheetMatchLines, 300);
         });
 
         document.addEventListener('input', event => {
@@ -569,4 +620,81 @@
                     Reveal.layout();
                 }, 300);
             }
+        });
+
+        // 교사용 정답지 선 연결하기: 슬라이드와 완전히 동일한 방식으로 SVG 점→점 연결선 그리기
+        // base.html의 getRelativePos + offsetLeft/Top 방식을 그대로 사용 (getBoundingClientRect 대신)
+        function drawWorksheetMatchLines() {
+            // 숨겨진 상태에서는 offsetLeft/Top이 0이므로 임시 표시
+            const sections = document.querySelectorAll('.worksheet-section');
+            const origStyles = [];
+            sections.forEach(sec => {
+                origStyles.push({ display: sec.style.display, visibility: sec.style.visibility, position: sec.style.position });
+                sec.style.display = 'block';
+                sec.style.visibility = 'hidden';
+                sec.style.position = 'absolute';
+            });
+
+            // getRelativePos: base.html과 완전히 동일한 함수
+            function getRelativePos(element, container) {
+                let x = 0, y = 0;
+                let el = element;
+                while (el && el !== container && el !== document.body) {
+                    x += el.offsetLeft;
+                    y += el.offsetTop;
+                    el = el.offsetParent;
+                }
+                return { x, y };
+            }
+
+            document.querySelectorAll('svg.match-answer-svg').forEach(svg => {
+                const container = svg.closest('.matching-columns-container');
+                if (!container) return;
+
+                svg.querySelectorAll('g.ws-match-line').forEach(g => {
+                    const startId = g.getAttribute('data-start');
+                    const endId = g.getAttribute('data-end');
+                    const startEl = document.querySelector(startId);
+                    const endEl = document.querySelector(endId);
+                    if (!startEl || !endEl) return;
+
+                    const startPos = getRelativePos(startEl, container);
+                    const endPos = getRelativePos(endEl, container);
+
+                    // 점 중심 좌표 (슬라이드와 동일)
+                    const startX = startPos.x + (startEl.offsetWidth / 2);
+                    const startY = startPos.y + (startEl.offsetHeight / 2);
+                    const endX = endPos.x + (endEl.offsetWidth / 2);
+                    const endY = endPos.y + (endEl.offsetHeight / 2);
+
+                    const path = g.querySelector('.match-svg-line');
+                    const arrow = g.querySelector('.match-svg-arrowhead');
+
+                    // 애니메이션 없이 즉시 완성형으로 그리기 (슬라이드는 requestAnimationFrame 사용)
+                    if (path) {
+                        path.setAttribute('d', `M${startX},${startY} L${endX},${endY}`);
+                    }
+                    if (arrow) {
+                        const angle = Math.atan2(endY - startY, endX - startX) * (180 / Math.PI);
+                        arrow.setAttribute('transform', `translate(${endX}, ${endY}) rotate(${angle})`);
+                        arrow.setAttribute('points', '-16,-8 4,0 -16,8');
+                    }
+                });
+            });
+
+            // 원래 상태로 복구
+            sections.forEach((sec, i) => {
+                sec.style.display = origStyles[i].display;
+                sec.style.visibility = origStyles[i].visibility;
+                sec.style.position = origStyles[i].position;
+            });
+        }
+        
+        window.drawWorksheetMatchLines = drawWorksheetMatchLines;
+
+        Reveal.on('ready', () => {
+            setTimeout(drawWorksheetMatchLines, 500);
+        });
+        window.addEventListener('load', () => {
+            setTimeout(drawWorksheetMatchLines, 300);
         });

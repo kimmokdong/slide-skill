@@ -264,7 +264,6 @@
         .reveal strong {
             display: inline;
             white-space: normal;
-            word-break: keep-all;
             overflow-wrap: anywhere;
             line-height: inherit;
             box-decoration-break: clone;

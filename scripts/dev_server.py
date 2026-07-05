@@ -241,100 +241,65 @@ def read_json_body(handler):
 
 
 def apply_edit_to_slide(slide, edit_id, value):
-    scalar_match = re.fullmatch(r'[A-Z_]+', edit_id)
-    if scalar_match:
-        slide[edit_id] = value
-        return
-
-    list_match = re.fullmatch(r'([A-Z_]+)\[(\d+)\](?:\.([A-Za-z_]+))?', edit_id)
-    if not list_match:
-        raise ValueError(f"지원하지 않는 편집 ID입니다: {edit_id}")
-
-    key, index_text, prop = list_match.groups()
-    index = int(index_text)
-    items = slide.get(key)
-    if not isinstance(items, list) or index >= len(items):
-        raise ValueError(f"편집 대상 리스트를 찾을 수 없습니다: {edit_id}")
-
-    if prop:
-        if not isinstance(items[index], dict):
-            items[index] = {"text": str(items[index])}
-        items[index][prop] = value
+    keys = edit_id.replace(']', '').replace('[', '.').split('.')
+    keys = [k for k in keys if k]
+    target = slide
+    for i, k in enumerate(keys[:-1]):
+        if k.isdigit():
+            k = int(k)
+        next_k = keys[i+1]
+        is_next_digit = next_k.isdigit()
+        
+        if isinstance(target, dict):
+            if k not in target:
+                target[k] = [] if is_next_digit else {}
+            target = target[k]
+        elif isinstance(target, list):
+            while len(target) <= k:
+                target.append([] if is_next_digit else {})
+            if isinstance(target[k], str) and not is_next_digit:
+                target[k] = {"text": target[k]}
+            target = target[k]
+            
+    last_key = keys[-1]
+    if last_key.isdigit():
+        last_key = int(last_key)
+        
+    if isinstance(target, list):
+        while len(target) <= last_key:
+            target.append("")
+        target[last_key] = value
     else:
-        items[index] = value
+        target[last_key] = value
 
 
 def apply_text_edits(plan, edits, style_overrides):
-    slides = plan.get('slides', [])
+    slides = plan.get('pages') if isinstance(plan.get('pages'), list) else plan.get('slides', [])
     for edit in edits or []:
         slide_index = edit.get('slideIndex')
         edit_id = edit.get('editId')
         value = edit.get('value', '')
-        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
-            raise ValueError(f"범위를 벗어난 슬라이드 번호입니다: {slide_index}")
         if not edit_id:
             continue
+        if edit_id.startswith('$root.'):
+            apply_edit_to_slide(plan, edit_id[6:], value)
+            continue
+        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
+            raise ValueError(f"범위를 벗어난 슬라이드 번호입니다: {slide_index}")
         apply_edit_to_slide(slides[slide_index], edit_id, value)
 
     for style in style_overrides or []:
         slide_index = style.get('slideIndex')
         edit_id = style.get('editId')
         font_size = style.get('fontSize')
-        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
-            raise ValueError(f"범위를 벗어난 스타일 슬라이드 번호입니다: {slide_index}")
         if not edit_id or not font_size:
             continue
-        overrides = slides[slide_index].setdefault('STYLE_OVERRIDES', {})
-        overrides[edit_id] = {"fontSize": font_size}
-
-
-def apply_edit_to_slide(slide, edit_id, value):
-    scalar_match = re.fullmatch(r'[A-Z_]+', edit_id)
-    if scalar_match:
-        slide[edit_id] = value
-        return
-
-    list_match = re.fullmatch(r'([A-Z_]+)\[(\d+)\](?:\.([A-Za-z_]+))?', edit_id)
-    if not list_match:
-        raise ValueError(f"지원하지 않는 편집 ID입니다: {edit_id}")
-
-    key, index_text, prop = list_match.groups()
-    index = int(index_text)
-    items = slide.get(key)
-    if not isinstance(items, list) or index >= len(items):
-        raise ValueError(f"편집 대상 리스트를 찾을 수 없습니다: {edit_id}")
-
-    if prop:
-        if not isinstance(items[index], dict):
-            items[index] = {"text": str(items[index])}
-        items[index][prop] = value
-    else:
-        items[index] = value
-
-
-def apply_text_edits(plan, edits, style_overrides):
-    slides = plan.get('slides', [])
-    for edit in edits or []:
-        slide_index = edit.get('slideIndex')
-        edit_id = edit.get('editId')
-        value = edit.get('value', '')
-        if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
-            raise ValueError(f"범위를 벗어난 슬라이드 번호입니다: {slide_index}")
-        if not edit_id:
+        if edit_id.startswith('$root.'):
             continue
-        apply_edit_to_slide(slides[slide_index], edit_id, value)
-
-    for style in style_overrides or []:
-        slide_index = style.get('slideIndex')
-        edit_id = style.get('editId')
-        font_size = style.get('fontSize')
         if not isinstance(slide_index, int) or slide_index < 0 or slide_index >= len(slides):
             raise ValueError(f"범위를 벗어난 스타일 슬라이드 번호입니다: {slide_index}")
-        if not edit_id or not font_size:
-            continue
         overrides = slides[slide_index].setdefault('STYLE_OVERRIDES', {})
         overrides[edit_id] = {"fontSize": font_size}
-
 
 class DevServerHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
@@ -428,20 +393,21 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
 
         plan_path = get_plan_path()
         plan = load_plan(plan_path)
-        original_slides = plan.get("slides", [])
-        if not isinstance(original_slides, list):
-            raise ApiError(400, "slide_plan.json must contain a slides array.")
+        target_key = "pages" if isinstance(plan.get("pages"), list) else "slides"
+        original_pages = plan.get(target_key, [])
+        if not isinstance(original_pages, list):
+            raise ApiError(400, f"slide_plan.json must contain a {target_key} array.")
 
-        new_slides = []
+        new_pages = []
         for idx in indices:
             if isinstance(idx, bool) or not isinstance(idx, int):
                 raise ApiError(400, "indices must contain integers only.")
-            if idx < 0 or idx >= len(original_slides):
+            if idx < 0 or idx >= len(original_pages):
                 raise ApiError(400, f"Invalid slide index: {idx}")
-            new_slides.append(original_slides[idx])
+            new_pages.append(original_pages[idx])
 
         backup_path = backup_plan(plan_path)
-        plan["slides"] = new_slides
+        plan[target_key] = new_pages
         save_plan_atomic(plan_path, plan)
         rebuild = rebuild_outputs()
 

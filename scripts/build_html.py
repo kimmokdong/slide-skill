@@ -147,7 +147,6 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     card_bg = "rgba(255, 255, 255, 0.65)" if is_light else "rgba(255, 255, 255, 0.08)"
     card_border = "rgba(0, 0, 0, 0.12)" if is_light else "rgba(255, 255, 255, 0.15)"
 
-    # CSS 하드코딩을 중단하고 프리셋 이름만 추출하여 HTML 클래스 주입으로 대체 (SSOT 원칙 적용)
     frame_preset = theme_colors.get('image_frame_preset', 'business')
     card_preset = theme_colors.get('card_style_preset', 'business_clean')
     icon_preset = theme_colors.get('icon_preset', 'business')
@@ -155,7 +154,6 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     takeaway_preset = theme_colors.get('takeaway_style', 'friendly')
     motion_preset = theme_colors.get('motion_preset', 'friendly')
 
-    # 폰트 프리셋 매칭 (유일하게 :root에 직접 반영되어야 하는 값)
     font_preset = theme_colors.get('font_preset', 'friendly')
     font_stack = "'Outfit', 'Noto Sans KR', sans-serif"
     if font_preset == 'cyber':
@@ -167,7 +165,6 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     elif font_preset == 'chalkboard':
         font_stack = "'Caveat', 'Nanum Pen Script', cursive"
 
-    # 60-30-10 기반 자동 파생 색상 및 프리셋 CSS 통합 조립
     css = f"""<style>
 /* ===== 동적 테마 (60-30-10 Rule) ===== */
 :root {{
@@ -183,7 +180,6 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     --color-muted: {text_secondary};
     --font-primary: {font_stack};
 }}
-
 
 .reveal {{
     background: var(--color-bg);
@@ -202,7 +198,6 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     background-clip: text;
 }}
 
-/* h1 내부 strong의 투명화 상속 차단 — hero/closing 표지에서 형광펜 글자가 사라지는 버그 근본 해결 */
 .reveal h1 strong {{
     -webkit-text-fill-color: var(--color-text);
     background-clip: initial;
@@ -240,9 +235,34 @@ def generate_dynamic_theme_css(theme_colors: dict) -> str:
     return css
 
 
+def normalize_youtube_url(url: str) -> dict:
+    """YouTube URL을 정규화하여 video_id와 embed_url, thumbnail_url 등을 반환합니다."""
+    if not url:
+        return {}
+        
+    import re
+    pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11})(?:\?|&|$)'
+    match = re.search(pattern, url)
+    if not match:
+        pattern2 = r'youtu\.be\/([0-9A-Za-z_-]{11})'
+        match = re.search(pattern2, url)
+        
+    if not match:
+        return {}
+        
+    video_id = match.group(1)
+    return {
+        'source_url': url,
+        'video_id': video_id,
+        'embed_url': f"https://www.youtube.com/embed/{video_id}",
+        'watch_url': f"https://www.youtube.com/watch?v={video_id}",
+        'thumbnail_url': f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+    }
+
+
 def extract_percentage(value_str: str) -> int:
     """수치 텍스트로부터 게이지 바에 채울 백분율 값을 추출합니다."""
-    # 1. % 기호가 있으면 숫자 추출
+    import re
     if '%' in value_str:
         match = re.search(r'([\d\.]+)', value_str)
         if match:
@@ -250,7 +270,6 @@ def extract_percentage(value_str: str) -> int:
                 return int(float(match.group(1)))
             except ValueError:
                 pass
-    # 2. '점'이 들어있고 숫자가 있으면
     if '점' in value_str:
         match = re.search(r'([\d\.]+)', value_str)
         if match:
@@ -264,7 +283,6 @@ def extract_percentage(value_str: str) -> int:
                     return int(val)
             except ValueError:
                 pass
-    # 3. 그 외 일반 숫자인 경우
     match = re.search(r'([\d\.]+)', value_str)
     if match:
         try:
@@ -282,7 +300,6 @@ def extract_percentage(value_str: str) -> int:
         except ValueError:
             pass
     return 0
-
 
 def editable_attrs(edit_id: str) -> str:
     """Return stable attributes used by browser-side direct editing."""
@@ -307,6 +324,13 @@ def get_first_value(data: dict, keys: list, default=''):
         if value is not None and value != '':
             return value
     return default
+
+
+def format_minutes(value) -> str:
+    text = str(value).strip()
+    if not text:
+        return ''
+    return text if text.endswith('분') else f'{text}분'
 
 
 def apply_style_overrides(rendered_html: str, style_overrides: dict) -> str:
@@ -438,6 +462,259 @@ def render_section_header(slide_data: dict) -> str:
     return f'<div class="section-header-tag"{editable_attrs("SECTION_HEADER")}>{header}</div>'
 
 
+def tag_page_section(html: str, page_type: str, page_index: int) -> str:
+    """Reveal section에 원본 page 인덱스를 심어 에디터 저장 대상을 안정화합니다."""
+    attrs = f' data-page-type="{escape(page_type, quote=True)}" data-page-index="{page_index}"'
+    return re.sub(r'<section\b', f'<section{attrs}', html, count=1)
+
+
+def render_ox_reveal_items(items) -> str:
+    if not isinstance(items, list):
+        return ''
+
+    rows = []
+    for index, item in enumerate(items):
+        if isinstance(item, dict):
+            statement = item.get('statement', item.get('text', ''))
+            answer = item.get('answer', '')
+            explanation = item.get('explanation', '')
+        else:
+            statement = str(item)
+            answer = ''
+            explanation = ''
+
+        explanation_html = ''
+        if explanation:
+            explanation_html = f'<div class="ox-reveal-explanation fragment"{editable_attrs(f"ITEMS[{index}].explanation")}>{explanation}</div>'
+
+        rows.append(f'''<div class="ox-reveal-row">
+            <div class="ox-reveal-statement"><span class="ox-reveal-num">{index + 1}</span><span{editable_attrs(f"ITEMS[{index}].statement")}>{statement}</span></div>
+            <div class="ox-reveal-answer fragment"{editable_attrs(f"ITEMS[{index}].answer")}>{answer}</div>
+            {explanation_html}
+        </div>''')
+    return '\n'.join(rows)
+
+
+def render_answer_key_block(block: dict, block_index: int, q_idx: int, prefix: str) -> str:
+    block_type = block.get('block_type', 'short_answer')
+    title = block.get('title', f'활동 {q_idx}')
+    
+    header = f'<h3 class="answer-key-block-title"{editable_attrs(f"{prefix}.title")}><span class="q-num" style="color:var(--color-accent); margin-right: 8px;">{q_idx}.</span>{title}</h3>'
+    
+    content = ""
+    if block_type == 'ox_check':
+        items = block.get('items', [])
+        lines = []
+        for i, item in enumerate(items):
+            ans = item.get('answer', '') if isinstance(item, dict) else ''
+            exp = item.get('explanation', '') if isinstance(item, dict) else ''
+            lines.append(f"<div>{i+1}. <strong>{ans}</strong> {f'- {exp}' if exp else ''}</div>")
+        content = "".join(lines)
+    
+    elif block_type == 'short_answer':
+        ans = block.get('sample_answer', '예시 답안 없음')
+        content = f"<div>정답(예시): {ans}</div>"
+        
+    elif block_type == 'cloze_word_bank':
+        sentences = block.get('sentences', [])
+        answers = []
+        for s in sentences:
+            if isinstance(s, dict) and 'answer' in s:
+                answers.append(s['answer'])
+        ans_str = ", ".join(answers)
+        content = f"<div>정답: {ans_str}</div>"
+        
+    elif block_type == 'matching_lines':
+        pairs = block.get('pairs', [])
+        lines = []
+        for i, p in enumerate(pairs):
+            if not isinstance(p, dict):
+                continue
+            left = escape(str(p.get('left', '')))
+            right = escape(str(p.get('right', '')))
+            lines.append(
+                f'<div class="answer-key-match-row">'
+                f'<span class="answer-key-match-num">{i + 1}</span>'
+                f'<span class="answer-key-match-left">{left}</span>'
+                f'<span class="answer-key-match-arrow">→</span>'
+                f'<strong class="answer-key-match-right">{right}</strong>'
+                f'</div>'
+            )
+        content = "".join(lines) or "<div>표시할 정답 쌍이 없습니다.</div>"
+        
+    elif block_type == 'table_fill':
+        rows = block.get('rows', [])
+        lines = []
+        for r in rows:
+            if len(r) >= 2:
+                left = r[0].get('text', r[0]) if isinstance(r[0], dict) else str(r[0])
+                right = r[1].get('text', r[1]) if isinstance(r[1], dict) else str(r[1])
+                lines.append(f"<div>{left}: {right}</div>")
+        content = "".join(lines)
+        
+    elif block_type == 'reflection_checklist':
+        content = "<div style='color:#64748b;'>자기점검 문항이므로 정답이 없습니다. 순회지도 시 참고용으로 활용하세요.</div>"
+        
+    return f'<div class="answer-key-block">{header}<div class="answer-key-content">{content}</div></div>'
+
+
+def render_worksheet_block(block: dict, block_index: int, q_idx: int, answer_key: bool = False) -> str:
+    block_type = block.get('block_type', 'short_answer')
+    title = block.get('title', f'활동 {q_idx}')
+    instruction = block.get('instruction', block.get('prompt', ''))
+    prefix = block.get('_original_path', f'blocks[{block_index}]')
+    header = f'''<div class="worksheet-block-header">
+        <h2{editable_attrs(f"{prefix}.title")}><span class="q-num" style="color:var(--color-accent); margin-right: 8px;">{q_idx}.</span>{title}</h2>
+        {f'<p{editable_attrs(f"{prefix}.instruction")}>{instruction}</p>' if instruction else ''}
+    </div>'''
+
+    if block_type == 'ox_check':
+        items = block.get('items', [])
+        item_rows = []
+        for item_index, item in enumerate(items):
+            statement = item.get('statement', item.get('text', '')) if isinstance(item, dict) else str(item)
+            answer = item.get('answer', '') if isinstance(item, dict) else ''
+            explanation = item.get('explanation', '') if isinstance(item, dict) else ''
+            if answer_key:
+                right = f'<strong>{answer}</strong>{f" - {explanation}" if explanation else ""}'
+            else:
+                right = '<span class="worksheet-ox-choice">O</span><span class="worksheet-ox-choice">X</span>'
+            item_rows.append(f'''<li>
+                <span class="worksheet-question"{editable_attrs(f"{prefix}.items[{item_index}].statement")}>{statement}</span>
+                <span class="worksheet-answer-slot">{right}</span>
+            </li>''')
+        return f'<div class="worksheet-block worksheet-block-ox">{header}<ol>{''.join(item_rows)}</ol></div>'
+
+    if block_type == 'short_answer':
+        lines = int(block.get('answer_lines', 2) or 2)
+        answer_lines = ''.join('<div class="worksheet-answer-line"></div>' for _ in range(max(1, min(lines, 6))))
+        if answer_key and block.get('sample_answer'):
+            answer_lines = f'<div class="worksheet-sample-answer"{editable_attrs(f"{prefix}.sample_answer")}>{block.get("sample_answer")}</div>'
+        return f'<div class="worksheet-block worksheet-block-short-answer">{header}{answer_lines}</div>'
+
+    if block_type == 'cloze_word_bank':
+        word_bank = block.get('word_bank', [])
+        sentences = block.get('sentences', [])
+        wb_html = ' '.join(f'<span class="cloze-word"{editable_attrs(f"{prefix}.word_bank[{i}]")}>{w}</span>' for i, w in enumerate(word_bank))
+        sent_html = []
+        for i, s in enumerate(sentences):
+            text = str(s.get('text', s)) if isinstance(s, dict) else str(s)
+            import re
+            if answer_key:
+                ans = s.get('answer', '') if isinstance(s, dict) else ''
+                if ans:
+                    text = text.replace('[    ]', f'[ <strong style="color: var(--color-accent);">{ans}</strong> ]')
+                else:
+                    text = re.sub(r'\[(.*?)\]', r'[ <strong style="color: var(--color-accent);">\1</strong> ]', text)
+            else:
+                text = text.replace('[    ]', '<span class="cloze-blank"></span>')
+                text = re.sub(r'\[(.*?)\]', '<span class="cloze-blank"></span>', text)
+            sent_html.append(f'<li{editable_attrs(f"{prefix}.sentences[{i}].text")}>{text}</li>')
+        return f'<div class="worksheet-block worksheet-block-cloze">{header}<div class="word-bank-box">{wb_html}</div><ol class="cloze-sentences">{"".join(sent_html)}</ol></div>'
+
+    if block_type == 'matching_lines':
+        pairs = block.get('pairs', [])
+        import random
+        # 슬라이드와 동일한 시드 사용 (슬라이드는 TITLE = "{title} 정답 확인" 으로 시드)
+        slide_seed = f'{title} 정답 확인'
+        random.seed(slide_seed)
+        right_items = [{"id": i, "text": p.get('right', '')} for i, p in enumerate(pairs)]
+        random.shuffle(right_items)
+        
+        n = len(pairs)
+        id_prefix = 'ak' if answer_key else 'ws'
+        ws_id = f'{id_prefix}-match-{block_index}'
+        
+        left_col = []
+        right_col = []
+        svg_lines = []
+        for i, p in enumerate(pairs):
+            left_dot_id = f'{ws_id}-ld-{i}'
+            right_dot_id = f'{ws_id}-rd-{i}'
+            left_col.append(f'<div class="match-item-box" id="{ws_id}-l-{i}"><div class="match-left"{editable_attrs(f"{prefix}.pairs[{i}].left")}>{p.get("left", "")}</div><div class="match-dot" id="{left_dot_id}"></div></div>')
+            # 슬라이드와 완전히 동일한 SVG 구조 (fragment 클래스만 제거 → 애니메이션 없이 즉시 표시)
+            if answer_key:
+                svg_lines.append(f'<g class="ws-match-line" data-start="#{left_dot_id}" data-end="#{right_dot_id}"><path class="match-svg-line" fill="none" stroke="var(--color-accent)" stroke-width="4" stroke-linecap="round" stroke-opacity="0.85" /><polygon class="match-svg-arrowhead" fill="var(--color-accent)" opacity="0.85" /></g>')
+        for r in right_items:
+            i = r["id"]
+            right_col.append(f'<div class="match-item-box" id="{ws_id}-r-{i}"><div class="match-dot" id="{ws_id}-rd-{i}"></div><div class="match-right"{editable_attrs(f"{prefix}.pairs[{i}].right")}>{r["text"]}</div></div>')
+            
+        answer_svg = ''
+        if answer_key:
+            answer_svg = f'<svg class="match-svg-overlay match-answer-svg" style="position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 10; pointer-events: none; overflow: visible;">{"".join(svg_lines)}</svg>'
+        
+        return f'<div class="worksheet-block worksheet-block-matching">{header}<div class="matching-columns-container" id="{ws_id}" style="position: relative; display: flex; justify-content: space-between; flex: 1; min-height: 0; align-items: stretch;">{answer_svg}<div class="match-col match-col-left" style="display: flex; flex-direction: column; justify-content: space-around; z-index: 2; width: 45%; gap:20px;">{"".join(left_col)}</div><div class="match-col match-col-right" style="display: flex; flex-direction: column; justify-content: space-around; z-index: 2; width: 45%; gap:20px;">{"".join(right_col)}</div></div></div>'
+
+    if block_type == 'table_fill':
+        headers = block.get('headers', [])
+        rows = block.get('rows', [])
+        th_html = ''.join(f'<th{editable_attrs(f"{prefix}.headers[{i}]")}>{h}</th>' for i, h in enumerate(headers))
+        tr_html = []
+        for r_idx, r in enumerate(rows):
+            td_html = []
+            for c_idx, cell in enumerate(r):
+                text = str(cell.get('text', cell)) if isinstance(cell, dict) else str(cell)
+                is_blank = cell.get('is_blank', False) if isinstance(cell, dict) else (c_idx > 0)
+                if is_blank:
+                    if answer_key:
+                        td_html.append(f'<td class="blank-cell answered"><strong>{text}</strong></td>')
+                    else:
+                        td_html.append(f'<td class="blank-cell"></td>')
+                else:
+                    path = f"{prefix}.rows[{r_idx}][{c_idx}]" if not isinstance(cell, dict) else f"{prefix}.rows[{r_idx}][{c_idx}].text"
+                    td_html.append(f'<td{editable_attrs(path)}>{text}</td>')
+            tr_html.append(f'<tr>{"".join(td_html)}</tr>')
+        return f'<div class="worksheet-block worksheet-block-table">{header}<table class="worksheet-table"><thead><tr>{th_html}</tr></thead><tbody>{"".join(tr_html)}</tbody></table></div>'
+
+    if block_type == 'reflection_checklist':
+        items = block.get('items', [])
+        chk_html = []
+        for i, item in enumerate(items):
+            text = str(item.get('text', item)) if isinstance(item, dict) else str(item)
+            chk_html.append(f'<li><div class="check-box"></div><span{editable_attrs(f"{prefix}.items[{i}].text")}>{text}</span></li>')
+        return f'<div class="worksheet-block worksheet-block-reflection">{header}<ul class="reflection-list">{"".join(chk_html)}</ul></div>'
+
+    # ponytail: unsupported blocks keep their data visible; add custom renderers when real lessons need them.
+    return f'<div class="worksheet-block worksheet-block-placeholder">{header}<div class="worksheet-placeholder">{block_type}</div></div>'
+
+
+def render_worksheet_page(page: dict, page_index: int, page_type: str = 'worksheet') -> str:
+    title = page.get('title', page.get('TITLE', '학습지'))
+    blocks = page.get('blocks', page.get('BLOCKS', []))
+    start_q_idx = page.get('start_q_idx', 1)
+    answer_key = page_type == 'answer_key'
+    
+    if answer_key:
+        rendered_blocks = '\n'.join(render_worksheet_block(block, idx, start_q_idx + idx, answer_key=True) for idx, block in enumerate(blocks))
+        label = '교사용 정답지'
+        header_html = f'''<header class="worksheet-page-header">
+            <div class="worksheet-page-label">{label}</div>
+            <h1{editable_attrs("title")}>{title}</h1>
+        </header>'''
+    else:
+        rendered_blocks = '\n'.join(render_worksheet_block(block, idx, start_q_idx + idx) for idx, block in enumerate(blocks))
+        label = '학생용 활동지'
+        header_html = f'''<header class="worksheet-page-header">
+            <div class="worksheet-page-label">{label}</div>
+            <h1{editable_attrs("title")}>{title}</h1>
+            <div class="worksheet-student-info">
+                <span class="info-box">학년 반 번 이름: __________________</span>
+                <span class="info-box">날짜: 20___년 ___월 ___일</span>
+            </div>
+        </header>'''
+
+    html = f'''<section class="worksheet-section">
+        <div class="worksheet-page {'answer-key-page' if answer_key else ''}">
+            {header_html}
+            <main class="worksheet-page-body">
+                {rendered_blocks}
+            </main>
+        </div>
+    </section>'''
+    html = apply_style_overrides(html, page.get('STYLE_OVERRIDES', {}))
+    return tag_page_section(html, page_type, page_index)
+
+
 def render_slide(slide_data: dict) -> str:
     """단일 슬라이드 데이터를 HTML로 렌더링합니다."""
     slide_type = slide_data.get('layout', slide_data.get('type', 'title'))
@@ -477,6 +754,96 @@ def render_slide(slide_data: dict) -> str:
         data['DISPLAY_TITLE'] = re.sub(r'^\s*\d+\s*단계\s*[:：;；]\s*', '', raw_title)
     elif 'TITLE' in data:
         data['DISPLAY_TITLE'] = data.get('TITLE', '')
+
+    if slide_type == 'activity_instruction':
+        data['WORKSHEET_REF'] = get_first_value(data, ['WORKSHEET_REF', 'worksheet_ref'], '학습지')
+        data['TIMER_MINUTES'] = format_minutes(get_first_value(data, ['TIMER_MINUTES', 'timer_minutes'], ''))
+        data['THINK_QUESTION'] = get_first_value(data, ['THINK_QUESTION', 'think_question'], '')
+        if not data.get('INSTRUCTION') and data.get('instruction'):
+            data['INSTRUCTION'] = data.get('instruction', '')
+
+    if slide_type == 'ox_reveal':
+        items = data.get('ITEMS', data.get('OX_ITEMS', data.get('items', [])))
+        data['OX_REVEAL_ITEMS'] = render_ox_reveal_items(items)
+
+    if slide_type == 'sample_answer_reveal':
+        data['PROMPT'] = data.get('PROMPT', data.get('prompt', ''))
+        data['SAMPLE_ANSWER'] = data.get('SAMPLE_ANSWER', data.get('sample_answer', ''))
+
+    if slide_type == 'cloze_reveal':
+        wb = data.get('WORD_BANK', data.get('word_bank', []))
+        data['WORD_BANK_HTML'] = ''.join(
+            f'<span class="cloze-word cloze-wb-word"{editable_attrs(f"WORD_BANK[{i}]")} data-word="{escape(str(w), quote=True)}">{w}</span>'
+            for i, w in enumerate(wb)
+        )
+        items = data.get('ITEMS', data.get('sentences', []))
+        rows = []
+        for i, item in enumerate(items):
+            text_val = str(item.get('text', item)) if isinstance(item, dict) else str(item)
+            ans = str(item.get('answer', '')) if isinstance(item, dict) else ''
+
+            def render_cloze_blank(match):
+                word = match.group(1).strip() or ans
+                if not word:
+                    return match.group(0)
+                word_attr = escape(str(word), quote=True)
+                return f'<span class="cloze-blank-reveal fragment js-cloze-anim" data-word="{word_attr}" >{word}</span>'
+
+            text_html = re.sub(r'\[([^\]]*)\]', render_cloze_blank, text_val)
+            rows.append(f'<div class="cloze-reveal-row"{editable_attrs(f"ITEMS[{i}].text")}>{text_html}</div>')
+        data['CLOZE_REVEAL_ITEMS'] = '\n'.join(rows)
+
+    if slide_type == 'matching_reveal':
+        pairs = data.get('PAIRS', data.get('pairs', []))
+        import random
+        seed_str = data.get('TITLE', 'matching')
+        random.seed(seed_str)
+        right_items = [{"id": i, "text": p.get('right', '')} for i, p in enumerate(pairs)]
+        random.shuffle(right_items)
+        left_col = []
+        right_col = []
+        svg_lines = []
+        block_id = data.get('SLIDE_INDEX', 0)
+        for i, p in enumerate(pairs):
+            left_dot_id = f'slide-match-l-dot-{block_id}-{i}'
+            right_dot_id = f'slide-match-r-dot-{block_id}-{i}'
+            left_col.append(f'<div class="match-item-box" id="slide-match-l-{block_id}-{i}"><div class="match-left"{editable_attrs(f"PAIRS[{i}].left")}>{p.get("left", "")}</div><div class="match-dot" id="{left_dot_id}"></div></div>')
+            svg_lines.append(f'<g class="fragment js-match-anim" data-start="#{left_dot_id}" data-end="#{right_dot_id}"><path class="match-svg-line" fill="none" stroke="var(--color-accent)" stroke-width="6" stroke-linecap="round" stroke-opacity="0.9" /><polygon class="match-svg-arrowhead" fill="var(--color-accent)" opacity="0.9" /></g>')
+        
+        for r in right_items:
+            i_r = r["id"]
+            right_col.append(f'<div class="match-item-box" id="slide-match-r-{block_id}-{i_r}"><div class="match-dot" id="slide-match-r-dot-{block_id}-{i_r}"></div><div class="match-right"{editable_attrs(f"PAIRS[{i_r}].right")}>{r["text"]}</div></div>')
+            
+        data['MATCHING_REVEAL_ITEMS'] = f'''<div class="matching-columns-container" style="position: relative; display: flex; justify-content: space-between; width: 100%; min-height: 350px;">
+            <div class="match-col match-col-left" style="display: flex; flex-direction: column; justify-content: space-around; z-index: 2; width: 45%; gap:20px;">{"".join(left_col)}</div>
+            <svg class="match-svg-overlay" style="position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 10; pointer-events: none;">{"".join(svg_lines)}</svg>
+            <div class="match-col match-col-right" style="display: flex; flex-direction: column; justify-content: space-around; z-index: 2; width: 45%; gap:20px;">{"".join(right_col)}</div>
+        </div>'''
+
+    if slide_type == 'table_answer_reveal':
+        headers = data.get('HEADERS', data.get('headers', []))
+        rows_data = data.get('ROWS', data.get('rows', []))
+        th_html = ''.join(f'<th{editable_attrs(f"HEADERS[{i}]")}>{h}</th>' for i, h in enumerate(headers))
+        tr_html = []
+        for r_i, r in enumerate(rows_data):
+            td_html = []
+            for cell_index, cell in enumerate(r):
+                text = str(cell.get('text', cell)) if isinstance(cell, dict) else str(cell)
+                path = f"ROWS[{r_i}][{cell_index}].text" if isinstance(cell, dict) else f"ROWS[{r_i}][{cell_index}]"
+                if (isinstance(cell, dict) and cell.get('is_blank')) or cell_index > 0:
+                    td_html.append(f'<td class="blank-cell"><div class="fragment pop-glow-reveal"{editable_attrs(path)} style="color: var(--color-accent); font-weight: bold;">{text}</div></td>')
+                else:
+                    td_html.append(f'<td{editable_attrs(path)}>{text}</td>')
+            tr_html.append(f'<tr>{"".join(td_html)}</tr>')
+        data['TABLE_REVEAL_HTML'] = f'<table class="reveal-table" style="width: 100%; border-collapse: collapse;"><thead><tr>{th_html}</tr></thead><tbody>{"".join(tr_html)}</tbody></table>'
+
+    if slide_type == 'share_prompt':
+        data['INSTRUCTION'] = data.get('INSTRUCTION', data.get('instruction', '생각을 나눠 봅시다.'))
+        questions = data.get('QUESTIONS', data.get('questions', []))
+        q_html = []
+        for i, q in enumerate(questions):
+            q_html.append(f'<div class="share-question fragment">{q}</div>')
+        data['SHARE_QUESTIONS_HTML'] = '\n'.join(q_html)
 
     if slide_type == 'vs_ox' or 'O_ITEMS' in data or 'X_ITEMS' in data:
         data['O_MARKER'] = str(get_first_value(data, ['O_MARKER', 'o_marker'], '⭕'))
@@ -628,7 +995,7 @@ def render_slide(slide_data: dict) -> str:
     html = re.sub(r'\{\{\#if [A-Z_]+\}\}(.*?)\{\{\/if\}\}', lambda m: re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)[1] if len(re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)) > 1 else '', html, flags=re.DOTALL)
 
     # 단순 치환
-    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML'}
+    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'OX_REVEAL_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML', 'CLOZE_REVEAL_ITEMS', 'MATCHING_REVEAL_ITEMS', 'TABLE_REVEAL_HTML', 'WORD_BANK_HTML', 'SHARE_QUESTIONS_HTML'}
     for key, value in data.items():
         if isinstance(value, str) and key not in html_keys:
             value = value.replace('\n', '<br>')
@@ -651,7 +1018,157 @@ def render_slide(slide_data: dict) -> str:
 
     html = apply_style_overrides(html, data.get('STYLE_OVERRIDES', {}))
 
+    # 에디터 모드 등에서 참조할 수 있도록 실제 레이아웃 이름 주입
+    html = re.sub(r'(<section[^>]*)(>)', rf'\1 data-layout-name="{slide_type}"\2', html, count=1)
+
     return html
+
+
+def normalize_pages(plan: dict) -> list:
+    if isinstance(plan.get('pages'), list) and plan['pages']:
+        return plan['pages']
+    pages = [
+        {**slide, 'page_type': 'slide', 'size': '16:9', 'layout': slide.get('layout', slide.get('type', 'title'))}
+        for slide in plan.get('slides', [])
+    ]
+    packages = plan.get('activity_packages', [])
+    if not isinstance(packages, list) or not packages:
+        return pages
+
+    worksheet_blocks = []
+    for index, package in enumerate(packages):
+        if not isinstance(package, dict):
+            continue
+        title = package.get('title', f'활동 {index + 1}')
+        work_time = package.get('work_time_minutes', '')
+        
+        # 1. 미디어 슬라이드 처리 (활동 전에 삽입)
+        media = package.get('media', {})
+        if isinstance(media, dict) and media.get('enabled') and media.get('url'):
+            media_info = normalize_youtube_url(media.get('url', ''))
+            if media_info:
+                layout = 'video_hook' if media.get('display_mode') == 'embed' else 'video_link_card'
+                pages.append({
+                    'page_type': 'slide',
+                    'layout': layout,
+                    'TITLE': media.get('title', '영상 자료'),
+                    'VIDEO_ID': media_info.get('video_id'),
+                    'EMBED_URL': media_info.get('embed_url'),
+                    'THUMBNAIL_URL': media_info.get('thumbnail_url'),
+                    'WATCH_URL': media_info.get('watch_url'),
+                    'PURPOSE': media.get('purpose', ''),
+                    'STUDENT_TASK': media.get('student_task', ''),
+                    'SPEAKER_NOTES': '주의: 이 영상은 외부 YouTube 링크입니다. 수업 전에 재생 가능 여부를 확인하세요.\n\n원본 링크: ' + media.get('url', '')
+                })
+                
+        # 2. 학생 활동 안내
+        block = package.get('worksheet_block', {})
+        if isinstance(block, dict) and block:
+            block['_original_path'] = f'$root.activity_packages[{index}].worksheet_block'
+            worksheet_blocks.append(block)
+
+        pages.append({
+            'page_type': 'slide',
+            'layout': 'activity_instruction',
+            'TITLE': title,
+            'WORKSHEET_REF': f'학습지 {index + 1}번',
+            'INSTRUCTION': package.get('student_task', f'{title}을(를) 풀어 봅시다.'),
+            'TIMER_MINUTES': format_minutes(work_time),
+            'THINK_QUESTION': package.get('think_question', '')
+        })
+
+        block_type = block.get('block_type')
+        if block_type == 'ox_check':
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'ox_reveal',
+                'TITLE': f'{title} 정답 확인',
+                'ITEMS': block.get('items', []),
+                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+            })
+        elif block_type == 'cloze_word_bank':
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'cloze_reveal',
+                'TITLE': f'{title} 정답 확인',
+                'WORD_BANK': block.get('word_bank', []),
+                'ITEMS': block.get('sentences', []),
+                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+            })
+        elif block_type == 'matching_lines':
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'matching_reveal',
+                'TITLE': f'{title} 정답 확인',
+                'PAIRS': block.get('pairs', []),
+                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+            })
+        elif block_type == 'table_fill':
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'table_answer_reveal',
+                'TITLE': f'{title} 정답 확인',
+                'HEADERS': block.get('headers', []),
+                'ROWS': block.get('rows', []),
+                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+            })
+        elif block_type == 'reflection_checklist':
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'share_prompt',
+                'TITLE': f'{title} 공유',
+                'PROMPT': block.get('follow_up_prompt', '오늘 배운 내용을 한 문장으로 공유해 봅시다.'),
+                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+            })
+        elif block_type == 'short_answer':
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'sample_answer_reveal',
+                'TITLE': f'{title} 예시 답안',
+                'PROMPT': block.get('instruction', ''),
+                'SAMPLE_ANSWER': block.get('sample_answer', ''),
+                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+            })
+
+    if worksheet_blocks:
+        lesson_title = plan.get('meta', {}).get('title', '학습지')
+        chunks = []
+        n = len(worksheet_blocks)
+        idx = 0
+        while n > 0:
+            if n == 4:
+                chunks.append(worksheet_blocks[idx:idx+2])
+                chunks.append(worksheet_blocks[idx+2:idx+4])
+                break
+            elif n == 5:
+                chunks.append(worksheet_blocks[idx:idx+3])
+                chunks.append(worksheet_blocks[idx+3:idx+5])
+                break
+            else:
+                take = min(3, n)
+                chunks.append(worksheet_blocks[idx:idx+take])
+                idx += take
+                n -= take
+                
+        total_pages = len(chunks)
+        q_idx = 1
+        for i, chunk in enumerate(chunks):
+            page_title = lesson_title
+            if total_pages > 1:
+                page_title = f"{lesson_title} ({i+1}/{total_pages})"
+            
+            pages.append({'page_type': 'worksheet', 'title': page_title, 'blocks': chunk, 'start_q_idx': q_idx})
+            pages.append({'page_type': 'answer_key', 'title': f"{page_title} 정답지", 'blocks': chunk, 'start_q_idx': q_idx})
+            q_idx += len(chunk)
+            
+    return pages
+
+
+def render_page(page: dict, page_index: int) -> str:
+    page_type = page.get('page_type', 'slide')
+    if page_type in {'worksheet', 'answer_key'}:
+        return render_worksheet_page(page, page_index, page_type)
+    return tag_page_section(render_slide(page), 'slide', page_index)
 
 
 def build_html(input_json: str, output_html: str) -> None:
@@ -669,21 +1186,22 @@ def build_html(input_json: str, output_html: str) -> None:
     theme_colors = meta.get('theme_colors', None)
     presentation_title = meta.get('title', '프레젠테이션')
 
-    slides_data = plan.get('slides', [])
+    pages_data = normalize_pages(plan)
+    slides_data = [page for page in pages_data if page.get('page_type', 'slide') == 'slide']
 
-    # 슬라이드 렌더링
-    rendered_slides = []
+    # 페이지 렌더링
+    rendered_pages = []
     current_section_header = ""
-    for idx, slide in enumerate(slides_data):
+    for idx, slide in enumerate(pages_data):
         slide['SLIDE_INDEX'] = idx
         if 'SECTION_HEADER' in slide:
             current_section_header = slide['SECTION_HEADER']
-        elif current_section_header:
+        elif current_section_header and slide.get('page_type', 'slide') == 'slide':
             slide['SECTION_HEADER'] = current_section_header
 
-        rendered_slides.append(render_slide(slide))
+        rendered_pages.append(render_page(slide, idx))
 
-    slides_content = "\n".join(rendered_slides)
+    slides_content = "\n".join(rendered_pages)
 
     # 베이스 템플릿 로드 및 최종 조립
     base_html = load_template('base')
@@ -752,7 +1270,7 @@ def build_html(input_json: str, output_html: str) -> None:
         f.write(final_html)
 
     print(f"[SUCCESS] HTML 빌드 완료: {output_html}")
-    print(f"   슬라이드 수: {len(slides_data)}장")
+    print(f"   슬라이드 수: {len(slides_data)}장 / 전체 페이지 수: {len(pages_data)}장")
 
 
 if __name__ == '__main__':

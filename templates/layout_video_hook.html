@@ -1,0 +1,14 @@
+<section>
+    <div class="video-hook-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; gap: 1.5rem;">
+        <h2 style="margin: 0; font-size: 2.5rem; text-align: center; color: var(--color-text);">{{TITLE}}</h2>
+        
+        <div class="video-wrapper card" style="width: 80%; max-width: 800px; aspect-ratio: 16/9; position: relative; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+            <iframe src="{{EMBED_URL}}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+        </div>
+        
+        <div class="video-hook-prompt" style="text-align: center; max-width: 80%;">
+            <p style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--color-accent); font-weight: bold;">{{PURPOSE}}</p>
+            <p style="font-size: 1.2rem; margin: 0;">{{STUDENT_TASK}}</p>
+        </div>
+    </div>
+</section>

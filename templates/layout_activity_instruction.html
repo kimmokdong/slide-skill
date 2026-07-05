@@ -1,0 +1,27 @@
+<!-- 레이아웃: 활동 안내 -->
+<section>
+    <div class="slide-container activity-instruction-layout">
+        <div class="slide-header">
+            <h2 data-edit-id="TITLE">{{TITLE}}</h2>
+        </div>
+        <div class="activity-instruction-body">
+            <div class="activity-instruction-card card">
+                <div class="activity-kicker" data-edit-id="WORKSHEET_REF">{{WORKSHEET_REF}}</div>
+                <p class="activity-main-instruction" data-edit-id="INSTRUCTION">{{INSTRUCTION}}</p>
+                {{#if TIMER_MINUTES}}
+                <div class="activity-timer">
+                    <span>시간</span>
+                    <strong data-edit-id="TIMER_MINUTES">{{TIMER_MINUTES}}</strong>
+                </div>
+                {{/if}}
+            </div>
+            {{#if THINK_QUESTION}}
+            <div class="activity-think-question">
+                <span>생각할 점</span>
+                <p data-edit-id="THINK_QUESTION">{{THINK_QUESTION}}</p>
+            </div>
+            {{/if}}
+        </div>
+    </div>
+    <aside class="notes">{{SPEAKER_NOTES}}</aside>
+</section>
