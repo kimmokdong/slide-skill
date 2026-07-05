@@ -207,7 +207,84 @@ user_input → content_blueprint → activity_packages → pages(slide + workshe
 - `?mode=teacher`: 슬라이드 + 학습지 + 정답지 모두 표시
 - `?mode=worksheet`: 학습지/정답지 확인 및 인쇄용
 
-초기 학습지 블록은 `short_answer`, `ox_check`, `cloze_word_bank`, `matching_lines`, `table_fill`, `reflection_checklist`를 허용합니다. MVP 렌더링은 `short_answer`와 `ox_check`를 완성하고, 나머지는 placeholder로 열어둡니다.
+초기 학습지 블록은 `short_answer`, `ox_check`, `cloze_word_bank`, `matching_lines`, `table_fill`, `reflection_checklist`를 허용합니다.
+**주의사항**: 학습지 블록을 JSON에 넣을 때는 슬라이드처럼 `"type"`을 쓰면 안 되며, 반드시 **`"block_type"`** 키를 사용해야 합니다.
+
+### 📝 학습지 블록(Worksheet Block) 스키마 사전 (SSOT)
+학습지(`page_type: "worksheet"` 또는 `"answer_key"`) 내부의 `BLOCKS` 배열에 들어갈 각 활동 블록의 필수 구조입니다. **아래 변수명과 구조를 100% 동일하게 사용하세요.**
+
+#### 1. 단답형 (short_answer)
+```json
+{
+  "block_type": "short_answer",
+  "title": "질문 제목",
+  "instruction": "안내문",
+  "answer_lines": 2,
+  "sample_answer": "예시 답안"
+}
+```
+#### 2. OX 퀴즈 (ox_check)
+```json
+{
+  "block_type": "ox_check",
+  "title": "OX 퀴즈 제목",
+  "items": [
+    {"statement": "질문 1", "answer": "O", "explanation": "해설 1"}
+  ]
+}
+```
+#### 3. 빈칸 채우기 (cloze_word_bank)
+```json
+{
+  "block_type": "cloze_word_bank",
+  "title": "빈칸 채우기",
+  "word_bank": ["단어1", "단어2"],
+  "sentences": [
+    {"text": "이것은 [단어1] 입니다.", "answer": "단어1"}
+  ]
+}
+```
+*(빈칸은 반드시 `[ ]`로 감싸서 표기)*
+
+#### 4. 선 잇기 (matching_lines)
+```json
+{
+  "block_type": "matching_lines",
+  "title": "알맞게 이어보세요",
+  "pairs": [
+    {"left": "사과", "right": "빨갛다"},
+    {"left": "바나나", "right": "노랗다"}
+  ]
+}
+```
+
+#### 5. 표 채우기 (table_fill)
+```json
+{
+  "block_type": "table_fill",
+  "title": "표 채우기",
+  "headers": ["증상", "올바른 대처", "잘못된 대처"],
+  "rows": [
+    [
+      {"text": "열이 날 때", "is_blank": false}, 
+      {"text": "푹 쉰다", "is_blank": true}, 
+      {"text": "뛰어논다", "is_blank": false}
+    ]
+  ]
+}
+```
+*(`is_blank: true`인 셀은 학생용 학습지에서 빈칸으로 렌더링됩니다)*
+
+#### 6. 자기 점검 체크리스트 (reflection_checklist)
+```json
+{
+  "block_type": "reflection_checklist",
+  "title": "스스로 점검하기",
+  "items": [
+    {"text": "수업에 열심히 참여했나요?"}
+  ]
+}
+```
 
 ### 외부 미디어(YouTube) 연결 규칙
 사용자가 유튜브 링크를 입력한 경우, `activity_package` (또는 개별 슬라이드 전 단계) 안에 `media` 객체를 추가해야 합니다.

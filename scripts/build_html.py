@@ -449,7 +449,7 @@ def render_bottom_takeaway(slide_data: dict) -> str:
     takeaway = slide_data.get('BOTTOM_TAKEAWAY', '')
     if not takeaway:
         return ''
-    return f'''<div class="bottom-takeaway-bar">
+    return f'''<div class="bottom-takeaway-bar fragment">
     <div class="takeaway-content"{editable_attrs("BOTTOM_TAKEAWAY")}>{takeaway}</div>
 </div>'''
 
