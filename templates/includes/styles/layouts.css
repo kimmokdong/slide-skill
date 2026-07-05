@@ -1355,27 +1355,23 @@
             display: flex;
             flex-direction: column;
             gap: 0.45em;
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
             padding-bottom: 1rem;
         }
 
         .ox-reveal-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 4.2em;
-            gap: max(0.2em, 0.5em);
+            display: flex;
+            flex-wrap: wrap;
             align-items: center;
+            gap: max(0.2em, 0.5em);
             padding: max(0.2em, 0.45em) 0.65em;
             border-radius: 14px;
             background: var(--color-card-bg);
             border: 1px solid var(--color-card-border);
-            flex-shrink: 1;
-            min-height: 0;
         }
 
         .ox-reveal-statement {
             display: flex;
+            flex: 1;
             gap: 0.55em;
             min-width: 0;
             color: var(--color-text);
@@ -1405,7 +1401,8 @@
         }
 
         .ox-reveal-explanation {
-            grid-column: 1 / -1;
+            flex-basis: 100%;
+            margin-top: 0.3em;
             color: var(--color-text-secondary);
             font-size: 0.58em;
             line-height: 1.35;

@@ -7,6 +7,12 @@
         <div class="activity-instruction-body">
             <div class="activity-instruction-card card">
                 <div class="activity-kicker" data-edit-id="WORKSHEET_REF">{{WORKSHEET_REF}}</div>
+                {{#if THINK_QUESTION}}
+                <div class="activity-think-question" style="margin-top:0.5em; margin-bottom: 0.8em; padding: 0.8em; background: rgba(245, 158, 11, 0.1); border-radius: var(--border-radius); border-left: 4px solid var(--color-accent);">
+                    <span style="font-size:0.7em; color:var(--color-accent); font-weight:bold; display:block; margin-bottom:0.3em;">🤔 생각할 점</span>
+                    <p data-edit-id="THINK_QUESTION" style="font-size:0.85em; font-weight:700; color:var(--color-text); margin:0;">{{THINK_QUESTION}}</p>
+                </div>
+                {{/if}}
                 <p class="activity-main-instruction" data-edit-id="INSTRUCTION">{{INSTRUCTION}}</p>
                 {{#if TIMER_MINUTES}}
                 <div class="activity-timer">
@@ -15,12 +21,6 @@
                 </div>
                 {{/if}}
             </div>
-            {{#if THINK_QUESTION}}
-            <div class="activity-think-question">
-                <span>생각할 점</span>
-                <p data-edit-id="THINK_QUESTION">{{THINK_QUESTION}}</p>
-            </div>
-            {{/if}}
         </div>
     </div>
     <aside class="notes">{{SPEAKER_NOTES}}</aside>

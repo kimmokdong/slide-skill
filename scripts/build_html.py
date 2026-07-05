@@ -563,6 +563,14 @@ def render_worksheet_block(block: dict, block_index: int, q_idx: int, answer_key
     title = block.get('title', f'활동 {q_idx}')
     instruction = block.get('instruction', block.get('prompt', ''))
     prefix = block.get('_original_path', f'blocks[{block_index}]')
+    
+    if block_type == 'header':
+        subtitle = block.get('subtitle', '')
+        return f'''<div class="worksheet-block-header worksheet-title-block" style="text-align: center; margin-bottom: 2rem;">
+            <h2{editable_attrs(f"{prefix}.title")} style="color: var(--color-accent); font-size: 1.5em; margin-bottom: 0.5rem;">{title}</h2>
+            {f'<p{editable_attrs(f"{prefix}.subtitle")} style="color: var(--color-text-secondary);">{subtitle}</p>' if subtitle else ''}
+        </div>'''
+
     header = f'''<div class="worksheet-block-header">
         <h2{editable_attrs(f"{prefix}.title")}><span class="q-num" style="color:var(--color-accent); margin-right: 8px;">{q_idx}.</span>{title}</h2>
         {f'<p{editable_attrs(f"{prefix}.instruction")}>{instruction}</p>' if instruction else ''}
@@ -674,7 +682,6 @@ def render_worksheet_block(block: dict, block_index: int, q_idx: int, answer_key
             chk_html.append(f'<li><div class="check-box"></div><span{editable_attrs(f"{prefix}.items[{i}].text")}>{text}</span></li>')
         return f'<div class="worksheet-block worksheet-block-reflection">{header}<ul class="reflection-list">{"".join(chk_html)}</ul></div>'
 
-    # ponytail: unsupported blocks keep their data visible; add custom renderers when real lessons need them.
     return f'<div class="worksheet-block worksheet-block-placeholder">{header}<div class="worksheet-placeholder">{block_type}</div></div>'
 
 
@@ -684,15 +691,22 @@ def render_worksheet_page(page: dict, page_index: int, page_type: str = 'workshe
     start_q_idx = page.get('start_q_idx', 1)
     answer_key = page_type == 'answer_key'
     
+    current_q_idx = start_q_idx
+    rendered_blocks_list = []
+    for idx, block in enumerate(blocks):
+        rendered_blocks_list.append(render_worksheet_block(block, idx, current_q_idx, answer_key=answer_key))
+        if block.get('block_type') != 'header':
+            current_q_idx += 1
+    
+    rendered_blocks = '\n'.join(rendered_blocks_list)
+    
     if answer_key:
-        rendered_blocks = '\n'.join(render_worksheet_block(block, idx, start_q_idx + idx, answer_key=True) for idx, block in enumerate(blocks))
         label = '교사용 정답지'
         header_html = f'''<header class="worksheet-page-header">
             <div class="worksheet-page-label">{label}</div>
             <h1{editable_attrs("title")}>{title}</h1>
         </header>'''
     else:
-        rendered_blocks = '\n'.join(render_worksheet_block(block, idx, start_q_idx + idx) for idx, block in enumerate(blocks))
         label = '학생용 활동지'
         header_html = f'''<header class="worksheet-page-header">
             <div class="worksheet-page-label">{label}</div>
