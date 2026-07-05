@@ -1298,13 +1298,14 @@
         .activity-think-question {
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
+            align-self: flex-start;
             min-width: 0;
             min-height: 0;
             padding: 1.2em;
             border-radius: 16px;
-            background: var(--color-card-bg);
-            border: 1px solid var(--color-card-border);
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 6px solid var(--color-accent);
         }
 
         .activity-kicker {
@@ -1362,6 +1363,7 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
+            align-content: flex-start;
             gap: max(0.2em, 0.5em);
             padding: max(0.2em, 0.45em) 0.65em;
             border-radius: 14px;
