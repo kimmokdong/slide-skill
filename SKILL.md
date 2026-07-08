@@ -1,5 +1,5 @@
 ---
-name: text-to-slide-architect
+name: slide
 description: 사용자의 거친 아이디어나 시나리오 텍스트를 기승전결 있는 풍부한 프레젠테이션(HTML/PPTX)으로 자동 생성하는 스킬입니다. slide_plan.json 기반의 중간 설계도(SSOT) 아키텍처, 리서치 검증, 네이티브 PPTX 변환을 지원합니다.
 ---
 

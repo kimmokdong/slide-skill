@@ -7,3 +7,7 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+
+# 보안 및 환경변수 설정 파일
+.env
+youtube_api_key.txt

@@ -6,7 +6,24 @@ import argparse
 from googleapiclient.discovery import build
 
 def get_api_key():
-    # Try current directory first, then parent
+    # 1. Try to read from .env files
+    env_paths = [
+        os.path.join(os.path.dirname(__file__), '..', '.env'),
+        os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', '.env'), # Local project root
+    ]
+    for p in env_paths:
+        if os.path.exists(p):
+            with open(p, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('YOUTUBE_API_KEY='):
+                        return line.split('=', 1)[1].strip()
+
+    # 2. Check system environment variable
+    if 'YOUTUBE_API_KEY' in os.environ:
+        return os.environ['YOUTUBE_API_KEY']
+
+    # 3. Fallback to old txt files
     possible_paths = [
         os.path.join(os.path.dirname(__file__), 'youtube_api_key.txt'),
         os.path.join(os.path.dirname(__file__), '..', 'youtube_api_key.txt'),
