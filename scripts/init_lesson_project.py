@@ -156,19 +156,6 @@ def build_plan(answers):
                 },
             ],
         },
-        "activity_packages": [
-            {
-                "activity_package_id": "activity_1",
-                "title": activity_title,
-                "student_task": "학습지 1번 OX 문제를 푼다.",
-                "work_time_minutes": work_time,
-                "worksheet_block": worksheet_block,
-                "teacher_prompt": [
-                    "정답을 바로 보여주지 말고 학생이 먼저 O/X로 대답하게 한다.",
-                    "학생 답을 들은 뒤 클릭하여 정답을 하나씩 공개한다.",
-                ],
-            }
-        ],
         "pages": [
             {
                 "page_type": "slide",
@@ -198,6 +185,14 @@ def build_plan(answers):
                 "INSTRUCTION": "OX 문제를 풀어 봅시다.",
                 "TIMER_MINUTES": work_time,
                 "THINK_QUESTION": big_question,
+            },
+            {
+                "page_type": "slide",
+                "size": "16:9",
+                "layout": "activity_prompt",
+                "TITLE": f"활동 1. {activity_title} 문항 보기",
+                "WORKSHEET_BLOCK": worksheet_block,
+                "SPEAKER_NOTES": "학생이 먼저 문항을 읽고 답을 생각할 시간을 줍니다.",
             },
             {
                 "page_type": "slide",

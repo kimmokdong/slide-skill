@@ -94,9 +94,9 @@
 3. **정보 무손실 원칙**: 사용자가 입력한 상세한 설명이나 원문을 절대 버리지 마십시오. 슬라이드 본문(`BULLET_ITEMS` 등)용으로는 시각적으로 압축하되, 원래의 긴 텍스트는 항상 `SPEAKER_NOTES` 변수에 매핑하여 보존해야 합니다.
 
 4. **오토핏(Autofit) CSS 구조의 이해**:
-   - `reveal_autofit.js`는 `.slide-body` 컨테이너의 `scrollHeight`와 `clientHeight`를 비교하여 폰트 크기를 줄입니다.
-   - 오탐지를 막기 위해 `display: inline` 및 `position: absolute` 요소를 의도적으로 계산에서 제외하고 있습니다. 브라우저의 DOM 렌더링 스펙을 완벽히 이해하지 못했다면 이 로직을 섣불리 수정하지 마십시오.
-   - `.slide-header` (예: `<h2>`)가 길어져서 `.slide-body`를 덮어쓰는(Overlapping) 현상에 주의하십시오. 오토핏은 헤더의 글씨 크기를 줄여주지 않습니다.
+   - `reveal_autofit.js`는 `.slide-body` 전체가 아니라 `[data-edit-id]` 텍스트 요소를 대상으로 맞춥니다. 번호·아이콘·마커·배지 같은 고정 UI는 축소 대상에서 제외합니다.
+   - 공간이 부족하면 compact spacing과 line-height를 먼저 조정하고, 텍스트는 18px 아래로 내리지 않습니다. 그래도 넘치면 `autofit-failed`로 표시되어 PNG QA가 실패합니다.
+   - `.slide-header`와 하단 takeaway는 별도 단일 행 맞춤을 적용합니다. 브라우저 DOM 렌더링 스펙을 완벽히 이해하지 못했다면 이 로직을 섣불리 수정하지 마십시오.
 
 5. **디자인 시스템**: 제공된 CSS 변수(`var(--color-accent)`, `var(--color-bg)` 등)만 사용하십시오. 템플릿에 HEX 색상 코드를 하드코딩하지 마십시오. 텍스트 강조(형광펜) 효과를 넣을 때는, `hero` 레이아웃 등에서 쓰이는 텍스트 투명화 기법(`-webkit-text-fill-color: transparent`)과 충돌하지 않도록 글자색 자체를 바꾸지 말고 `linear-gradient` 및 `color-mix`를 활용한 배경색 기법을 유지하십시오.
 

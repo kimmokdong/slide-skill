@@ -23,6 +23,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 │   ├── slide_context.yaml           ← 설정 (필수 변수 7개 + 모드)
 │   ├── raw_script.md                ← 사용자 원문 텍스트
 │   ├── slide_plan.json              ← [핵심] 에이전트가 작성하는 단일 진실 원천(SSOT)
+│   ├── assets/                      ← 사용자가 본인의 이미지/에셋을 넣는 공간
 │   └── output/                      ← 생성된 슬라이드 출력물
 │       ├── index.html               ← build_html.py가 생성
 │       ├── presentation.pptx        ← export_image_pptx.py가 통이미지로 생성
@@ -50,6 +51,8 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 **[핵심 워크플로우 규칙]** 사용자가 `/text-to-slide-architect` 스킬을 호출하면, 에이전트는 기획안(implementation_plan) 작성 전 **무조건 `ask_question` 도구를 호출하여 사용자에게 모달창(UI)을 띄워 필수 정보를 물어보아야 합니다.** 
 이 모달창 질의응답 과정이 이 스킬 파이프라인의 **가장 핵심적인 단계**입니다. 사용자가 명시하지 않은 정보를 에이전트가 임의로 가정하여 넘기지 말고, 반드시 모달창을 통해 선택지를 제공하세요.
 
+**Codex 호환 규칙**: `ask_question` 도구가 없는 Codex 환경에서는 `request_user_input`이 있으면 그것을 사용하고, 둘 다 없으면 일반 채팅으로 아래 필수 항목을 질문한 뒤 답변 전까지 생성하지 않습니다. 사용자가 명시적으로 "기본값으로 진행"이라고 말한 경우에만 기본값을 적용합니다.
+
 ### 0-A. 모달창(`ask_question`) 필수 질문 항목
 에이전트는 `ask_question` 도구의 단일/다중 선택 기능(`is_multi_select`)을 활용하여, 아래의 필수 변수들을 사용자가 클릭으로 편하게 선택할 수 있도록 모달창을 띄워야 합니다.
 
@@ -75,8 +78,16 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
    - ( ) 도입에 넣기
    - ( ) 활동 전에 넣기
    - ( ) 정리 단계에 넣기
+9. **개인 소장 이미지(사진, 캡처본 등) 사용 여부 (단일 선택)**:
+   - ( ) 사용 안 함 (AI가 알아서 일러스트/도식 생성)
+   - ( ) 사용함 (직접 준비한 이미지 파일들을 넣을 예정)
 
-### 0-A-2. 유튜브 자동 검색 워크플로우 (모달창에서 자동 검색 선택 시)
+### 0-A-2. 사용자 이미지 투입 대기 워크플로우 (모달창에서 '사용함' 선택 시)
+1. 에이전트는 즉시 프로젝트 폴더 내에 `assets/` 폴더를 생성합니다.
+2. 다음 모듈(slide_plan.json 작성)로 바로 넘어가지 않고, 채팅창을 통해 사용자에게 *"assets/ 폴더가 생성되었습니다. 사용하실 이미지 파일들을 해당 폴더에 넣으신 후 '다 넣었어'라고 말씀해 주세요."*라고 안내한 뒤 **대기(Stop)**합니다.
+3. 사용자가 이미지를 다 넣었다고 답변하면, 기존의 '이미지 에셋 풀 매핑 규칙(0.5)'을 발동하여 배치 작업을 시작합니다.
+
+### 0-A-3. 유튜브 자동 검색 워크플로우 (모달창에서 자동 검색 선택 시)
 1. 에이전트는 사용자의 주제에 맞는 검색어를 생성합니다. (예: "가짜뉴스 구별법 초등")
 2. `scripts/search_youtube.py "[검색어]"` 스크립트를 실행하여 결과를 JSON으로 받습니다.
 3. **2차 모달창(`ask_question`)**을 띄워 검색된 상위 영상 3~5개를 선택지로 제공합니다.
@@ -86,6 +97,12 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 모달창을 통해 사용자의 선택을 모두 응답받은 직후에만 다음 모듈로 넘어가며, 수집된 응답은 `slide_context.yaml`에 저장됩니다.
 
 > ⚠️ **중요 (활동과 슬라이드의 1:1 페어링)**: 사용자가 학습지 활동을 선택했다면, 에이전트는 마지막 `worksheet` 페이지에 해당 블록들을 넣는 것에 그쳐서는 안 됩니다. 반드시 **발표 슬라이드 흐름 중간중간 적절한 타이밍에 해당 활동의 정답을 아이들과 확인하는 전용 Reveal 슬라이드(예: `cloze_reveal`, `matching_reveal`)를 한 세트로 묶어서 자연스럽게 배치**해야 합니다.
+
+**학습지 활동 3단 세트 강제**: 학습지 활동은 발표 흐름에 `활동 안내 슬라이드 → 학생용 문항 표시 슬라이드(activity_prompt) → 정답/예시 Reveal 슬라이드`를 한 세트로 배치합니다. `pages`를 쓰는 현재 표준 형식에서는 세 페이지를 명시적으로 작성합니다. `activity_packages` 자동 확장은 `slides`만 쓰는 레거시 형식에서만 사용합니다. 학생용 문항이 `worksheet` 페이지에만 있고 발표 슬라이드에 없으면 실패로 간주합니다.
+
+**빈칸 채우기 상호작용**: `cloze_reveal`은 보기 단어를 클릭하면 같은 `data-word`의 빈칸으로 이동시키는 수업용 확인 화면이다. 입력은 `WORD_BANK` 배열과 `ITEMS`의 `{ "text": "문장 [정답]", "answer": "정답" }` 형식을 함께 사용한다. OX 형식 데이터나 보기 없는 빈칸 화면은 빌드 검증에서 실패시킨다.
+
+**교사용 정답지 완전성**: `answer_key` 페이지가 있으면 학생용 학습지의 `ox_check`, `cloze_word_bank`, `matching_lines`, `table_fill`, `short_answer` 문항 유형별 수를 모두 포함해야 한다. `reflection_checklist`는 정답지가 필요 없다.
 
 ### 0-B. 초기 파일 생성
 수집한 답변은 프로젝트 폴더의 세 파일로 반드시 먼저 고정합니다.
@@ -128,12 +145,12 @@ python ".agents/skills/text-to-slide-architect/scripts/init_lesson_project.py" -
 ```
 
 ### 0.5. 이미지 에셋 풀(Asset Pool) 처리 지침 및 재배치 규칙
-사용자가 연수 자료에 들어갈 캡처 이미지들을 워크스페이스 상위 폴더(예: `test_images`) 등에 미리 업로드해 둔 경우, 아래 규칙을 철저히 엄수하여 오배치를 방지합니다.
+사용자가 연수 자료에 들어갈 이미지들을 프로젝트 폴더 내 `assets/` 에 미리 업로드해 둔 경우, 아래 규칙을 철저히 엄수하여 오배치를 방지합니다.
 
 #### ✅ 이미지 배치 필수 체크리스트 (오배치 방지)
 
 **[STEP 1] 이미지 에셋 목록 먼저 스캔**
-- 배치 작업 전, `test_images` 또는 사용자가 지정한 에셋 폴더의 **모든 파일명 목록을 먼저 `list_dir`로 확인**합니다.
+- 배치 작업 전, `assets/` 폴더의 **모든 파일명 목록을 먼저 `list_dir`로 확인**합니다.
 - 파일명이 한글이든 영문이든, 이름에 담긴 핵심 키워드를 추출합니다. (예: `인기도 랭킹.jpg` → 키워드: "인기도", "랭킹")
 
 **[STEP 2] 슬라이드 전체 훑기 (1:1 매칭표 작성)**
@@ -195,7 +212,7 @@ user_input → content_blueprint → activity_packages → pages(slide + workshe
 
 `content_blueprint`는 수업 전체의 목표, 큰 질문, 단계별 교사/학생 행동, 학습지 역할을 담는 공통 설계도입니다. `activity_packages`는 활동 하나를 `worksheet_block`, `activity_instruction` 슬라이드, `ox_reveal` 같은 확인 슬라이드, `answer_key`, `teacher_prompt`로 묶는 실제 수업 단위입니다.
 
-학습지가 있는 자료는 `slide_plan.json`에 기존 `slides` 대신 `pages`를 우선 사용합니다. 렌더러는 기존 `slides`도 계속 지원합니다.
+학습지가 있는 자료는 `slide_plan.json`에 기존 `slides` 대신 `pages`를 우선 사용합니다. `pages`가 있으면 그것이 렌더링·에디터 저장의 SSOT이므로 `activity_packages`에 같은 활동 데이터를 중복 기록하지 않습니다. 렌더러는 기존 `slides`도 계속 지원합니다.
 
 지원 `page_type`:
 - `slide`: 기존 16:9 발표 슬라이드
@@ -532,10 +549,24 @@ user_input → content_blueprint → activity_packages → pages(slide + workshe
 - `BOTTOM_TAKEAWAY`: 슬라이드 하단에 그라데이션 띠로 표시되는 핵심 요약 한 줄
 - `SECTION_HEADER`: 슬라이드 좌상단에 작게 표시되는 현재 섹션명 (네비게이션 용)
 
-*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `image_comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`, `activity_instruction`, `ox_reveal`
+*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `image_comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`, `activity_instruction`, `activity_prompt`, `ox_reveal`
 
 ### 📚 레이아웃별 필수/선택 변수명 사전 (Schema Dictionary)
 AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에서 정확히 인식할 수 있도록, **반드시 아래 표에 명시된 변수명(대문자)만을 사용**해야 합니다. (임의의 변수명 지어내기 엄금)
+
+**렌더러 우선 원칙**: 입력 스키마의 기준은 `scripts/build_html.py`가 읽는 키입니다. `OX_REVEAL_ITEMS`, `MATCHING_REVEAL_ITEMS`, `TABLE_REVEAL_HTML`처럼 렌더러가 생성하는 HTML 치환용 키를 `slide_plan.json` 입력키로 쓰지 마세요.
+
+| 항목 | 입력 내부 키 | 사용하지 말 것 |
+|---|---|---|
+| `ROADMAP_ITEMS` | `label`, `desc` | `step`, `title`, `body` |
+| `MATRIX_ITEMS` | `icon`, `label`, `desc` | `body` |
+| `TIMELINE_ITEMS` | `date`, `title`, `desc` | `body` |
+| `STAT_ITEMS` | `value`, `label`, `percentage` | `number`, `text` |
+| `QUIZ_OPTIONS` | `text` + `ANSWER_INDEX` | `correct`만 의존 |
+| `O_ITEMS`, `X_ITEMS` | 문자열 또는 `{ "text": "..." }` | `{ "body": "..." }` |
+| `ox_reveal` | `ITEMS` (`statement`, `answer`, `explanation`) | `OX_REVEAL_ITEMS` |
+| `matching_reveal` | `PAIRS` (`left`, `right`) | `MATCHING_REVEAL_ITEMS` |
+| `table_answer_reveal` | `HEADERS`, `ROWS` | `TABLE_REVEAL_HTML` |
 
 | 레이아웃 타입 | 용도 및 설명 | 필수 변수 | 선택(옵션) 변수 |
 |---|---|---|---|
@@ -560,6 +591,7 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `vs_ox` | 2단 행동/가치 대비 가이드 | `TITLE`, `O_TITLE`, `O_ITEMS` (marker, text), `X_TITLE`, `X_ITEMS` | `O_MARKER`, `X_MARKER`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `roadmap` | 3~5단계 가로 로드맵 카드 | `TITLE`, `ROADMAP_ITEMS` (label, desc) | `SUBTITLE`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `activity_instruction` | 학습지 활동 안내 | `TITLE`, `INSTRUCTION` | `WORKSHEET_REF`, `TIMER_MINUTES`, `THINK_QUESTION`, `SPEAKER_NOTES` |
+| `activity_prompt` | 학생용 학습지 문항을 발표 슬라이드에 표시 | `TITLE`, `WORKSHEET_BLOCK` (`block_type` 포함) | `SPEAKER_NOTES` |
 | `ox_reveal` | OX 정답 순차 공개 | `TITLE`, `ITEMS` (`statement`, `answer`, `explanation`) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 
 *(참고: 모든 레이아웃 공통으로 `SECTION_HEADER`와 `BOTTOM_TAKEAWAY`는 원할 경우 선택 변수로 추가 가능합니다.)*
@@ -598,6 +630,9 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
    ```
 3. 에러가 발생하면 JSON 문법을 고치고 다시 실행합니다.
 4. 생성된 `output/index.html`을 검토한 후, 사용자에게 실시간 로컬 싱크 프리뷰 링크(`http://localhost:8000`)를 최종 안내합니다.
+    - `capture_png.py`는 `captured_images/qa-report.json`을 생성하며 overflow, off-slide, 18px 미만 화면 텍스트, 학습지 잘림 같은 DOM 오류가 있으면 실패합니다.
+   - `file://.../output/index.html`은 보기 전용으로만 사용하고, 저장/순서 변경이 필요한 검수에는 로컬 서버 URL을 사용합니다.
+   - 8000번 포트가 이미 사용 중이면 기존 서버의 프로젝트 CWD를 확인하거나 다른 포트를 사용합니다.
 
 ---
 

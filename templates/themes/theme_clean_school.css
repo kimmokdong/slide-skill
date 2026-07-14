@@ -1,0 +1,17 @@
+/* ===== 클린 스쿨 테마 ===== */
+:root {
+    --color-bg: #F8FAFC;
+    --color-bg-secondary: #EDF2F7;
+    --color-text: #172033;
+    --color-text-secondary: #52627A;
+    --color-accent: #2563EB;
+    --color-accent-secondary: #0F766E;
+    --color-gradient: linear-gradient(135deg, #2563EB 0%, #0F766E 100%);
+    --color-card-bg: #FFFFFF;
+    --color-card-border: #D7E0EB;
+    --image-frame-bg: #FFFFFF;
+    --image-frame-border: 1px solid #D7E0EB;
+    --image-frame-shadow: 0 8px 24px rgba(23, 32, 51, 0.08);
+    --image-frame-radius: 8px;
+    --image-frame-dots-display: flex;
+}

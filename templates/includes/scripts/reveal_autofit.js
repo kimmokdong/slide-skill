@@ -43,9 +43,13 @@
             const rect = el.getBoundingClientRect();
             const clipsX = style.overflowX !== 'visible';
             const clipsY = style.overflowY !== 'visible';
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            const contentRect = range.getBoundingClientRect();
+            const tolerance = Math.max(4, (parseFloat(style.fontSize) || 16) * 0.22);
             const boxOverflow =
-                (clipsY && el.scrollHeight > el.clientHeight + 2) ||
-                (clipsX && el.scrollWidth > el.clientWidth + 2);
+                (clipsY && (contentRect.top < rect.top - tolerance || contentRect.bottom > rect.bottom + tolerance)) ||
+                (clipsX && (contentRect.left < rect.left - tolerance || contentRect.right > rect.right + tolerance));
             const boundaryOverflow =
                 rect.left < boundaryRect.left - 2 ||
                 rect.top < boundaryRect.top - 2 ||
@@ -55,24 +59,21 @@
             return boxOverflow || boundaryOverflow;
         }
 
-        const MAIN_AUTOFIT_SELECTOR = '.slide-header h2, .takeaway-content, .slide-body';
-        const BAD_WRAP_SELECTOR = [
-            '.stat-number',
-            '.stat-label',
-            '.bullet-text',
-            '.comparison-card-title',
-            '.matrix-label',
-            '.roadmap-label',
-            '.ox-text',
-            '.timeline-date',
-            '.timeline-title',
-            '.summary-card-title',
-            '.hands-on-steps li',
-            '.tutorial-steps li',
-            '.tutorial-tip .tip-text',
-            '.tutorial-warning .tip-text'
+        const MAIN_AUTOFIT_SELECTOR = '.slide-header h2, .takeaway-content';
+        const FIT_TEXT_SELECTOR = '.slide-container [data-edit-id], .center-layout [data-edit-id]';
+        const FIXED_UI_SELECTOR = [
+            '.bullet-icon',
+            '.matrix-icon',
+            '.ox-marker',
+            '.ox-header-marker',
+            '.roadmap-num',
+            '.timeline-marker',
+            '.option-marker',
+            '.step-num',
+            '.ox-reveal-answer',
+            '.duration-badge',
+            '.activity-timer'
         ].join(',');
-
         function bodyOverflows(body) {
             if (!body) return false;
             const boundaryRect = body.getBoundingClientRect();
@@ -86,6 +87,117 @@
             return Array.from(body.querySelectorAll('*'))
                 .filter(hasLayoutBox)
                 .some(child => elementOverflows(child, boundaryRect));
+        }
+
+        function fitTextTargets(container) {
+            return Array.from(container.querySelectorAll(FIT_TEXT_SELECTOR)).filter(el => {
+                if (!hasLayoutBox(el) || isTextSizeLocked(el) || el.closest(FIXED_UI_SELECTOR)) return false;
+                if (el.closest('.slide-header, .bottom-takeaway-bar')) return false;
+                if (!el.textContent || !el.textContent.trim()) return false;
+                return !el.querySelector('[data-edit-id]');
+            });
+        }
+
+        function restoreFitTextTarget(el) {
+            if (el.dataset.fitOriginalCaptured !== 'true') {
+                el.dataset.fitOriginalCaptured = 'true';
+                el.dataset.fitOriginalFontSize = el.style.getPropertyValue('font-size') || '';
+                el.dataset.fitOriginalFontPriority = el.style.getPropertyPriority('font-size') || '';
+            }
+
+            el.style.removeProperty('font-size');
+            if (el.dataset.fitOriginalFontSize) {
+                el.style.setProperty(
+                    'font-size',
+                    el.dataset.fitOriginalFontSize,
+                    el.dataset.fitOriginalFontPriority || ''
+                );
+            }
+        }
+
+        function fitSplitText(container, targets) {
+            const target = targets.length === 1 ? targets[0] : null;
+            const boundary = container.querySelector('.split-layout .left');
+            if (!target || !boundary || !target.closest('.split-layout .left')) return false;
+
+            const base = parseFloat(getComputedStyle(target).fontSize) || 18;
+            const min = Math.min(base, Math.max(18, cssNumber(target, '--autofit-min', 18)));
+            const max = Math.max(base, cssNumber(target, '--autofit-max', base));
+            const fits = () => {
+                const textRect = target.getBoundingClientRect();
+                const boundaryRect = boundary.getBoundingClientRect();
+                return textRect.left >= boundaryRect.left - 2 &&
+                    textRect.top >= boundaryRect.top - 2 &&
+                    textRect.right <= boundaryRect.right + 2 &&
+                    textRect.bottom <= boundaryRect.bottom + 2;
+            };
+            const apply = size => setAutofitFontSize(target, size);
+
+            apply(min);
+            if (!fits()) {
+                container.classList.add('autofit-failed');
+                container.dataset.autofitFailed = 'true';
+                return true;
+            }
+
+            let low = min;
+            let high = max;
+            for (let attempt = 0; attempt < 8; attempt += 1) {
+                const size = (low + high) / 2;
+                apply(size);
+                if (fits()) low = size;
+                else high = size;
+            }
+            apply(low);
+            return true;
+        }
+
+        function fitTextBoxes(container, options = {}) {
+            const boundary = container;
+            const targets = fitTextTargets(container);
+            if (!boundary || !targets.length) return;
+
+            container.classList.remove('autofit-failed');
+            delete container.dataset.autofitFailed;
+
+            if (options.reset !== false) {
+                container.classList.remove('autofit-compact');
+                targets.forEach(restoreFitTextTarget);
+            }
+
+            if (fitSplitText(container, targets)) return;
+
+            const metrics = targets.map(el => {
+                const base = parseFloat(getComputedStyle(el).fontSize) || 18;
+                const min = Math.min(base, Math.max(18, cssNumber(el, '--autofit-min', 18)));
+                const max = Math.max(base, cssNumber(el, '--autofit-max', base));
+                return { el, base, min, max };
+            });
+            const applyScale = scale => metrics.forEach(({ el, base, min }) => {
+                setAutofitFontSize(el, Math.max(min, base * scale));
+            });
+
+            if (!bodyOverflows(boundary)) return;
+
+            container.classList.add('autofit-compact');
+            if (!bodyOverflows(boundary)) return;
+
+            applyScale(0);
+            if (bodyOverflows(boundary)) {
+                container.classList.add('autofit-failed');
+                container.dataset.autofitFailed = 'true';
+                return;
+            }
+
+            let low = 0;
+            let high = 1;
+            for (let attempt = 0; attempt < 8; attempt += 1) {
+                const scale = (low + high) / 2;
+                applyScale(scale);
+                if (bodyOverflows(boundary)) high = scale;
+                else low = scale;
+            }
+            applyScale(low);
         }
 
         function isTextSizeLocked(el) {
@@ -107,10 +219,7 @@
 
         function themeBaselineTargets(container) {
             if (!container) return [];
-            return Array.from(new Set([
-                ...container.querySelectorAll(MAIN_AUTOFIT_SELECTOR),
-                ...container.querySelectorAll(BAD_WRAP_SELECTOR)
-            ]));
+            return Array.from(container.querySelectorAll(MAIN_AUTOFIT_SELECTOR));
         }
 
         function isMainAutofitTarget(el) {
@@ -132,8 +241,6 @@
                 delete el.dataset.themeBaselineFontSize;
                 delete el.dataset.themeBaselineInlineFontSize;
                 delete el.dataset.themeBaselineInlineFontPriority;
-                delete el.dataset.badWrapOriginalFontSize;
-                delete el.dataset.badWrapOriginalFontPriority;
             });
         }
 
@@ -172,38 +279,7 @@
                     el.style.fontSize = size + 'px';
                 }
 
-                if (el.classList.contains('slide-body')) {
-                    if (Number.isFinite(size)) el.dataset.autofitSize = String(Math.round(size));
-                }
             });
-        }
-
-        function restoreOriginalFontSize(el, options = {}) {
-            if (options.useThemeBaseline && Object.prototype.hasOwnProperty.call(el.dataset, 'themeBaselineInlineFontSize')) {
-                el.style.removeProperty('font-size');
-                if (el.dataset.themeBaselineInlineFontSize) {
-                    el.style.setProperty(
-                        'font-size',
-                        el.dataset.themeBaselineInlineFontSize,
-                        el.dataset.themeBaselineInlineFontPriority || ''
-                    );
-                }
-                return;
-            }
-
-            if (!Object.prototype.hasOwnProperty.call(el.dataset, 'badWrapOriginalFontSize')) {
-                el.dataset.badWrapOriginalFontSize = el.style.getPropertyValue('font-size') || '';
-                el.dataset.badWrapOriginalFontPriority = el.style.getPropertyPriority('font-size') || '';
-            }
-
-            el.style.removeProperty('font-size');
-            if (el.dataset.badWrapOriginalFontSize) {
-                el.style.setProperty(
-                    'font-size',
-                    el.dataset.badWrapOriginalFontSize,
-                    el.dataset.badWrapOriginalFontPriority || ''
-                );
-            }
         }
 
         function setAutofitFontSize(el, px) {
@@ -258,7 +334,7 @@
                 });
                 
                 // body의 scrollHeight가 사용 가능 영역을 초과하면 축소
-                while (body.scrollHeight > availableHeight + 2 && currentSize > 10) {
+                while (body.scrollHeight > availableHeight + 2 && currentSize > 14) {
                     currentSize -= 0.5;
                     body.style.fontSize = currentSize + 'px';
                     // 잠긴 폰트 크기 매번 재복원
@@ -268,6 +344,7 @@
                 }
                 
                 body.style.overflow = origOverflow || 'hidden';
+                page.classList.toggle('worksheet-overflow', body.scrollHeight > availableHeight + 2);
             });
         }
 
@@ -311,28 +388,6 @@
             }
         }
 
-        function shrinkBodyUntilFits(container) {
-            const body = container.querySelector('.slide-body');
-            if (!body) return;
-
-            const computed = getComputedStyle(body);
-            const minSize = Math.max(12, cssNumber(body, '--autofit-min', 18));
-            let currentSize =
-                parseFloat(body.style.fontSize) ||
-                parseFloat(body.dataset.autofitSize) ||
-                parseFloat(computed.fontSize) ||
-                minSize;
-
-            body.style.fontSize = currentSize + 'px';
-
-            while (bodyOverflows(body) && currentSize > minSize) {
-                currentSize -= 1;
-                body.style.fontSize = currentSize + 'px';
-            }
-
-            body.dataset.autofitSize = String(Math.round(currentSize));
-        }
-
         function autoFitContainer(container, options = {}) {
             if (container.dataset.autofitDone === 'true' && !options.force) return;
             
@@ -353,45 +408,7 @@
                 fitSingleLine(tc, '--takeaway-fit-max', '--takeaway-fit-min', 42, 20);
             });
 
-            const body = container.querySelector('.slide-body');
-            if (body) {
-                body.style.fontSize = '';
-                const children = Array.from(body.querySelectorAll('*')).filter(hasLayoutBox);
-                let minSize = Math.max(12, cssNumber(body, '--autofit-min', 18));
-                let maxSize = Math.max(minSize, cssNumber(body, '--autofit-max', 56));
-                let bestSize = minSize;
-
-                while (minSize <= maxSize) {
-                    const midSize = Math.floor((minSize + maxSize) / 2);
-                    body.style.fontSize = midSize + 'px';
-
-                    const boundaryRect = body.getBoundingClientRect();
-                    let isOverflow =
-                        body.scrollHeight > body.clientHeight + 2 ||
-                        body.scrollWidth > body.clientWidth + 2;
-
-                    if (!isOverflow) {
-                        for (const child of children) {
-                            if (elementOverflows(child, boundaryRect)) {
-                                isOverflow = true;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (isOverflow) {
-                        maxSize = midSize - 1;
-                    } else {
-                        bestSize = midSize;
-                        minSize = midSize + 1;
-                    }
-                }
-
-                body.style.fontSize = bestSize + 'px';
-                body.dataset.autofitSize = String(bestSize);
-            }
-
-            fixBadVerticalWraps(container);
+            fitTextBoxes(container);
             if (options.preserveEditedText) restoreLockedFontSizes(lockedSnapshot);
             container.dataset.autofitDone = 'true';
             storeThemeAutofitBaseline(container, { force: true });
@@ -404,45 +421,6 @@
                         f.style.transition = '';
                     });
                 });
-            });
-        }
-
-        function isBadVerticalWrap(el) {
-            if (!hasLayoutBox(el) || isTextSizeLocked(el)) return false;
-            const text = el.textContent.trim().replace(/\s+/g, '');
-            if (text.length < 3) return false;
-
-            const rect = el.getBoundingClientRect();
-            const style = getComputedStyle(el);
-            const fontSize = parseFloat(style.fontSize) || 16;
-            const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.3;
-            const lines = Math.max(1, Math.round(rect.height / lineHeight));
-            const averageCharsPerLine = text.length / lines;
-            const isCompactMetric = el.classList.contains('stat-number');
-
-            return (
-                (lines >= 3 && averageCharsPerLine <= 4.5 && rect.width < fontSize * 9) ||
-                (isCompactMetric && lines >= 2 && text.length <= 6)
-            );
-        }
-
-        function fixBadVerticalWraps(container) {
-            const options = arguments[1] || {};
-            container.querySelectorAll(BAD_WRAP_SELECTOR).forEach(el => {
-                if (isTextSizeLocked(el)) return;
-                restoreOriginalFontSize(el, options);
-                el.style.wordBreak = 'keep-all';
-                el.style.overflowWrap = 'normal';
-                el.style.wordWrap = 'normal';
-
-                const computed = getComputedStyle(el);
-                let currentSize = parseFloat(computed.fontSize) || parseFloat(el.style.fontSize) || 16;
-                const minSize = Math.max(12, cssNumber(el, '--bad-wrap-min', 15));
-
-                while (isBadVerticalWrap(el) && currentSize > minSize) {
-                    currentSize -= 1;
-                    setAutofitFontSize(el, currentSize);
-                }
             });
         }
 
@@ -477,9 +455,8 @@
                     fitSingleLineShrinkOnly(tc, '--takeaway-fit-min', 20);
                 });
 
-                shrinkBodyUntilFits(container);
+                fitTextBoxes(container);
                 if(typeof shrinkWorksheet === 'function') shrinkWorksheet();
-                fixBadVerticalWraps(container, { useThemeBaseline: true });
             });
 
             if (options.preserveEditedText !== false) restoreLockedFontSizes(lockedSnapshot);

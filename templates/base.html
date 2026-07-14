@@ -558,6 +558,41 @@
             }
         }
     });
+
+    document.addEventListener('click', event => {
+        const word = event.target.closest('.js-cloze-word:not(.is-used)');
+        if (!word) return;
+
+        const slide = word.closest('section');
+        const target = slide?.querySelector(`.js-cloze-target[data-word="${CSS.escape(word.dataset.word)}"]:not(.is-filled)`);
+        if (!target) return;
+
+        const start = word.getBoundingClientRect();
+        const end = target.getBoundingClientRect();
+        const ghost = word.cloneNode(true);
+        ghost.removeAttribute('data-edit-id');
+        Object.assign(ghost.style, {
+            position: 'fixed',
+            left: `${start.left}px`,
+            top: `${start.top}px`,
+            width: `${start.width}px`,
+            height: `${start.height}px`,
+            margin: '0',
+            pointerEvents: 'none',
+            zIndex: '1000'
+        });
+        document.body.appendChild(ghost);
+        word.classList.add('is-used');
+
+        ghost.animate([
+            { transform: 'translate(0, 0)', opacity: 1 },
+            { transform: `translate(${end.left - start.left}px, ${end.top - start.top}px)`, opacity: 0.2 }
+        ], { duration: 420, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }).finished.then(() => {
+            target.textContent = word.textContent;
+            target.classList.add('is-filled');
+            ghost.remove();
+        });
+    });
 </script>
 
 </body>

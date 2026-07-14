@@ -17,11 +17,8 @@ import socketserver
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.parse
-import copy
-import re
-import shutil
-import time
 import uuid
 from pathlib import Path
 
@@ -43,6 +40,9 @@ ALLOWED_IMAGE_MIME = {
     "image/gif",
     "image/webp",
 }
+
+# ponytail: one local preview server handles a single deck; split locks only if concurrent projects share a process.
+SAVE_LOCK = threading.Lock()
 
 
 class ApiError(Exception):
@@ -75,6 +75,14 @@ def load_plan(plan_path: Path) -> dict:
 
     with plan_path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def get_page_collection(plan: dict) -> tuple[str, list]:
+    target_key = "pages" if isinstance(plan.get("pages"), list) else "slides"
+    pages = plan.get(target_key, [])
+    if not isinstance(pages, list):
+        raise ValueError(f"slide_plan.json must contain a {target_key} array.")
+    return target_key, pages
 
 
 def backup_plan(plan_path: Path) -> Path:
@@ -274,7 +282,7 @@ def apply_edit_to_slide(slide, edit_id, value):
 
 
 def apply_text_edits(plan, edits, style_overrides):
-    slides = plan.get('pages') if isinstance(plan.get('pages'), list) else plan.get('slides', [])
+    _, slides = get_page_collection(plan)
     for edit in edits or []:
         slide_index = edit.get('slideIndex')
         edit_id = edit.get('editId')
@@ -355,30 +363,37 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
         try:
             self.require_local_request()
 
-            if parsed.path == "/api/save-order":
-                self.handle_save_order()
-            elif parsed.path == "/api/upload-image":
-                self.handle_upload_image()
-            elif parsed.path == "/api/save-theme":
-                req_json = self.read_json_payload()
-                theme_colors = req_json.get('theme_colors')
-                plan = load_plan(get_plan_path())
-                plan.setdefault('meta', {})['theme_colors'] = theme_colors
-                save_plan_atomic(get_plan_path(), plan)
-                rebuild = rebuild_outputs()
-                self.send_json_response(200, {"status": "success", "message": "테마 저장 완료", "rebuild": rebuild})
-            elif parsed.path == "/api/save-text-edits":
-                req_json = self.read_json_payload()
-                plan = load_plan(get_plan_path())
-                try:
-                    apply_text_edits(plan, req_json.get('edits', []), req_json.get('style_overrides', []))
-                    save_plan_atomic(get_plan_path(), plan)
+            with SAVE_LOCK:
+                if parsed.path == "/api/save-order":
+                    self.handle_save_order()
+                elif parsed.path == "/api/upload-image":
+                    self.handle_upload_image()
+                elif parsed.path == "/api/save-theme":
+                    req_json = self.read_json_payload()
+                    theme_colors = req_json.get('theme_colors')
+                    if theme_colors is not None and not isinstance(theme_colors, dict):
+                        raise ApiError(400, "theme_colors must be an object or null.")
+                    plan_path = get_plan_path()
+                    plan = load_plan(plan_path)
+                    backup_path = backup_plan(plan_path)
+                    plan.setdefault('meta', {})['theme_colors'] = theme_colors
+                    save_plan_atomic(plan_path, plan)
                     rebuild = rebuild_outputs()
-                    self.send_json_response(200, {"status": "success", "message": "텍스트 직접 편집 저장 완료", "rebuild": rebuild})
-                except ValueError as e:
-                    raise ApiError(400, str(e))
-            else:
-                raise ApiError(404, "API endpoint was not found.")
+                    self.send_json_response(200, {"status": "success", "message": "테마 저장 완료", "backup": backup_path.name, "rebuild": rebuild})
+                elif parsed.path == "/api/save-text-edits":
+                    req_json = self.read_json_payload()
+                    plan_path = get_plan_path()
+                    plan = load_plan(plan_path)
+                    try:
+                        apply_text_edits(plan, req_json.get('edits', []), req_json.get('style_overrides', []))
+                        backup_path = backup_plan(plan_path)
+                        save_plan_atomic(plan_path, plan)
+                        rebuild = rebuild_outputs()
+                        self.send_json_response(200, {"status": "success", "message": "텍스트 직접 편집 저장 완료", "backup": backup_path.name, "rebuild": rebuild})
+                    except ValueError as e:
+                        raise ApiError(400, str(e))
+                else:
+                    raise ApiError(404, "API endpoint was not found.")
         except ApiError as exc:
             self.send_error_response(exc.status_code, exc.message)
         except Exception as exc:
@@ -393,10 +408,10 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
 
         plan_path = get_plan_path()
         plan = load_plan(plan_path)
-        target_key = "pages" if isinstance(plan.get("pages"), list) else "slides"
-        original_pages = plan.get(target_key, [])
-        if not isinstance(original_pages, list):
-            raise ApiError(400, f"slide_plan.json must contain a {target_key} array.")
+        try:
+            target_key, original_pages = get_page_collection(plan)
+        except ValueError as exc:
+            raise ApiError(400, str(exc))
 
         new_pages = []
         for idx in indices:
@@ -434,9 +449,10 @@ class DevServerHandler(http.server.SimpleHTTPRequestHandler):
 
         plan_path = get_plan_path()
         plan = load_plan(plan_path)
-        slides = plan.get("slides", [])
-        if not isinstance(slides, list):
-            raise ApiError(400, "slide_plan.json must contain a slides array.")
+        try:
+            _, slides = get_page_collection(plan)
+        except ValueError as exc:
+            raise ApiError(400, str(exc))
         if slide_index < 0 or slide_index >= len(slides):
             raise ApiError(400, "slide_index is out of range.")
 

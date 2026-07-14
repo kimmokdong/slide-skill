@@ -15,6 +15,41 @@ from html import escape
 
 
 INCLUDE_PATTERN = re.compile(r'\{\{\s*INCLUDE:([^}]+)\s*\}\}')
+PLACEHOLDER_PATTERN = re.compile(r'\{\{[^{}]+\}\}|<TODO>|\blorem\b|\bxxxx\b', re.IGNORECASE)
+LIST_FIELDS = {'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'TIMELINE_ITEMS', 'QUIZ_OPTIONS', 'STAT_ITEMS', 'SUMMARY_ITEMS', 'STEPPER_ITEMS', 'MATRIX_ITEMS', 'O_ITEMS', 'X_ITEMS', 'ROADMAP_ITEMS', 'ITEMS', 'PAIRS', 'HEADERS', 'ROWS'}
+
+REQUIRED_LAYOUT_FIELDS = {
+    'hero': ('TITLE',),
+    'title': ('TITLE',),
+    'split': ('TITLE', 'BODY', 'IMAGE_SRC'),
+    'text_image': ('TITLE', 'CONTENT', 'IMAGE_SRC'),
+    'bullet': ('TITLE', 'BULLET_ITEMS'),
+    'comparison': ('TITLE', 'LEFT_TITLE', 'LEFT_ITEMS', 'RIGHT_TITLE', 'RIGHT_ITEMS'),
+    'image_comparison': ('TITLE', 'LEFT_IMAGE_SRC', 'RIGHT_IMAGE_SRC'),
+    'timeline': ('TITLE', 'TIMELINE_ITEMS'),
+    'quiz': ('TITLE', 'QUESTION', 'QUIZ_OPTIONS'),
+    'quote': ('QUOTE_TEXT',),
+    'diagram': ('TITLE', 'DIAGRAM_SRC'),
+    'stats': ('TITLE', 'STAT_ITEMS'),
+    'summary': ('TITLE', 'SUMMARY_ITEMS'),
+    'closing': ('TITLE', 'MESSAGE'),
+    'tutorial': ('TITLE', 'STEPPER_ITEMS'),
+    'hands_on': ('TITLE', 'STEPPER_ITEMS'),
+    'fullbleed': ('TITLE', 'IMAGE_SRC'),
+    'matrix': ('TITLE', 'MATRIX_ITEMS'),
+    'vs_ox': ('TITLE', 'O_ITEMS', 'X_ITEMS'),
+    'roadmap': ('TITLE', 'ROADMAP_ITEMS'),
+    'activity_instruction': ('TITLE', 'INSTRUCTION'),
+    'activity_prompt': ('TITLE', 'WORKSHEET_BLOCK'),
+    'ox_reveal': ('TITLE', 'ITEMS'),
+    'matching_reveal': ('TITLE', 'PAIRS'),
+    'cloze_reveal': ('TITLE', 'ITEMS'),
+    'table_answer_reveal': ('TITLE', 'HEADERS', 'ROWS'),
+    'sample_answer_reveal': ('TITLE', 'SAMPLE_ANSWER'),
+    'share_prompt': ('TITLE',),
+    'video_hook': ('TITLE', 'EMBED_URL'),
+    'video_link_card': ('TITLE', 'WATCH_URL'),
+}
 
 
 def get_template_root() -> str:
@@ -326,6 +361,135 @@ def get_first_value(data: dict, keys: list, default=''):
     return default
 
 
+def normalize_slide_data(slide_data: dict) -> dict:
+    """과거 slide_plan 별칭을 현재 렌더러 계약으로 정규화합니다."""
+    data = slide_data.copy()
+    slide_type = data.get('layout', data.get('type', 'title'))
+
+    aliases = {
+        'BOTTOM_TAKEAWAY': ('BOTTOM_TAKEAWAY_HTML',),
+        'SPEAKER_NOTES': ('speaker_notes',),
+        'STAT_ITEMS': ('STATS_ITEMS',),
+    }
+    for canonical, old_keys in aliases.items():
+        if not data.get(canonical):
+            data[canonical] = get_first_value(data, list(old_keys), '')
+
+    if slide_type == 'text_image' and not data.get('CONTENT'):
+        data['CONTENT'] = data.get('BODY', '')
+    elif slide_type == 'image_comparison':
+        data['LEFT_IMAGE_SRC'] = get_first_value(data, ['LEFT_IMAGE_SRC', 'LEFT_IMAGE'], '')
+        data['RIGHT_IMAGE_SRC'] = get_first_value(data, ['RIGHT_IMAGE_SRC', 'RIGHT_IMAGE'], '')
+        data['LEFT_DESC'] = get_first_value(data, ['LEFT_DESC', 'LEFT_TITLE'], '')
+        data['RIGHT_DESC'] = get_first_value(data, ['RIGHT_DESC', 'RIGHT_TITLE'], '')
+    elif slide_type == 'quiz':
+        data['QUESTION'] = get_first_value(data, ['QUESTION', 'QUIZ_QUESTION'], '')
+        if not data.get('QUIZ_OPTIONS'):
+            data['QUIZ_OPTIONS'] = data.get('OPTIONS', [])
+        if 'ANSWER_INDEX' not in data:
+            correct = [
+                index for index, option in enumerate(data.get('QUIZ_OPTIONS', []))
+                if isinstance(option, dict) and option.get('correct') is True
+            ]
+            if len(correct) == 1:
+                data['ANSWER_INDEX'] = correct[0]
+        if data.get('ANSWER') and 'ANSWER_INDEX' not in data:
+            for index, option in enumerate(data.get('QUIZ_OPTIONS', [])):
+                option_text = option.get('text', option) if isinstance(option, dict) else option
+                if str(option_text).strip() == str(data['ANSWER']).strip():
+                    data['ANSWER_INDEX'] = index
+                    break
+    elif slide_type == 'closing' and not data.get('MESSAGE'):
+        data['MESSAGE'] = data.get('SUBTITLE', '')
+    elif slide_type == 'ox_reveal' and not data.get('ITEMS'):
+        data['ITEMS'] = get_first_value(data, ['OX_REVEAL_ITEMS', 'OX_ITEMS', 'items'], [])
+    elif slide_type == 'matching_reveal' and not data.get('PAIRS'):
+        data['PAIRS'] = get_first_value(data, ['MATCHING_REVEAL_ITEMS', 'pairs'], [])
+
+    return data
+
+
+def validate_pages(pages: list) -> None:
+    """Gate 1: 렌더 전에 의미 손실을 일으키는 입력 오류를 중단합니다."""
+    errors = []
+    template_root = get_template_root()
+
+    for index, page in enumerate(pages):
+        if page.get('page_type', 'slide') != 'slide':
+            continue
+
+        data = normalize_slide_data(page)
+        layout = data.get('layout', data.get('type', 'title'))
+        template_path = os.path.join(template_root, f'layout_{layout}.html')
+        if not os.path.isfile(template_path):
+            errors.append(f'{index + 1}번: 알 수 없는 layout "{layout}"')
+            continue
+
+        for field in REQUIRED_LAYOUT_FIELDS.get(layout, ()):
+            value = data.get(field)
+            if value is None or value == '' or value == []:
+                errors.append(f'{index + 1}번({layout}): 필수 필드 {field} 누락')
+            elif field in LIST_FIELDS and not isinstance(value, list):
+                errors.append(f'{index + 1}번({layout}): {field}는 배열이어야 함')
+
+        serialized = json.dumps(data, ensure_ascii=False)
+        match = PLACEHOLDER_PATTERN.search(serialized)
+        if match:
+            errors.append(f'{index + 1}번({layout}): placeholder 잔존 "{match.group(0)}"')
+
+        if layout == 'quiz':
+            options = data.get('QUIZ_OPTIONS', [])
+            answer_index = data.get('ANSWER_INDEX')
+            if type(answer_index) is not int or not isinstance(options, list) or not 0 <= answer_index < len(options):
+                errors.append(f'{index + 1}번(quiz): ANSWER_INDEX 또는 correct=true 정답 1개 필요')
+        elif layout == 'ox_reveal':
+            items = data.get('ITEMS', [])
+            if not isinstance(items, list):
+                errors.append(f'{index + 1}번(ox_reveal): ITEMS는 배열이어야 함')
+                continue
+            for item_index, item in enumerate(items):
+                if not isinstance(item, dict) or not item.get('answer'):
+                    errors.append(f'{index + 1}번(ox_reveal): ITEMS[{item_index}].answer 누락')
+        elif layout == 'matching_reveal' and not isinstance(data.get('PAIRS'), list):
+            errors.append(f'{index + 1}번(matching_reveal): PAIRS는 배열이어야 함')
+        elif layout == 'cloze_reveal':
+            word_bank = data.get('WORD_BANK', data.get('word_bank', []))
+            items = data.get('ITEMS', data.get('sentences', []))
+            if not isinstance(word_bank, list) or not word_bank:
+                errors.append(f'{index + 1}번(cloze_reveal): WORD_BANK은 비어 있지 않은 배열이어야 함')
+            elif not isinstance(items, list) or not all(
+                isinstance(item, dict) and '[' in str(item.get('text', '')) and ']' in str(item.get('text', ''))
+                for item in items
+            ):
+                errors.append(f'{index + 1}번(cloze_reveal): ITEMS는 [정답]이 포함된 text 객체 배열이어야 함')
+
+    answerable_types = {'ox_check', 'short_answer', 'cloze_word_bank', 'matching_lines', 'table_fill'}
+    worksheet_counts = {}
+    answer_key_counts = {}
+    has_answer_key = False
+    for page in pages:
+        page_type = page.get('page_type')
+        if page_type not in {'worksheet', 'answer_key'}:
+            continue
+        if page_type == 'answer_key':
+            has_answer_key = True
+        counts = answer_key_counts if page_type == 'answer_key' else worksheet_counts
+        for block in page.get('BLOCKS', page.get('blocks', [])):
+            block_type = block.get('block_type') if isinstance(block, dict) else ''
+            if block_type in answerable_types:
+                counts[block_type] = counts.get(block_type, 0) + 1
+
+    if has_answer_key:
+        for block_type, count in worksheet_counts.items():
+            if answer_key_counts.get(block_type, 0) < count:
+                errors.append(f'교사용 정답지: {block_type} 문항이 {count - answer_key_counts.get(block_type, 0)}개 누락')
+
+    if errors:
+        raise ValueError('slide_plan.json 검증 실패:\n- ' + '\n- '.join(errors))
+
+    print(f'[QA] Gate 1 통과: 슬라이드 {sum(p.get("page_type", "slide") == "slide" for p in pages)}장')
+
+
 def format_minutes(value) -> str:
     text = str(value).strip()
     if not text:
@@ -435,12 +599,17 @@ def process_list(items, tag='li', class_name='', edit_key='', default_marker='O'
                 result.append(f'<div class="quiz-option card"{editable_attrs(item_edit_id + ".text")}>{item.get("text", "")}</div>')
             # matrix 아이템: {"label": "텍스트", "quadrant": 1~4}
             elif tag == 'matrix-item':
-                label = item.get('label', item.get('title', ''))
+                has_kicker = bool(item.get('label') and item.get('title'))
+                kicker = item.get('label', '') if has_kicker else ''
+                label = get_first_value(item, ['title', 'label', 'text'], '')
                 icon = item.get('icon', '')
-                desc = item.get('desc', '')
+                desc = get_first_value(item, ['desc', 'body', 'description'], '')
                 icon_html = f'<div class="matrix-icon">{icon}</div>' if icon else ''
-                desc_html = f'<div class="matrix-desc"{editable_attrs(item_edit_id + ".desc")}>{desc}</div>' if desc else ''
-                result.append(f'<div class="matrix-cell card{" fragment" if sequential else ""}">{icon_html}<div class="matrix-label"{editable_attrs(item_edit_id + ".label")}>{label}</div>{desc_html}</div>')
+                kicker_html = f'<div class="matrix-kicker"{editable_attrs(item_edit_id + ".label")}>{kicker}</div>' if kicker else ''
+                label_key = next((key for key in ('title', 'label', 'text') if item.get(key)), 'label')
+                desc_key = next((key for key in ('desc', 'body', 'description') if item.get(key)), 'desc')
+                desc_html = f'<div class="matrix-desc"{editable_attrs(item_edit_id + "." + desc_key)}>{desc}</div>' if desc else ''
+                result.append(f'<div class="matrix-cell card{" fragment" if sequential else ""}">{icon_html}<div class="matrix-text">{kicker_html}<div class="matrix-label"{editable_attrs(item_edit_id + "." + label_key)}>{label}</div>{desc_html}</div></div>')
     return "\n".join(result)
 
 
@@ -477,7 +646,7 @@ def render_ox_reveal_items(items) -> str:
         if isinstance(item, dict):
             statement = item.get('statement', item.get('text', ''))
             answer = item.get('answer', '')
-            explanation = item.get('explanation', '')
+            explanation = item.get('explanation', item.get('reason', ''))
         else:
             statement = str(item)
             answer = ''
@@ -485,7 +654,8 @@ def render_ox_reveal_items(items) -> str:
 
         explanation_html = ''
         if explanation:
-            explanation_html = f'<div class="ox-reveal-explanation fragment"{editable_attrs(f"ITEMS[{index}].explanation")}>{explanation}</div>'
+            explanation_key = 'explanation' if isinstance(item, dict) and item.get('explanation') else 'reason'
+            explanation_html = f'<div class="ox-reveal-explanation fragment"{editable_attrs(f"ITEMS[{index}].{explanation_key}")}>{explanation}</div>'
 
         rows.append(f'''<div class="ox-reveal-row">
             <div class="ox-reveal-statement"><span class="ox-reveal-num">{index + 1}</span><span{editable_attrs(f"ITEMS[{index}].statement")}>{statement}</span></div>
@@ -731,7 +901,8 @@ def render_worksheet_page(page: dict, page_index: int, page_type: str = 'workshe
 
 def render_slide(slide_data: dict) -> str:
     """단일 슬라이드 데이터를 HTML로 렌더링합니다."""
-    slide_type = slide_data.get('layout', slide_data.get('type', 'title'))
+    data = normalize_slide_data(slide_data)
+    slide_type = data.get('layout', data.get('type', 'title'))
 
     try:
         template = load_template(slide_type)
@@ -740,29 +911,6 @@ def render_slide(slide_data: dict) -> str:
         template = load_template('title')
 
     # 특수 처리 (리스트 등)
-    data = slide_data.copy()
-    if slide_type == 'text_image' and not data.get('CONTENT') and data.get('BODY'):
-        data['CONTENT'] = data.get('BODY', '')
-    if slide_type == 'image_comparison':
-        if not data.get('LEFT_IMAGE_SRC') and data.get('LEFT_IMAGE'):
-            data['LEFT_IMAGE_SRC'] = data.get('LEFT_IMAGE', '')
-        if not data.get('RIGHT_IMAGE_SRC') and data.get('RIGHT_IMAGE'):
-            data['RIGHT_IMAGE_SRC'] = data.get('RIGHT_IMAGE', '')
-        if not data.get('LEFT_DESC') and data.get('LEFT_TITLE'):
-            data['LEFT_DESC'] = data.get('LEFT_TITLE', '')
-        if not data.get('RIGHT_DESC') and data.get('RIGHT_TITLE'):
-            data['RIGHT_DESC'] = data.get('RIGHT_TITLE', '')
-    if slide_type == 'quiz':
-        if not data.get('QUIZ_OPTIONS') and data.get('OPTIONS'):
-            data['QUIZ_OPTIONS'] = data.get('OPTIONS', [])
-        if data.get('ANSWER') and 'ANSWER_INDEX' not in data and data.get('QUIZ_OPTIONS'):
-            for idx, option in enumerate(data.get('QUIZ_OPTIONS', [])):
-                option_text = option.get('text', option) if isinstance(option, dict) else option
-                if str(option_text).strip() == str(data.get('ANSWER')).strip():
-                    data['ANSWER_INDEX'] = idx
-                    break
-    if slide_type == 'closing' and not data.get('MESSAGE') and data.get('SUBTITLE'):
-        data['MESSAGE'] = data.get('SUBTITLE', '')
     if slide_type == 'tutorial':
         raw_title = str(data.get('TITLE', ''))
         data['DISPLAY_TITLE'] = re.sub(r'^\s*\d+\s*단계\s*[:：;；]\s*', '', raw_title)
@@ -776,8 +924,13 @@ def render_slide(slide_data: dict) -> str:
         if not data.get('INSTRUCTION') and data.get('instruction'):
             data['INSTRUCTION'] = data.get('instruction', '')
 
+    if slide_type == 'activity_prompt':
+        block = data.get('WORKSHEET_BLOCK', data.get('worksheet_block', {}))
+        data['WORKSHEET_PREVIEW_HTML'] = render_worksheet_block(block, 0, 1) if isinstance(block, dict) and block else ''
+
     if slide_type == 'ox_reveal':
-        items = data.get('ITEMS', data.get('OX_ITEMS', data.get('items', [])))
+        items = data.get('ITEMS', [])
+        data['OX_REVEAL_DENSITY_CLASS'] = 'ox-reveal-grid' if len(items) >= 5 else 'ox-reveal-stack'
         data['OX_REVEAL_ITEMS'] = render_ox_reveal_items(items)
 
     if slide_type == 'sample_answer_reveal':
@@ -787,7 +940,7 @@ def render_slide(slide_data: dict) -> str:
     if slide_type == 'cloze_reveal':
         wb = data.get('WORD_BANK', data.get('word_bank', []))
         data['WORD_BANK_HTML'] = ''.join(
-            f'<span class="cloze-word cloze-wb-word"{editable_attrs(f"WORD_BANK[{i}]")} data-word="{escape(str(w), quote=True)}">{w}</span>'
+            f'<button type="button" class="cloze-word cloze-wb-word js-cloze-word"{editable_attrs(f"WORD_BANK[{i}]")} data-word="{escape(str(w), quote=True)}">{escape(str(w))}</button>'
             for i, w in enumerate(wb)
         )
         items = data.get('ITEMS', data.get('sentences', []))
@@ -801,14 +954,14 @@ def render_slide(slide_data: dict) -> str:
                 if not word:
                     return match.group(0)
                 word_attr = escape(str(word), quote=True)
-                return f'<span class="cloze-blank-reveal fragment js-cloze-anim" data-word="{word_attr}" >{word}</span>'
+                return f'<span class="cloze-blank-reveal js-cloze-target" data-word="{word_attr}"></span>'
 
             text_html = re.sub(r'\[([^\]]*)\]', render_cloze_blank, text_val)
             rows.append(f'<div class="cloze-reveal-row"{editable_attrs(f"ITEMS[{i}].text")}>{text_html}</div>')
         data['CLOZE_REVEAL_ITEMS'] = '\n'.join(rows)
 
     if slide_type == 'matching_reveal':
-        pairs = data.get('PAIRS', data.get('pairs', []))
+        pairs = data.get('PAIRS', [])
         import random
         seed_str = data.get('TITLE', 'matching')
         random.seed(seed_str)
@@ -884,13 +1037,13 @@ def render_slide(slide_data: dict) -> str:
         data['STAT_ITEMS'] = process_list(data['STAT_ITEMS'], 'stat-item', edit_key='STAT_ITEMS', sequential=data.get('SEQUENTIAL', False))
 
     if 'QUIZ_OPTIONS' in data:
-        answer_index = data.get('ANSWER_INDEX', 0)
+        answer_index = data.get('ANSWER_INDEX')
         quiz_options = data['QUIZ_OPTIONS']
         options_html_parts = []
         for i, option in enumerate(quiz_options):
             option_text = option.get('text', option) if isinstance(option, dict) else option
             is_correct = "true" if i == answer_index else "false"
-            options_html_parts.append(f'''<div class="quiz-option card button-type" onclick="checkQuizAnswer(this, {is_correct})" style="cursor: pointer; transition: all 0.2s ease; margin-bottom: 0.3em; padding: 0.6em 1em; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.8em; border-radius: 12px; background: var(--color-card-bg); border: 1px solid var(--color-card-border); box-shadow: 0 4px 12px rgba(0,0,0,0.03); font-size: 0.8em;">
+            options_html_parts.append(f'''<div class="quiz-option card button-type" data-correct="{is_correct}" onclick="checkQuizAnswer(this, {is_correct})" style="cursor: pointer; transition: all 0.2s ease; margin-bottom: 0.3em; padding: 0.6em 1em; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.8em; border-radius: 12px; background: var(--color-card-bg); border: 1px solid var(--color-card-border); box-shadow: 0 4px 12px rgba(0,0,0,0.03); font-size: 0.8em;">
                 <span class="option-marker" style="display: inline-flex; align-items: center; justify-content: center; width: 1.8em; height: 1.8em; border-radius: 50%; background: rgba(0,0,0,0.05); font-weight: 700; font-size: 0.85em; flex-shrink: 0; transition: background 0.2s ease, color 0.2s ease;">{chr(65+i)}</span>
                 <span class="option-text"{editable_attrs(f'QUIZ_OPTIONS[{i}].text')} style="word-break: keep-all; font-weight: 500; line-height: 1.3; text-align: center;">{option_text}</span>
             </div>''')
@@ -943,13 +1096,18 @@ def render_slide(slide_data: dict) -> str:
         roadmap_html_parts = []
         for i, item in enumerate(roadmap_items):
             if isinstance(item, dict):
-                label = item.get('label', f'Step {i+1}')
-                desc = item.get('desc', '')
-                desc_html = f'<div class="roadmap-desc"{editable_attrs(f"ROADMAP_ITEMS[{i}].desc")}>{desc}</div>' if desc else ''
+                number = item.get('step', i + 1)
+                label = get_first_value(item, ['label', 'title', 'text'], f'Step {i+1}')
+                desc = get_first_value(item, ['desc', 'body', 'description'], '')
+                label_key = next((key for key in ('label', 'title', 'text') if item.get(key)), 'label')
+                desc_key = next((key for key in ('desc', 'body', 'description') if item.get(key)), 'desc')
+                desc_html = f'<div class="roadmap-desc"{editable_attrs(f"ROADMAP_ITEMS[{i}].{desc_key}")}>{desc}</div>' if desc else ''
                 roadmap_html_parts.append(f'''<div class="roadmap-step">
-                    <div class="roadmap-num">{i+1}</div>
-                    <div class="roadmap-label"{editable_attrs(f"ROADMAP_ITEMS[{i}].label")}>{label}</div>
-                    {desc_html}
+                    <div class="roadmap-num">{number}</div>
+                    <div class="roadmap-text">
+                        <div class="roadmap-label"{editable_attrs(f"ROADMAP_ITEMS[{i}].{label_key}")}>{label}</div>
+                        {desc_html}
+                    </div>
                 </div>''')
             else:
                 roadmap_html_parts.append(f'''<div class="roadmap-step">
@@ -1009,7 +1167,7 @@ def render_slide(slide_data: dict) -> str:
     html = re.sub(r'\{\{\#if [A-Z_]+\}\}(.*?)\{\{\/if\}\}', lambda m: re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)[1] if len(re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)) > 1 else '', html, flags=re.DOTALL)
 
     # 단순 치환
-    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'OX_REVEAL_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML', 'CLOZE_REVEAL_ITEMS', 'MATCHING_REVEAL_ITEMS', 'TABLE_REVEAL_HTML', 'WORD_BANK_HTML', 'SHARE_QUESTIONS_HTML'}
+    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'OX_REVEAL_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML', 'CLOZE_REVEAL_ITEMS', 'MATCHING_REVEAL_ITEMS', 'TABLE_REVEAL_HTML', 'WORD_BANK_HTML', 'SHARE_QUESTIONS_HTML', 'WORKSHEET_PREVIEW_HTML'}
     for key, value in data.items():
         if isinstance(value, str) and key not in html_keys:
             value = value.replace('\n', '<br>')
@@ -1092,6 +1250,15 @@ def normalize_pages(plan: dict) -> list:
         })
 
         block_type = block.get('block_type')
+        if isinstance(block, dict) and block:
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'activity_prompt',
+                'TITLE': f'{title} 문항 보기',
+                'WORKSHEET_BLOCK': block,
+                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+            })
+
         if block_type == 'ox_check':
             pages.append({
                 'page_type': 'slide',
@@ -1201,6 +1368,11 @@ def build_html(input_json: str, output_html: str) -> None:
     presentation_title = meta.get('title', '프레젠테이션')
 
     pages_data = normalize_pages(plan)
+    pages_data = [
+        normalize_slide_data(page) if page.get('page_type', 'slide') == 'slide' else page.copy()
+        for page in pages_data
+    ]
+    validate_pages(pages_data)
     slides_data = [page for page in pages_data if page.get('page_type', 'slide') == 'slide']
 
     # 페이지 렌더링

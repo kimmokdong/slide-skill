@@ -90,6 +90,19 @@
             overflow: visible;
         }
 
+        .matrix-text {
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .matrix-kicker {
+            color: var(--color-accent);
+            font-size: 0.58em;
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: 0.18em;
+        }
+
         .matrix-label {
             font-size: 1.18em;
             font-weight: 700;
@@ -262,12 +275,12 @@
             display: flex;
             align-items: stretch;
             justify-content: center;
-            gap: 0.2em;
+            gap: 10px;
             width: 100%;
             height: auto;
             min-height: 330px;
             box-sizing: border-box;
-            padding: 0 0.5em;
+            padding: 0 24px;
         }
 
         .roadmap-step {
@@ -279,7 +292,7 @@
             flex: 1;
             max-width: 250px;
             min-height: 330px;
-            padding: 1.2em 0.8em;
+            padding: 48px 28px;
             background: var(--color-card-bg);
             border: 1px solid var(--color-card-border);
             border-radius: 16px;
@@ -297,24 +310,34 @@
         }
 
         .roadmap-num {
-            width: 2.2em;
-            height: 2.2em;
+            width: 58px;
+            height: 58px;
             border-radius: 50%;
             background: var(--color-gradient);
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.15em;
+            font-size: 30px;
             font-weight: 900;
-            margin-bottom: 0.6em;
+            margin-bottom: 24px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             flex-shrink: 0;
+        }
+
+        .roadmap-text {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            flex-direction: column;
+            justify-content: center;
         }
 
         .roadmap-label {
             font-size: 0.95em;
             font-weight: 700;
+            line-height: 1.15;
             margin-bottom: 0.3em;
             color: var(--color-text);
         }
@@ -346,6 +369,52 @@
             border-top: 7px solid transparent;
             border-bottom: 7px solid transparent;
             border-left: 8px solid var(--color-accent);
+        }
+
+        .activity-prompt-body {
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .activity-prompt-body .worksheet-block {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1em 1.2em;
+            box-sizing: border-box;
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-card-border);
+            border-radius: 16px;
+            font-size: 0.74em;
+        }
+
+        .activity-prompt-body .worksheet-block-header h2 {
+            font-size: 1.05em;
+        }
+
+        .activity-prompt-body .worksheet-block-header p {
+            font-size: 0.62em;
+            line-height: 1.35;
+        }
+
+        .activity-prompt-body .worksheet-block li {
+            font-size: 0.68em;
+            line-height: 1.35;
+        }
+
+        .activity-prompt-body .worksheet-table {
+            font-size: 0.64em;
+        }
+
+        .activity-prompt-body .worksheet-table th,
+        .activity-prompt-body .worksheet-table td {
+            font-size: inherit;
+            line-height: 1.3;
+        }
+
+        .activity-prompt-body .match-left,
+        .activity-prompt-body .match-right {
+            line-height: 1.25;
         }
 
         /* 5. split / tutorial ?덉씠?꾩썐 */
@@ -605,11 +674,11 @@
         }
 
         .summary-list li strong {
-            display: block;
+            display: inline;
             color: var(--color-text);
             font-size: 1.04em;
             line-height: 1.18;
-            margin-bottom: 0.12em;
+            margin: 0;
         }
 
         .summary-list li span {
@@ -1007,10 +1076,65 @@
             overflow: hidden;
         }
 
+        [data-layout-name="hero"] [data-edit-id="TITLE"],
+        [data-layout-name="title"] [data-edit-id="TITLE"] {
+            --fit-min: 40;
+        }
+
+        [data-layout-name="quiz"] [data-edit-id="QUESTION"] {
+            --fit-min: 26;
+        }
+
+        .roadmap-label,
+        .matrix-label,
+        .timeline-title,
+        .comparison-card-title {
+            --fit-min: 24;
+        }
+
+        .autofit-compact .slide-body {
+            line-height: 1.25;
+        }
+
+        .autofit-compact .bullet-list,
+        .autofit-compact .ox-column-body,
+        .autofit-compact .hands-on-steps,
+        .autofit-compact .tutorial-steps {
+            gap: 0.48em !important;
+        }
+
+        .autofit-compact .card,
+        .autofit-compact .ox-column,
+        .autofit-compact .matrix-cell {
+            padding-top: 0.55em !important;
+            padding-bottom: 0.55em !important;
+        }
+
+        .autofit-compact .roadmap-step {
+            padding: 28px 20px;
+        }
+
+        .autofit-compact .roadmap-num {
+            margin-bottom: 14px;
+        }
+
+        .autofit-compact .roadmap-desc,
+        .autofit-compact .matrix-desc,
+        .autofit-compact .timeline-desc,
+        .autofit-compact .summary-card-desc,
+        .autofit-compact .option-text {
+            line-height: 1.2 !important;
+        }
+
         .split-layout .slide-body,
         .text-image-body {
             --autofit-min: 22;
-            --autofit-max: 48;
+            --autofit-max: 56;
+        }
+
+        .split-layout .slide-body > p[data-edit-id] {
+            font-size: 1.45em;
+            line-height: 1.45;
         }
 
         .stats-body {
@@ -1288,7 +1412,9 @@
         .activity-instruction-body {
             display: flex;
             gap: 2em;
-            flex: 1 0 auto;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
         }
 
         .activity-instruction-card {
@@ -1321,6 +1447,7 @@
             color: var(--color-accent);
             font-size: 0.72em;
             font-weight: 900;
+            line-height: 1.15;
             margin-bottom: 0.45em;
         }
 
@@ -1344,6 +1471,7 @@
             color: var(--color-accent);
             font-size: 1.45em;
             font-weight: 950;
+            line-height: 1.1 !important;
         }
 
         .activity-think-question span {
@@ -1367,6 +1495,39 @@
             justify-content: flex-start;
             gap: 1.5em;
             padding-bottom: 1rem;
+            min-height: 0;
+        }
+
+        .ox-reveal-list.ox-reveal-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: minmax(0, 1fr);
+            gap: 12px;
+        }
+
+        .ox-reveal-grid .ox-reveal-row {
+            min-width: 0;
+            min-height: 0;
+        }
+
+        .ox-reveal-grid .ox-reveal-statement {
+            font-size: 26px;
+            line-height: 1.25;
+        }
+
+        .ox-reveal-grid .ox-reveal-statement [data-edit-id] {
+            --fit-min: 22;
+        }
+
+        .ox-reveal-grid .ox-reveal-num {
+            font-size: 30px;
+            line-height: 1.1;
+        }
+
+        .ox-reveal-grid .ox-reveal-explanation {
+            --fit-min: 18;
+            font-size: 20px;
+            line-height: 1.3;
         }
 
         .ox-reveal-row {
@@ -1404,14 +1565,42 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 2.25em;
-            height: 2.25em;
+            width: 58px;
+            height: 58px;
             justify-self: end;
             border-radius: 999px;
             background: var(--color-gradient);
             color: white;
-            font-size: 0.9em;
+            font-size: 30px;
             font-weight: 950;
+            flex: 0 0 58px;
+        }
+
+        .autofit-compact .activity-instruction-body {
+            gap: 1em;
+        }
+
+        .autofit-compact .activity-instruction-card,
+        .autofit-compact .activity-think-question {
+            padding: 0.75em !important;
+        }
+
+        .autofit-compact .ox-reveal-list {
+            gap: 10px;
+            padding-bottom: 0;
+        }
+
+        .center-layout .hero-badge {
+            line-height: 1.1;
+        }
+
+        .autofit-compact .ox-reveal-row {
+            gap: 8px 14px;
+            padding: 8px 18px;
+        }
+
+        .autofit-compact .ox-reveal-explanation {
+            margin-top: 2px;
         }
 
         .ox-reveal-explanation {
@@ -1681,6 +1870,9 @@
     align-items: center;
     justify-content: center;
     width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
 }
 .sample-answer-prompt {
     font-size: 1.2em;
@@ -1692,6 +1884,9 @@
     padding: 1.5em;
     border-radius: 12px;
     width: 80%;
+    box-sizing: border-box;
+    max-height: 100%;
+    overflow: hidden;
 }
 .sample-answer-label {
     font-size: 0.8em;
@@ -1703,6 +1898,8 @@
 .sample-answer-text {
     font-size: 1.1em;
     color: var(--color-text);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
 }
 
 /* 2. cloze_reveal */
@@ -1724,6 +1921,16 @@
     border-radius: 20px;
     font-weight: bold;
     border: 1px solid var(--color-card-border);
+}
+.js-cloze-word {
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    transition: opacity 0.2s ease;
+}
+.js-cloze-word.is-used {
+    cursor: default;
+    opacity: 0.3;
 }
 /* cloze_reveal 전용: 콘텐츠 영역 먼저 확보 후 내용 배치 */
 .cloze-reveal-layout .slide-body {
@@ -1752,6 +1959,13 @@
     font-weight: bold;
     text-align: center;
     padding: 0 0.5em;
+}
+.cloze-blank-reveal.is-filled {
+    animation: cloze-answer-pop 0.35s ease-out;
+}
+@keyframes cloze-answer-pop {
+    from { opacity: 0; transform: translateY(0.2em); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* 3. matching_reveal */
@@ -2045,6 +2259,7 @@
 
 .match-left, .match-right {
     flex-grow: 1;
+    line-height: 1.25;
 }
 .match-col-right .match-right {
     text-align: left;
