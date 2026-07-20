@@ -11,11 +11,13 @@ import sys
 import os
 import json
 import re
+from copy import deepcopy
 from html import escape
 
 
 INCLUDE_PATTERN = re.compile(r'\{\{\s*INCLUDE:([^}]+)\s*\}\}')
 PLACEHOLDER_PATTERN = re.compile(r'\{\{[^{}]+\}\}|<TODO>|\blorem\b|\bxxxx\b', re.IGNORECASE)
+CONDITIONAL_PATTERN = re.compile(r'\{\{\s*(?:#if\s+([A-Z_]+)|(else)|(/if))\s*\}\}')
 LIST_FIELDS = {'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'TIMELINE_ITEMS', 'QUIZ_OPTIONS', 'STAT_ITEMS', 'SUMMARY_ITEMS', 'STEPPER_ITEMS', 'MATRIX_ITEMS', 'O_ITEMS', 'X_ITEMS', 'ROADMAP_ITEMS', 'ITEMS', 'PAIRS', 'HEADERS', 'ROWS'}
 
 REQUIRED_LAYOUT_FIELDS = {
@@ -51,11 +53,50 @@ REQUIRED_LAYOUT_FIELDS = {
     'video_link_card': ('TITLE', 'WATCH_URL'),
 }
 
+ACTIVITY_LAYOUT_BY_BLOCK = {
+    'ox_check': 'ox_reveal',
+    'cloze_word_bank': 'cloze_reveal',
+    'matching_lines': 'matching_reveal',
+    'table_fill': 'table_answer_reveal',
+    'short_answer': 'sample_answer_reveal',
+}
+
 
 def get_template_root() -> str:
     """템플릿 루트 디렉터리 경로를 반환합니다."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.realpath(os.path.join(script_dir, '..', 'templates'))
+
+
+def render_conditionals(template: str, data: dict) -> str:
+    """현재 템플릿의 중첩 #if/else 블록을 렌더링합니다."""
+    stack = [{'enabled': True, 'truthy': [], 'falsy': [], 'in_else': False}]
+
+    def append(text):
+        frame = stack[-1]
+        (frame['falsy'] if frame['in_else'] else frame['truthy']).append(text)
+
+    position = 0
+    for match in CONDITIONAL_PATTERN.finditer(template):
+        append(template[position:match.start()])
+        key, else_token, end_token = match.groups()
+        if key:
+            stack.append({'enabled': bool(data.get(key)), 'truthy': [], 'falsy': [], 'in_else': False})
+        elif else_token:
+            if len(stack) == 1 or stack[-1]['in_else']:
+                raise ValueError('잘못된 템플릿 {{else}} 위치입니다.')
+            stack[-1]['in_else'] = True
+        elif end_token:
+            if len(stack) == 1:
+                raise ValueError('짝이 없는 템플릿 {{/if}}입니다.')
+            frame = stack.pop()
+            append(''.join(frame['truthy'] if frame['enabled'] else frame['falsy']))
+        position = match.end()
+
+    append(template[position:])
+    if len(stack) != 1:
+        raise ValueError('닫히지 않은 템플릿 {{#if}} 블록입니다.')
+    return ''.join(stack[0]['truthy'])
 
 
 def expand_template_includes(text: str, root_dir: str = None, stack: tuple = (), depth: int = 0, max_depth: int = 20) -> str:
@@ -361,10 +402,57 @@ def get_first_value(data: dict, keys: list, default=''):
     return default
 
 
+def normalize_activity_slide(data: dict) -> dict:
+    """공개 activity 계약을 기존 상호작용 렌더러 계약으로 변환합니다."""
+    block = data.get('WORKSHEET_BLOCK', data.get('worksheet_block'))
+    if not isinstance(block, dict) or not block:
+        raise ValueError('activity 레이아웃에는 WORKSHEET_BLOCK이 필요합니다.')
+
+    block_type = block.get('block_type')
+    target_layout = ACTIVITY_LAYOUT_BY_BLOCK.get(block_type)
+    if not target_layout:
+        raise ValueError(f'activity에서 지원하지 않는 block_type입니다: {block_type}')
+
+    prefix = block.get('_original_path', 'WORKSHEET_BLOCK')
+    data['layout'] = target_layout
+    data['TITLE'] = data.get('TITLE') or block.get('title') or '활동'
+    data['ACTIVITY_EDIT_PREFIX'] = prefix
+
+    if block_type == 'ox_check':
+        data['ITEMS'] = block.get('items', [])
+        data['ITEM_EDIT_PREFIX'] = f'{prefix}.items'
+    elif block_type == 'cloze_word_bank':
+        data['WORD_BANK'] = block.get('word_bank', [])
+        data['ITEMS'] = block.get('sentences', [])
+        data['WORD_BANK_EDIT_PREFIX'] = f'{prefix}.word_bank'
+        data['ITEM_EDIT_PREFIX'] = f'{prefix}.sentences'
+    elif block_type == 'matching_lines':
+        data['PAIRS'] = block.get('pairs', [])
+        data['PAIRS_EDIT_PREFIX'] = f'{prefix}.pairs'
+        data['SHUFFLE_SEED'] = data.get('ACTIVITY_ID') or block.get('_activity_id') or block.get('title', 'matching')
+    elif block_type == 'table_fill':
+        data['HEADERS'] = block.get('headers', [])
+        data['ROWS'] = block.get('rows', [])
+        data['HEADERS_EDIT_PREFIX'] = f'{prefix}.headers'
+        data['ROWS_EDIT_PREFIX'] = f'{prefix}.rows'
+    elif block_type == 'short_answer':
+        data['PROMPT'] = block.get('prompt', block.get('instruction', ''))
+        data['SAMPLE_ANSWER'] = block.get('sample_answer', '')
+        prompt_key = 'prompt' if 'prompt' in block else 'instruction'
+        data['PROMPT_EDIT_ID'] = f'{prefix}.{prompt_key}'
+        data['SAMPLE_ANSWER_EDIT_ID'] = f'{prefix}.sample_answer'
+
+    return data
+
+
 def normalize_slide_data(slide_data: dict) -> dict:
     """과거 slide_plan 별칭을 현재 렌더러 계약으로 정규화합니다."""
     data = slide_data.copy()
     slide_type = data.get('layout', data.get('type', 'title'))
+
+    if slide_type == 'activity':
+        data = normalize_activity_slide(data)
+        slide_type = data['layout']
 
     aliases = {
         'BOTTOM_TAKEAWAY': ('BOTTOM_TAKEAWAY_HTML',),
@@ -637,7 +725,7 @@ def tag_page_section(html: str, page_type: str, page_index: int) -> str:
     return re.sub(r'<section\b', f'<section{attrs}', html, count=1)
 
 
-def render_ox_reveal_items(items) -> str:
+def render_ox_reveal_items(items, prefix='ITEMS') -> str:
     if not isinstance(items, list):
         return ''
 
@@ -655,12 +743,16 @@ def render_ox_reveal_items(items) -> str:
         explanation_html = ''
         if explanation:
             explanation_key = 'explanation' if isinstance(item, dict) and item.get('explanation') else 'reason'
-            explanation_html = f'<div class="ox-reveal-explanation fragment"{editable_attrs(f"ITEMS[{index}].{explanation_key}")}>{explanation}</div>'
+            explanation_html = f'<div class="ox-reveal-explanation fragment"{editable_attrs(f"{prefix}[{index}].{explanation_key}")}>{explanation}</div>'
+
+        statement_key = 'statement' if isinstance(item, dict) and 'statement' in item else 'text'
 
         rows.append(f'''<div class="ox-reveal-row">
-            <div class="ox-reveal-statement"><span class="ox-reveal-num">{index + 1}</span><span{editable_attrs(f"ITEMS[{index}].statement")}>{statement}</span></div>
-            <div class="ox-reveal-answer fragment"{editable_attrs(f"ITEMS[{index}].answer")}>{answer}</div>
-            {explanation_html}
+            <div class="ox-reveal-copy">
+                <div class="ox-reveal-statement"><span class="ox-reveal-num">{index + 1}</span><span{editable_attrs(f"{prefix}[{index}].{statement_key}")}>{statement}</span></div>
+                {explanation_html}
+            </div>
+            <div class="ox-reveal-answer fragment"{editable_attrs(f"{prefix}[{index}].answer")}>{answer}</div>
         </div>''')
     return '\n'.join(rows)
 
@@ -793,8 +885,7 @@ def render_worksheet_block(block: dict, block_index: int, q_idx: int, answer_key
     if block_type == 'matching_lines':
         pairs = block.get('pairs', [])
         import random
-        # 슬라이드와 동일한 시드 사용 (슬라이드는 TITLE = "{title} 정답 확인" 으로 시드)
-        slide_seed = f'{title} 정답 확인'
+        slide_seed = block.get('_activity_id', title)
         random.seed(slide_seed)
         right_items = [{"id": i, "text": p.get('right', '')} for i, p in enumerate(pairs)]
         random.shuffle(right_items)
@@ -931,16 +1022,20 @@ def render_slide(slide_data: dict) -> str:
     if slide_type == 'ox_reveal':
         items = data.get('ITEMS', [])
         data['OX_REVEAL_DENSITY_CLASS'] = 'ox-reveal-grid' if len(items) >= 5 else 'ox-reveal-stack'
-        data['OX_REVEAL_ITEMS'] = render_ox_reveal_items(items)
+        data['OX_REVEAL_ITEMS'] = render_ox_reveal_items(items, data.get('ITEM_EDIT_PREFIX', 'ITEMS'))
 
     if slide_type == 'sample_answer_reveal':
         data['PROMPT'] = data.get('PROMPT', data.get('prompt', ''))
         data['SAMPLE_ANSWER'] = data.get('SAMPLE_ANSWER', data.get('sample_answer', ''))
+        data['PROMPT_EDIT_ID'] = data.get('PROMPT_EDIT_ID', 'PROMPT')
+        data['SAMPLE_ANSWER_EDIT_ID'] = data.get('SAMPLE_ANSWER_EDIT_ID', 'SAMPLE_ANSWER')
 
     if slide_type == 'cloze_reveal':
         wb = data.get('WORD_BANK', data.get('word_bank', []))
+        word_bank_prefix = data.get('WORD_BANK_EDIT_PREFIX', 'WORD_BANK')
+        item_prefix = data.get('ITEM_EDIT_PREFIX', 'ITEMS')
         data['WORD_BANK_HTML'] = ''.join(
-            f'<button type="button" class="cloze-word cloze-wb-word js-cloze-word"{editable_attrs(f"WORD_BANK[{i}]")} data-word="{escape(str(w), quote=True)}">{escape(str(w))}</button>'
+            f'<button type="button" class="cloze-word cloze-wb-word js-cloze-word"{editable_attrs(f"{word_bank_prefix}[{i}]")} data-word="{escape(str(w), quote=True)}">{escape(str(w))}</button>'
             for i, w in enumerate(wb)
         )
         items = data.get('ITEMS', data.get('sentences', []))
@@ -957,14 +1052,15 @@ def render_slide(slide_data: dict) -> str:
                 return f'<span class="cloze-blank-reveal js-cloze-target" data-word="{word_attr}"></span>'
 
             text_html = re.sub(r'\[([^\]]*)\]', render_cloze_blank, text_val)
-            rows.append(f'<div class="cloze-reveal-row"{editable_attrs(f"ITEMS[{i}].text")}>{text_html}</div>')
+            rows.append(f'<div class="cloze-reveal-row"{editable_attrs(f"{item_prefix}[{i}].text")}>{text_html}</div>')
         data['CLOZE_REVEAL_ITEMS'] = '\n'.join(rows)
 
     if slide_type == 'matching_reveal':
         pairs = data.get('PAIRS', [])
         import random
-        seed_str = data.get('TITLE', 'matching')
+        seed_str = data.get('SHUFFLE_SEED', data.get('ACTIVITY_ID', data.get('TITLE', 'matching')))
         random.seed(seed_str)
+        pairs_prefix = data.get('PAIRS_EDIT_PREFIX', 'PAIRS')
         right_items = [{"id": i, "text": p.get('right', '')} for i, p in enumerate(pairs)]
         random.shuffle(right_items)
         left_col = []
@@ -974,12 +1070,12 @@ def render_slide(slide_data: dict) -> str:
         for i, p in enumerate(pairs):
             left_dot_id = f'slide-match-l-dot-{block_id}-{i}'
             right_dot_id = f'slide-match-r-dot-{block_id}-{i}'
-            left_col.append(f'<div class="match-item-box" id="slide-match-l-{block_id}-{i}"><div class="match-left"{editable_attrs(f"PAIRS[{i}].left")}>{p.get("left", "")}</div><div class="match-dot" id="{left_dot_id}"></div></div>')
+            left_col.append(f'<div class="match-item-box" id="slide-match-l-{block_id}-{i}"><div class="match-left"{editable_attrs(f"{pairs_prefix}[{i}].left")}>{p.get("left", "")}</div><div class="match-dot" id="{left_dot_id}"></div></div>')
             svg_lines.append(f'<g class="fragment js-match-anim" data-start="#{left_dot_id}" data-end="#{right_dot_id}"><path class="match-svg-line" fill="none" stroke="var(--color-accent)" stroke-width="6" stroke-linecap="round" stroke-opacity="0.9" /><polygon class="match-svg-arrowhead" fill="var(--color-accent)" opacity="0.9" /></g>')
         
         for r in right_items:
             i_r = r["id"]
-            right_col.append(f'<div class="match-item-box" id="slide-match-r-{block_id}-{i_r}"><div class="match-dot" id="slide-match-r-dot-{block_id}-{i_r}"></div><div class="match-right"{editable_attrs(f"PAIRS[{i_r}].right")}>{r["text"]}</div></div>')
+            right_col.append(f'<div class="match-item-box" id="slide-match-r-{block_id}-{i_r}"><div class="match-dot" id="slide-match-r-dot-{block_id}-{i_r}"></div><div class="match-right"{editable_attrs(f"{pairs_prefix}[{i_r}].right")}>{r["text"]}</div></div>')
             
         data['MATCHING_REVEAL_ITEMS'] = f'''<div class="matching-columns-container" style="position: relative; display: flex; justify-content: space-between; width: 100%; min-height: 350px;">
             <div class="match-col match-col-left" style="display: flex; flex-direction: column; justify-content: space-around; z-index: 2; width: 45%; gap:20px;">{"".join(left_col)}</div>
@@ -990,14 +1086,17 @@ def render_slide(slide_data: dict) -> str:
     if slide_type == 'table_answer_reveal':
         headers = data.get('HEADERS', data.get('headers', []))
         rows_data = data.get('ROWS', data.get('rows', []))
-        th_html = ''.join(f'<th{editable_attrs(f"HEADERS[{i}]")}>{h}</th>' for i, h in enumerate(headers))
+        headers_prefix = data.get('HEADERS_EDIT_PREFIX', 'HEADERS')
+        rows_prefix = data.get('ROWS_EDIT_PREFIX', 'ROWS')
+        th_html = ''.join(f'<th{editable_attrs(f"{headers_prefix}[{i}]")}>{h}</th>' for i, h in enumerate(headers))
         tr_html = []
         for r_i, r in enumerate(rows_data):
             td_html = []
             for cell_index, cell in enumerate(r):
                 text = str(cell.get('text', cell)) if isinstance(cell, dict) else str(cell)
-                path = f"ROWS[{r_i}][{cell_index}].text" if isinstance(cell, dict) else f"ROWS[{r_i}][{cell_index}]"
-                if (isinstance(cell, dict) and cell.get('is_blank')) or cell_index > 0:
+                path = f"{rows_prefix}[{r_i}][{cell_index}].text" if isinstance(cell, dict) else f"{rows_prefix}[{r_i}][{cell_index}]"
+                is_reveal = cell.get('is_blank', False) if isinstance(cell, dict) else cell_index > 0
+                if is_reveal:
                     td_html.append(f'<td class="blank-cell"><div class="fragment pop-glow-reveal"{editable_attrs(path)} style="color: var(--color-accent); font-weight: bold;">{text}</div></td>')
                 else:
                     td_html.append(f'<td{editable_attrs(path)}>{text}</td>')
@@ -1009,7 +1108,7 @@ def render_slide(slide_data: dict) -> str:
         questions = data.get('QUESTIONS', data.get('questions', []))
         q_html = []
         for i, q in enumerate(questions):
-            q_html.append(f'<div class="share-question fragment">{q}</div>')
+            q_html.append(f'<div class="share-question fragment"{editable_attrs(f"QUESTIONS[{i}]")}>{q}</div>')
         data['SHARE_QUESTIONS_HTML'] = '\n'.join(q_html)
 
     if slide_type == 'vs_ox' or 'O_ITEMS' in data or 'X_ITEMS' in data:
@@ -1147,24 +1246,7 @@ def render_slide(slide_data: dict) -> str:
     # 템플릿 변수 치환
     html = template
 
-    # 조건부 블록 ({{#if VAR}} ... {{/if}}) 처리 (Cross-boundary 버그 수정)
-    for key in list(data.keys()):
-        val = data[key]
-        pattern_block = r'\{\{\#if ' + key + r'\}\}(.*?)\{\{\/if\}\}'
-        
-        def replace_block(match):
-            content = match.group(1)
-            # content 안에 {{else}} 가 있는지 확인
-            parts = re.split(r'\{\{\s*else\s*\}\}', content, maxsplit=1)
-            if val:
-                return parts[0] # 참일 때는 else 앞부분 반환
-            else:
-                return parts[1] if len(parts) > 1 else '' # 거짓일 때는 else 뒷부분 반환 (없으면 빈 문자열)
-                
-        html = re.sub(pattern_block, replace_block, html, flags=re.DOTALL)
-
-    # 남은 if 블록 제거 (데이터에 없는 키)
-    html = re.sub(r'\{\{\#if [A-Z_]+\}\}(.*?)\{\{\/if\}\}', lambda m: re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)[1] if len(re.split(r'\{\{\s*else\s*\}\}', m.group(1), maxsplit=1)) > 1 else '', html, flags=re.DOTALL)
+    html = render_conditionals(html, data)
 
     # 단순 치환
     html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'OX_REVEAL_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML', 'CLOZE_REVEAL_ITEMS', 'MATCHING_REVEAL_ITEMS', 'TABLE_REVEAL_HTML', 'WORD_BANK_HTML', 'SHARE_QUESTIONS_HTML', 'WORKSHEET_PREVIEW_HTML'}
@@ -1196,11 +1278,111 @@ def render_slide(slide_data: dict) -> str:
     return html
 
 
+def build_activity_catalog(plan: dict) -> dict:
+    activities = plan.get('activities', [])
+    if not activities:
+        return {}
+    if not isinstance(activities, list):
+        raise ValueError('activities는 배열이어야 합니다.')
+
+    catalog = {}
+    for index, activity in enumerate(activities):
+        if not isinstance(activity, dict):
+            raise ValueError(f'activities[{index}]는 객체여야 합니다.')
+        activity_id = str(activity.get('id', '')).strip()
+        if not activity_id:
+            raise ValueError(f'activities[{index}].id가 누락되었습니다.')
+        if activity_id in catalog:
+            raise ValueError(f'중복된 activity id입니다: {activity_id}')
+        if not isinstance(activity.get('worksheet_block'), dict):
+            raise ValueError(f'activities[{index}].worksheet_block이 누락되었습니다.')
+        catalog[activity_id] = (index, activity)
+    return catalog
+
+
+def resolve_activity_pages(plan: dict, pages: list) -> list:
+    """활동 참조를 수업 슬라이드·활동지·정답지의 동일한 원본 블록으로 해석합니다."""
+    catalog = build_activity_catalog(plan)
+    if not catalog:
+        return deepcopy(pages)
+
+    slide_counts = {}
+    worksheet_refs = set()
+    answer_key_refs = set()
+    has_answer_key_refs = False
+    resolved_pages = []
+
+    def resolve_block(activity_id):
+        if activity_id not in catalog:
+            raise ValueError(f'존재하지 않는 ACTIVITY_REF입니다: {activity_id}')
+        activity_index, activity = catalog[activity_id]
+        block = deepcopy(activity['worksheet_block'])
+        block['_original_path'] = f'$root.activities[{activity_index}].worksheet_block'
+        block['_activity_id'] = activity_id
+        return activity, block
+
+    for page_index, raw_page in enumerate(pages):
+        if not isinstance(raw_page, dict):
+            raise ValueError(f'pages[{page_index}]는 객체여야 합니다.')
+        page = deepcopy(raw_page)
+        page_type = page.get('page_type', 'slide')
+        layout = page.get('layout', page.get('type', 'title'))
+
+        if page_type == 'slide' and layout == 'activity':
+            activity_id = page.get('ACTIVITY_REF')
+            if activity_id:
+                activity, block = resolve_block(activity_id)
+                page['WORKSHEET_BLOCK'] = block
+                page['ACTIVITY_ID'] = activity_id
+                page['TITLE'] = page.get('TITLE') or activity.get('title') or block.get('title') or '활동'
+                notes = activity.get('teacher_prompt', '')
+                if isinstance(notes, list):
+                    notes = '\n'.join(str(note) for note in notes)
+                page['SPEAKER_NOTES'] = page.get('SPEAKER_NOTES') or notes
+                page['WORKSHEET_REF'] = page.get('WORKSHEET_REF') or activity.get('worksheet_ref', '')
+                page['TIMER_MINUTES'] = page.get('TIMER_MINUTES') or format_minutes(activity.get('work_time_minutes', ''))
+                slide_counts[activity_id] = slide_counts.get(activity_id, 0) + 1
+            elif not isinstance(page.get('WORKSHEET_BLOCK'), dict):
+                raise ValueError(f'pages[{page_index}] activity에 ACTIVITY_REF가 누락되었습니다.')
+
+        if page_type in {'worksheet', 'answer_key'} and 'ACTIVITY_REFS' in page:
+            refs = page.get('ACTIVITY_REFS')
+            if not isinstance(refs, list) or not refs:
+                raise ValueError(f'pages[{page_index}].ACTIVITY_REFS는 비어 있지 않은 배열이어야 합니다.')
+            if page.get('blocks') or page.get('BLOCKS'):
+                raise ValueError(f'pages[{page_index}]는 ACTIVITY_REFS와 blocks를 함께 사용할 수 없습니다.')
+            page['blocks'] = []
+            if page_type == 'answer_key':
+                has_answer_key_refs = True
+            for activity_id in refs:
+                _, block = resolve_block(activity_id)
+                page['blocks'].append(block)
+                if page_type == 'worksheet':
+                    worksheet_refs.add(activity_id)
+                else:
+                    answer_key_refs.add(activity_id)
+
+        resolved_pages.append(page)
+
+    for activity_id in worksheet_refs:
+        _, activity = catalog[activity_id]
+        block_type = activity['worksheet_block'].get('block_type')
+        if block_type in ACTIVITY_LAYOUT_BY_BLOCK and slide_counts.get(activity_id, 0) != 1:
+            raise ValueError(
+                f'활동지 문항 {activity_id}에는 activity 수업 슬라이드가 정확히 1장 필요합니다. '
+                f'현재 {slide_counts.get(activity_id, 0)}장입니다.'
+            )
+        if has_answer_key_refs and block_type in ACTIVITY_LAYOUT_BY_BLOCK and activity_id not in answer_key_refs:
+            raise ValueError(f'교사용 정답지에 활동 {activity_id}가 누락되었습니다.')
+
+    return resolved_pages
+
+
 def normalize_pages(plan: dict) -> list:
     if isinstance(plan.get('pages'), list) and plan['pages']:
-        return plan['pages']
+        return resolve_activity_pages(plan, plan['pages'])
     pages = [
-        {**slide, 'page_type': 'slide', 'size': '16:9', 'layout': slide.get('layout', slide.get('type', 'title'))}
+        {**deepcopy(slide), 'page_type': 'slide', 'size': '16:9', 'layout': slide.get('layout', slide.get('type', 'title'))}
         for slide in plan.get('slides', [])
     ]
     packages = plan.get('activity_packages', [])
@@ -1233,83 +1415,38 @@ def normalize_pages(plan: dict) -> list:
                     'SPEAKER_NOTES': '주의: 이 영상은 외부 YouTube 링크입니다. 수업 전에 재생 가능 여부를 확인하세요.\n\n원본 링크: ' + media.get('url', '')
                 })
                 
-        # 2. 학생 활동 안내
-        block = package.get('worksheet_block', {})
+        block = deepcopy(package.get('worksheet_block', {}))
         if isinstance(block, dict) and block:
             block['_original_path'] = f'$root.activity_packages[{index}].worksheet_block'
+            block['_activity_id'] = package.get('id', f'activity_{index + 1}')
             worksheet_blocks.append(block)
 
-        pages.append({
-            'page_type': 'slide',
-            'layout': 'activity_instruction',
-            'TITLE': title,
-            'WORKSHEET_REF': f'학습지 {index + 1}번',
-            'INSTRUCTION': package.get('student_task', f'{title}을(를) 풀어 봅시다.'),
-            'TIMER_MINUTES': format_minutes(work_time),
-            'THINK_QUESTION': package.get('think_question', '')
-        })
-
-        block_type = block.get('block_type')
-        if isinstance(block, dict) and block:
+        if package.get('show_instruction'):
             pages.append({
                 'page_type': 'slide',
-                'layout': 'activity_prompt',
-                'TITLE': f'{title} 문항 보기',
+                'layout': 'activity_instruction',
+                'TITLE': title,
+                'WORKSHEET_REF': f'학습지 {index + 1}번',
+                'INSTRUCTION': package.get('student_task', f'{title}을(를) 풀어 봅시다.'),
+                'TIMER_MINUTES': format_minutes(work_time),
+                'THINK_QUESTION': package.get('think_question', '')
+            })
+
+        block_type = block.get('block_type') if isinstance(block, dict) else None
+        if block_type in ACTIVITY_LAYOUT_BY_BLOCK:
+            notes = package.get('teacher_prompt', [])
+            if isinstance(notes, list):
+                notes = '\n'.join(str(note) for note in notes)
+            pages.append({
+                'page_type': 'slide',
+                'layout': 'activity',
+                'TITLE': title,
+                'ACTIVITY_ID': block['_activity_id'],
                 'WORKSHEET_BLOCK': block,
-                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
+                'SPEAKER_NOTES': notes,
             })
-
-        if block_type == 'ox_check':
-            pages.append({
-                'page_type': 'slide',
-                'layout': 'ox_reveal',
-                'TITLE': f'{title} 정답 확인',
-                'ITEMS': block.get('items', []),
-                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
-            })
-        elif block_type == 'cloze_word_bank':
-            pages.append({
-                'page_type': 'slide',
-                'layout': 'cloze_reveal',
-                'TITLE': f'{title} 정답 확인',
-                'WORD_BANK': block.get('word_bank', []),
-                'ITEMS': block.get('sentences', []),
-                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
-            })
-        elif block_type == 'matching_lines':
-            pages.append({
-                'page_type': 'slide',
-                'layout': 'matching_reveal',
-                'TITLE': f'{title} 정답 확인',
-                'PAIRS': block.get('pairs', []),
-                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
-            })
-        elif block_type == 'table_fill':
-            pages.append({
-                'page_type': 'slide',
-                'layout': 'table_answer_reveal',
-                'TITLE': f'{title} 정답 확인',
-                'HEADERS': block.get('headers', []),
-                'ROWS': block.get('rows', []),
-                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
-            })
-        elif block_type == 'reflection_checklist':
-            pages.append({
-                'page_type': 'slide',
-                'layout': 'share_prompt',
-                'TITLE': f'{title} 공유',
-                'PROMPT': block.get('follow_up_prompt', '오늘 배운 내용을 한 문장으로 공유해 봅시다.'),
-                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
-            })
-        elif block_type == 'short_answer':
-            pages.append({
-                'page_type': 'slide',
-                'layout': 'sample_answer_reveal',
-                'TITLE': f'{title} 예시 답안',
-                'PROMPT': block.get('instruction', ''),
-                'SAMPLE_ANSWER': block.get('sample_answer', ''),
-                'SPEAKER_NOTES': '\n'.join(package.get('teacher_prompt', []))
-            })
+        elif block_type and block_type != 'reflection_checklist':
+            raise ValueError(f'activity_packages에서 지원하지 않는 block_type입니다: {block_type}')
 
     if worksheet_blocks:
         lesson_title = plan.get('meta', {}).get('title', '학습지')

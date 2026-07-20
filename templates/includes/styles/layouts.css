@@ -848,7 +848,7 @@
         }
 
         .hands-on-body {
-            --autofit-min: 16;
+            --autofit-min: 18;
             --autofit-max: 40;
             justify-content: center;
             padding: 0.95em 1em;
@@ -1398,6 +1398,122 @@
             justify-content: stretch;
         }
 
+        /* Video layouts reserve the prompt before sizing the 16:9 media area. */
+        .video-layout {
+            --autofit-min: 18;
+            --autofit-max: 40;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .video-layout-body {
+            display: grid;
+            grid-template-rows: minmax(0, 1fr) auto auto;
+            gap: 0.75em;
+            min-height: 0;
+            justify-items: center;
+        }
+
+        .video-frame,
+        .video-link-card {
+            width: min(100%, 960px);
+            max-height: 100%;
+            min-height: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #111827;
+            box-shadow: var(--shadow-md);
+        }
+
+        .video-frame {
+            align-self: center;
+            aspect-ratio: 16 / 9;
+            position: relative;
+        }
+
+        .video-frame iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        .video-link-card {
+            align-self: center;
+            background: var(--color-card-bg);
+            position: relative;
+            aspect-ratio: 16 / 9;
+        }
+
+        .video-thumbnail-link {
+            display: grid;
+            place-items: center;
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            color: white;
+            text-decoration: none;
+        }
+
+        .video-thumbnail-link img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.82;
+        }
+
+        .video-play-mark {
+            position: absolute;
+            display: grid;
+            place-items: center;
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: #ff0033;
+            font-size: 30px;
+            padding-left: 4px;
+        }
+
+        .video-open-link {
+            position: absolute !important;
+            right: 20px;
+            bottom: 16px;
+            z-index: 2;
+            width: fit-content;
+            margin: 0;
+            padding: 12px 22px;
+            border-radius: 6px;
+            background: var(--color-accent);
+            color: white;
+            font-size: 24px;
+            line-height: 1.2;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .video-purpose,
+        .video-student-task {
+            width: min(100%, 1040px);
+            margin: 0;
+            text-align: center;
+        }
+
+        .video-purpose {
+            color: var(--color-accent);
+            font-size: 1.08em;
+            font-weight: 850;
+            line-height: 1.25;
+        }
+
+        .video-student-task {
+            color: var(--color-text);
+            font-size: 0.82em;
+            line-height: 1.3;
+        }
+
         /* ===== ?섏뾽 ?쒕룞 ?곕룞 MVP ===== */
         .activity-instruction-layout,
         .ox-reveal-layout {
@@ -1531,17 +1647,23 @@
         }
 
         .ox-reveal-row {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            align-content: flex-start;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) clamp(116px, 16%, 168px);
+            align-items: stretch;
             height: fit-content;
             flex: 0 0 auto;
-            gap: max(0.2em, 0.5em);
+            gap: max(0.2em, 0.7em);
             padding: max(0.2em, 0.45em) 0.65em;
             border-radius: 14px;
             background: var(--color-card-bg);
             border: 1px solid var(--color-card-border);
+        }
+
+        .ox-reveal-copy {
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr);
+            align-content: center;
+            min-width: 0;
         }
 
         .ox-reveal-statement {
@@ -1565,15 +1687,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 58px;
-            height: 58px;
-            justify-self: end;
-            border-radius: 999px;
+            align-self: stretch;
+            border-radius: 12px;
             background: var(--color-gradient);
             color: white;
-            font-size: 30px;
+            font-size: clamp(56px, 5vw, 86px);
+            line-height: 1;
             font-weight: 950;
-            flex: 0 0 58px;
         }
 
         .autofit-compact .activity-instruction-body {
@@ -1603,13 +1723,68 @@
             margin-top: 2px;
         }
 
+        .autofit-compact .hands-on-body {
+            justify-content: flex-start;
+            padding: 0.55em 0.7em;
+        }
+
+        .autofit-compact .hands-on-meta {
+            flex: 0 0 auto;
+            gap: 0.2em;
+            margin-top: 0.35em;
+        }
+
+        .autofit-compact .hands-on-steps {
+            flex: 1 1 auto;
+            gap: 6px !important;
+            overflow: hidden !important;
+        }
+
+        .autofit-compact .hands-on-meta .tutorial-tip {
+            margin-top: 0;
+            padding: 0.35em 0.55em;
+            line-height: 1.25;
+        }
+
+        .autofit-compact .duration-badge {
+            padding: 8px 12px;
+        }
+
+        .autofit-compact .share-prompt-body {
+            gap: 0.7em;
+        }
+
+        .autofit-compact .share-prompt-card {
+            padding: 0.75em;
+        }
+
+        .autofit-compact .share-questions {
+            gap: 0.55em;
+        }
+
+        .autofit-compact .share-question {
+            padding: 0.65em;
+        }
+
+        .autofit-compact .cloze-reveal-list {
+            gap: 0.45em;
+            padding-bottom: 40px;
+            box-sizing: border-box;
+        }
+
         .ox-reveal-explanation {
-            flex-basis: 100%;
             margin-top: 0.3em;
             color: var(--color-text-secondary);
             font-size: 0.58em;
             line-height: 1.35;
-            padding-left: 2.2em;
+        }
+
+        .ox-reveal-grid .ox-reveal-row {
+            grid-template-columns: minmax(0, 1fr) 72px;
+        }
+
+        .ox-reveal-grid .ox-reveal-answer {
+            font-size: 44px;
         }
 
         .reveal .slides section.worksheet-section {
@@ -1876,6 +2051,7 @@
 }
 .sample-answer-prompt {
     font-size: 1.2em;
+    line-height: 1.25;
     font-weight: 700;
 }
 .sample-answer-box {
@@ -1890,6 +2066,7 @@
 }
 .sample-answer-label {
     font-size: 0.8em;
+    line-height: 1.2;
     color: var(--color-accent);
     font-weight: bold;
     margin-bottom: 0.5em;
@@ -2255,6 +2432,16 @@
     z-index: 9999;
     pointer-events: none;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.fullbleed-click-reveal {
+    cursor: pointer;
+    transition: opacity 0.45s ease;
+}
+
+.fullbleed-click-reveal.is-revealed {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .match-left, .match-right {

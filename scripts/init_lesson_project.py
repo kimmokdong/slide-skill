@@ -152,10 +152,20 @@ def build_plan(answers):
                     "teacher_action": "학습지 풀이 후 화면으로 정답을 확인한다.",
                     "student_action": "OX 문제를 풀고 정답 확인에 참여한다.",
                     "worksheet_block_type": "ox_check",
-                    "slide_review_layout": "ox_reveal",
+                    "slide_review_layout": "activity",
                 },
             ],
         },
+        "activities": [
+            {
+                "id": "activity_1",
+                "title": f"활동 1. {activity_title}",
+                "worksheet_ref": "학습지 1번",
+                "work_time_minutes": work_time,
+                "teacher_prompt": ["학생이 먼저 문항을 풀게 한 뒤, 같은 화면에서 정답을 공개합니다."],
+                "worksheet_block": worksheet_block,
+            }
+        ],
         "pages": [
             {
                 "page_type": "slide",
@@ -179,27 +189,8 @@ def build_plan(answers):
             {
                 "page_type": "slide",
                 "size": "16:9",
-                "layout": "activity_instruction",
-                "TITLE": f"활동 1. {activity_title}",
-                "WORKSHEET_REF": "학습지 1번",
-                "INSTRUCTION": "OX 문제를 풀어 봅시다.",
-                "TIMER_MINUTES": work_time,
-                "THINK_QUESTION": big_question,
-            },
-            {
-                "page_type": "slide",
-                "size": "16:9",
-                "layout": "activity_prompt",
-                "TITLE": f"활동 1. {activity_title} 문항 보기",
-                "WORKSHEET_BLOCK": worksheet_block,
-                "SPEAKER_NOTES": "학생이 먼저 문항을 읽고 답을 생각할 시간을 줍니다.",
-            },
-            {
-                "page_type": "slide",
-                "size": "16:9",
-                "layout": "ox_reveal",
-                "TITLE": "활동 1 정답 확인",
-                "ITEMS": ox_items,
+                "layout": "activity",
+                "ACTIVITY_REF": "activity_1",
             },
             {
                 "page_type": "slide",
@@ -213,21 +204,13 @@ def build_plan(answers):
                 "page_type": "worksheet",
                 "size": "A4",
                 "title": title,
-                "blocks": [
-                    {
-                        "block_type": "short_answer",
-                        "title": "생각 열기",
-                        "prompt": big_question,
-                        "answer_lines": 2,
-                    },
-                    worksheet_block,
-                ],
+                "ACTIVITY_REFS": ["activity_1"],
             },
             {
                 "page_type": "answer_key",
                 "size": "A4",
                 "title": f"{title} 정답지",
-                "blocks": [worksheet_block],
+                "ACTIVITY_REFS": ["activity_1"],
             },
         ],
     }

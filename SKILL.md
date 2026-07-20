@@ -3,7 +3,7 @@ name: slide
 description: 사용자의 거친 아이디어나 시나리오 텍스트를 기승전결 있는 풍부한 프레젠테이션(HTML/PPTX)으로 자동 생성하는 스킬입니다. slide_plan.json 기반의 중간 설계도(SSOT) 아키텍처, 리서치 검증, 네이티브 PPTX 변환을 지원합니다.
 ---
 
-# Text-to-Slide-Architect Skill
+# Slide Skill
 
 이 스킬은 사용자가 텍스트를 던져주면, 에이전트가 알아서 기승전결 구조화, 웹 리서치 검증, 이미지/도식 생성 후 **중간 설계도(slide_plan.json)**를 작성하고, 이를 바탕으로 완벽한 **HTML 프리뷰와 편집 가능한 네이티브 PPTX**를 만들어내는 종합 프레젠테이션 컴파일러 워크플로우입니다.
 
@@ -13,7 +13,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 에이전트는 **HTML을 직접 하드코딩하지 않습니다.** 모든 슬라이드의 내용은 반드시 `slide_plan.json`에 작성하며, 파이썬 스크립트가 이를 읽어 HTML과 PPTX를 생성합니다.
 
-> ⚠️ **중요 규칙**: 출력물 폴더(`{YYMMDD}_{영문프로젝트명}`)는 절대 스킬 폴더(`text-to-slide-architect`) 안에 생성하지 마세요. 사용자가 현재 작업 중인 루트 폴더(예: 슬라이드 제작 전용 폴더)에 바로 생성해야 합니다. 스킬의 스크립트를 실행할 때는 스킬 폴더의 절대 경로를 참조하세요.
+> ⚠️ **중요 규칙**: 출력물 폴더(`{YYMMDD}_{영문프로젝트명}`)는 절대 스킬 폴더(`slide`) 안에 생성하지 마세요. 사용자가 현재 작업 중인 루트 폴더(예: 슬라이드 제작 전용 폴더)에 바로 생성해야 합니다. 스킬의 스크립트를 실행할 때는 스킬 폴더의 절대 경로를 참조하세요.
 
 ```
 {사용자의 작업 루트}/ (예: 바탕화면/슬라이드제작/)
@@ -37,7 +37,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 ```
 [모듈 0] 사전 컨텍스트 (Intake) → [모듈 1] 레퍼런스 파싱 및 리서치 보강
-→ [모듈 2] 모드 분기 및 서사 구조화 → [모듈 2.5] 수업 활동 설계(content_blueprint/activity_packages)
+→ [모듈 2] 모드 분기 및 서사 구조화 → [모듈 2.5] 수업 활동 설계(content_blueprint/activities)
 → [모듈 3] Deck Planner (slide_plan.json 작성)
 → [모듈 4] 도식/이미지 에셋 생성 → [모듈 5] HTML 렌더링 및 검수 → [모듈 6] 최종 파일(PPTX) 추출
 ```
@@ -48,7 +48,7 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 **[최우선 필수 작업]** 사용자가 제공한 원본 대본이나 시나리오 메모 텍스트는 유실되지 않도록 반드시 프로젝트 폴더 내에 `raw_script.md` 파일로 가장 먼저 저장해 두어야 합니다.
 
-**[핵심 워크플로우 규칙]** 사용자가 `/text-to-slide-architect` 스킬을 호출하면, 에이전트는 기획안(implementation_plan) 작성 전 **무조건 `ask_question` 도구를 호출하여 사용자에게 모달창(UI)을 띄워 필수 정보를 물어보아야 합니다.** 
+**[핵심 워크플로우 규칙]** 사용자가 `/slide` 스킬을 호출하면, 에이전트는 기획안(implementation_plan) 작성 전 **무조건 `ask_question` 도구를 호출하여 사용자에게 모달창(UI)을 띄워 필수 정보를 물어보아야 합니다.**
 이 모달창 질의응답 과정이 이 스킬 파이프라인의 **가장 핵심적인 단계**입니다. 사용자가 명시하지 않은 정보를 에이전트가 임의로 가정하여 넘기지 말고, 반드시 모달창을 통해 선택지를 제공하세요.
 
 **Codex 호환 규칙**: `ask_question` 도구가 없는 Codex 환경에서는 `request_user_input`이 있으면 그것을 사용하고, 둘 다 없으면 일반 채팅으로 아래 필수 항목을 질문한 뒤 답변 전까지 생성하지 않습니다. 사용자가 명시적으로 "기본값으로 진행"이라고 말한 경우에만 기본값을 적용합니다.
@@ -62,10 +62,10 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 4. `theme_preference` (테마 선택): AI 동적 맞춤 테마 / 귀여운 바인더 노트(cute_note) / 공공·기술(tech_blue) / 따뜻한 교육(warm_edu)
 5. **학습지 활동 추가 여부 (다중 선택 가능)**: 
    - [ ] ❌ 학습지 제외 (슬라이드만 생성)
-   - [ ] 빈칸 채우기 (`cloze_word_bank` / `cloze_reveal`)
-   - [ ] 선 잇기 (`matching_lines` / `matching_reveal`)
-   - [ ] 표 채우기 (`table_fill` / `table_answer_reveal`)
-   - [ ] 짧은 답 쓰기 (`short_answer` / `sample_answer_reveal`)
+   - [ ] 빈칸 채우기 (`cloze_word_bank`)
+   - [ ] 선 잇기 (`matching_lines`)
+   - [ ] 표 채우기 (`table_fill`)
+   - [ ] 짧은 답 쓰기 (`short_answer`)
 6. **외부 영상 사용 여부 (단일 선택)**:
    - ( ) 사용 안 함
    - ( ) 유튜브 링크 직접 입력 (입력 시 URL 문자열 받기)
@@ -96,11 +96,11 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 모달창을 통해 사용자의 선택을 모두 응답받은 직후에만 다음 모듈로 넘어가며, 수집된 응답은 `slide_context.yaml`에 저장됩니다.
 
-> ⚠️ **중요 (활동과 슬라이드의 1:1 페어링)**: 사용자가 학습지 활동을 선택했다면, 에이전트는 마지막 `worksheet` 페이지에 해당 블록들을 넣는 것에 그쳐서는 안 됩니다. 반드시 **발표 슬라이드 흐름 중간중간 적절한 타이밍에 해당 활동의 정답을 아이들과 확인하는 전용 Reveal 슬라이드(예: `cloze_reveal`, `matching_reveal`)를 한 세트로 묶어서 자연스럽게 배치**해야 합니다.
+> ⚠️ **중요 (활동과 슬라이드의 1:1 페어링)**: 학생용 학습지 문항마다 발표 흐름에 `layout: "activity"` 슬라이드를 정확히 한 장 배치합니다. 이 한 장이 처음에는 문항을 보여 주고, 클릭하면 같은 화면에서 정답을 공개합니다.
 
-**학습지 활동 3단 세트 강제**: 학습지 활동은 발표 흐름에 `활동 안내 슬라이드 → 학생용 문항 표시 슬라이드(activity_prompt) → 정답/예시 Reveal 슬라이드`를 한 세트로 배치합니다. `pages`를 쓰는 현재 표준 형식에서는 세 페이지를 명시적으로 작성합니다. `activity_packages` 자동 확장은 `slides`만 쓰는 레거시 형식에서만 사용합니다. 학생용 문항이 `worksheet` 페이지에만 있고 발표 슬라이드에 없으면 실패로 간주합니다.
+**단일 활동 슬라이드 원칙**: `activity_prompt`와 유형별 `*_reveal`을 별도 페이지로 작성하지 않습니다. 활동 데이터는 최상위 `activities[].worksheet_block`에 한 번만 정의하고, 발표 슬라이드는 `ACTIVITY_REF`, 활동지와 정답지는 `ACTIVITY_REFS`로 참조합니다. 별도의 활동 안내가 꼭 필요한 수업만 `activity_instruction`을 추가합니다. `reflection_checklist`는 정답이 없으므로 기본적으로 수업 슬라이드와 정답지에 넣지 않습니다.
 
-**빈칸 채우기 상호작용**: `cloze_reveal`은 보기 단어를 클릭하면 같은 `data-word`의 빈칸으로 이동시키는 수업용 확인 화면이다. 입력은 `WORD_BANK` 배열과 `ITEMS`의 `{ "text": "문장 [정답]", "answer": "정답" }` 형식을 함께 사용한다. OX 형식 데이터나 보기 없는 빈칸 화면은 빌드 검증에서 실패시킨다.
+**빈칸 채우기 상호작용**: `cloze_word_bank` 활동은 보기 단어를 클릭하면 같은 `data-word`의 빈칸으로 이동시키는 수업용 확인 화면으로 렌더링됩니다. `word_bank` 배열과 `sentences`의 `{ "text": "문장 [정답]", "answer": "정답" }` 형식을 함께 사용합니다. OX 형식 데이터나 보기 없는 빈칸 화면은 빌드 검증에서 실패시킵니다.
 
 **교사용 정답지 완전성**: `answer_key` 페이지가 있으면 학생용 학습지의 `ox_check`, `cloze_word_bank`, `matching_lines`, `table_fill`, `short_answer` 문항 유형별 수를 모두 포함해야 한다. `reflection_checklist`는 정답지가 필요 없다.
 
@@ -116,7 +116,7 @@ slide_plan.json
 반복 가능한 초기화를 위해 로컬 스킬의 helper를 사용할 수 있습니다.
 
 ```bash
-python ".agents/skills/text-to-slide-architect/scripts/init_lesson_project.py" --answers answers.json
+ python ".agents/skills/slide/scripts/init_lesson_project.py" --answers answers.json
 ```
 
 `--answers`를 생략하면 터미널에서 질문을 순서대로 묻습니다. Codex의 질문 UI를 사용할 수 있는 환경에서는 먼저 사용자에게 질문하고, 답변을 `answers.json` 또는 동등한 내부 데이터로 정리한 뒤 위 helper와 같은 구조의 파일을 생성합니다.
@@ -207,12 +207,31 @@ python ".agents/skills/text-to-slide-architect/scripts/init_lesson_project.py" -
 학생용 활동지가 필요한 수업형 자료는 `slides`만 바로 만들지 말고 아래 흐름을 따릅니다.
 
 ```txt
-user_input → content_blueprint → activity_packages → pages(slide + worksheet + answer_key)
+user_input → content_blueprint → activities(SSOT) → pages(refs) → slide + worksheet + answer_key
 ```
 
-`content_blueprint`는 수업 전체의 목표, 큰 질문, 단계별 교사/학생 행동, 학습지 역할을 담는 공통 설계도입니다. `activity_packages`는 활동 하나를 `worksheet_block`, `activity_instruction` 슬라이드, `ox_reveal` 같은 확인 슬라이드, `answer_key`, `teacher_prompt`로 묶는 실제 수업 단위입니다.
+`content_blueprint`는 수업 전체의 목표, 큰 질문, 단계별 교사/학생 행동, 학습지 역할을 담는 공통 설계도입니다. `activities`는 문항·정답·교사 발문을 한 번만 보관하는 실제 수업 단위입니다.
 
-학습지가 있는 자료는 `slide_plan.json`에 기존 `slides` 대신 `pages`를 우선 사용합니다. `pages`가 있으면 그것이 렌더링·에디터 저장의 SSOT이므로 `activity_packages`에 같은 활동 데이터를 중복 기록하지 않습니다. 렌더러는 기존 `slides`도 계속 지원합니다.
+학습지가 있는 자료는 `slide_plan.json`에 기존 `slides` 대신 `pages`를 사용합니다. 문항 데이터의 SSOT은 `activities`이며 `pages`에는 참조만 둡니다. 렌더러는 기존 `slides`와 `activity_packages`도 호환 입력으로 계속 지원합니다.
+
+```json
+{
+  "activities": [{
+    "id": "activity_1",
+    "title": "활동 1. 선 잇기",
+    "worksheet_block": {
+      "block_type": "matching_lines",
+      "title": "알맞은 것끼리 연결하기",
+      "pairs": [{"left": "재규어", "right": "아마존 열대우림"}]
+    }
+  }],
+  "pages": [
+    {"page_type": "slide", "layout": "activity", "ACTIVITY_REF": "activity_1"},
+    {"page_type": "worksheet", "ACTIVITY_REFS": ["activity_1"]},
+    {"page_type": "answer_key", "ACTIVITY_REFS": ["activity_1"]}
+  ]
+}
+```
 
 지원 `page_type`:
 - `slide`: 기존 16:9 발표 슬라이드
@@ -304,24 +323,20 @@ user_input → content_blueprint → activity_packages → pages(slide + workshe
 ```
 
 ### 외부 미디어(YouTube) 연결 규칙
-사용자가 유튜브 링크를 입력한 경우, `activity_package` (또는 개별 슬라이드 전 단계) 안에 `media` 객체를 추가해야 합니다.
+표준 `pages` 구조에서는 영상 자체를 독립 `slide`로 작성합니다. 영상은 활동 안내나 학생용 문항 화면 안에 넣지 않으며, 활동과 연결되는 경우에도 영상 슬라이드 다음에 `activity` 슬라이드를 배치합니다.
 ```json
 {
-  "media": {
-    "enabled": true,
-    "type": "youtube_video",
-    "url": "https://youtu.be/VIDEO_ID",
-    "title": "영상 제목",
-    "purpose": "수업 도입에서 문제 상황 제시",
-    "placement": "hook", // hook, activity_intro, activity_review, summary 중 택 1
-    "display_mode": "link_card", // 또는 "embed"
-    "teacher_check_required": true,
-    "student_task": "영상을 보고 의심되는 정보 표현을 찾아 학습지에 적는다."
-  }
+  "page_type": "slide",
+  "layout": "video_hook",
+  "TITLE": "영상 제목",
+  "EMBED_URL": "https://www.youtube.com/embed/VIDEO_ID",
+  "PURPOSE": "수업 도입에서 문제 상황을 찾아봅시다.",
+  "STUDENT_TASK": "영상을 보고 의심되는 정보 표현을 한 가지 적습니다."
 }
 ```
-- `media`가 있는 패키지는 해당 영상을 기반으로 한 학생 활동(학습지 블록) 및 교사용 발문(`teacher_prompt`)을 반드시 함께 설계해야 합니다.
-- `build_html.py` 렌더러가 `media` 객체를 읽어 `video_hook`, `video_activity_prompt` 등의 슬라이드와 PPTX용 링크 카드를 자동 생성합니다.
+- 교실에서 바로 재생할 영상은 `video_hook`, 외부 창에서 여는 영상은 `video_link_card`를 사용합니다.
+- `activity_instruction`은 시간·준비물처럼 별도 안내가 꼭 있을 때만 추가합니다. 단순히 영상을 보여 준다는 이유로 추가하지 않습니다.
+- 레거시 `activity_packages[].media` 입력은 호환을 위해 계속 지원하며 `video_hook` 또는 `video_link_card`로 변환됩니다.
 
 ---
 
@@ -549,7 +564,7 @@ user_input → content_blueprint → activity_packages → pages(slide + workshe
 - `BOTTOM_TAKEAWAY`: 슬라이드 하단에 그라데이션 띠로 표시되는 핵심 요약 한 줄
 - `SECTION_HEADER`: 슬라이드 좌상단에 작게 표시되는 현재 섹션명 (네비게이션 용)
 
-*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `image_comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`, `activity_instruction`, `activity_prompt`, `ox_reveal`
+*지원 레이아웃*: `hero`, `title`, `split`, `text_image`, `bullet`, `comparison`, `image_comparison`, `timeline`, `quiz`, `quote`, `diagram`, `stats`, `summary`, `closing`, `tutorial`, `hands_on`, `fullbleed`, `matrix`, `vs_ox`, `roadmap`, `activity`, `activity_instruction`, `video_hook`, `video_link_card`
 
 ### 📚 레이아웃별 필수/선택 변수명 사전 (Schema Dictionary)
 AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에서 정확히 인식할 수 있도록, **반드시 아래 표에 명시된 변수명(대문자)만을 사용**해야 합니다. (임의의 변수명 지어내기 엄금)
@@ -564,9 +579,7 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `STAT_ITEMS` | `value`, `label`, `percentage` | `number`, `text` |
 | `QUIZ_OPTIONS` | `text` + `ANSWER_INDEX` | `correct`만 의존 |
 | `O_ITEMS`, `X_ITEMS` | 문자열 또는 `{ "text": "..." }` | `{ "body": "..." }` |
-| `ox_reveal` | `ITEMS` (`statement`, `answer`, `explanation`) | `OX_REVEAL_ITEMS` |
-| `matching_reveal` | `PAIRS` (`left`, `right`) | `MATCHING_REVEAL_ITEMS` |
-| `table_answer_reveal` | `HEADERS`, `ROWS` | `TABLE_REVEAL_HTML` |
+| `activity` | `ACTIVITY_REF` | `WORKSHEET_BLOCK`, `ITEMS`, `PAIRS`, `HEADERS`, `ROWS` 직접 중복 |
 
 | 레이아웃 타입 | 용도 및 설명 | 필수 변수 | 선택(옵션) 변수 |
 |---|---|---|---|
@@ -590,9 +603,10 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `matrix` | 2x2 아이콘 매트릭스 | `TITLE`, `MATRIX_ITEMS` (icon, label, desc) | `SPEAKER_NOTES` |
 | `vs_ox` | 2단 행동/가치 대비 가이드 | `TITLE`, `O_TITLE`, `O_ITEMS` (marker, text), `X_TITLE`, `X_ITEMS` | `O_MARKER`, `X_MARKER`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `roadmap` | 3~5단계 가로 로드맵 카드 | `TITLE`, `ROADMAP_ITEMS` (label, desc) | `SUBTITLE`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
+| `activity` | 활동지 문항 표시 후 같은 화면에서 정답 공개 | `ACTIVITY_REF` | `TITLE`, `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `activity_instruction` | 학습지 활동 안내 | `TITLE`, `INSTRUCTION` | `WORKSHEET_REF`, `TIMER_MINUTES`, `THINK_QUESTION`, `SPEAKER_NOTES` |
-| `activity_prompt` | 학생용 학습지 문항을 발표 슬라이드에 표시 | `TITLE`, `WORKSHEET_BLOCK` (`block_type` 포함) | `SPEAKER_NOTES` |
-| `ox_reveal` | OX 정답 순차 공개 | `TITLE`, `ITEMS` (`statement`, `answer`, `explanation`) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
+| `video_hook` | 슬라이드 안에서 바로 재생하는 영상 | `TITLE`, `EMBED_URL` | `PURPOSE`, `STUDENT_TASK`, `SPEAKER_NOTES` |
+| `video_link_card` | YouTube 새 창으로 여는 영상 카드 | `TITLE`, `WATCH_URL` | `THUMBNAIL_URL`, `PURPOSE`, `STUDENT_TASK`, `SPEAKER_NOTES` |
 
 *(참고: 모든 레이아웃 공통으로 `SECTION_HEADER`와 `BOTTOM_TAKEAWAY`는 원할 경우 선택 변수로 추가 가능합니다.)*
 
@@ -630,8 +644,9 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
    ```
 3. 에러가 발생하면 JSON 문법을 고치고 다시 실행합니다.
 4. 생성된 `output/index.html`을 검토한 후, 사용자에게 실시간 로컬 싱크 프리뷰 링크(`http://localhost:8000`)를 최종 안내합니다.
-    - `capture_png.py`는 `captured_images/qa-report.json`을 생성하며 overflow, off-slide, 18px 미만 화면 텍스트, 학습지 잘림 같은 DOM 오류가 있으면 실패합니다.
-   - `file://.../output/index.html`은 보기 전용으로만 사용하고, 저장/순서 변경이 필요한 검수에는 로컬 서버 URL을 사용합니다.
+    - `capture_png.py`는 `captured_images/qa-report.json`을 생성하며 화면에 보이는 모든 텍스트를 검사합니다. 편집 필드가 아닌 고정 라벨도 포함하며, `overflow:hidden`인 상위 박스에 의한 잘림, off-slide, 루트 overflow, 18px 미만 화면 텍스트, 학습지 잘림이 있으면 실패합니다.
+    - 스킬 구조를 수정한 뒤에는 `python "{스킬폴더}/scripts/test_layout_regression.py" "{임시출력폴더}"`로 고정 테마 7종과 동적 폰트 5종의 전체 레이아웃 회귀를 실행합니다. 특정 변형만 재현할 때는 `--variant cute_note`처럼 지정합니다.
+    - `file://.../output/index.html`은 보기 전용으로만 사용하고, 저장/순서 변경이 필요한 검수에는 로컬 서버 URL을 사용합니다.
    - 8000번 포트가 이미 사용 중이면 기존 서버의 프로젝트 CWD를 확인하거나 다른 포트를 사용합니다.
 
 ---

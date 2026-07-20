@@ -35,28 +35,46 @@
             return true;
         }
 
-        function elementOverflows(el, boundaryRect) {
+        function scrollBoxOverflows(el, style = getComputedStyle(el)) {
+            const fontSize = parseFloat(style.fontSize) || 16;
+            const verticalTolerance = Math.max(4, fontSize * 0.65);
+            const horizontalTolerance = Math.max(3, fontSize * 0.18);
+            return (
+                (style.overflowY !== 'visible' && el.scrollHeight > el.clientHeight + verticalTolerance) ||
+                (style.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + horizontalTolerance)
+            );
+        }
+
+        function elementOverflows(el, boundary) {
             if (!hasLayoutBox(el)) return false;
             const style = getComputedStyle(el);
             if (style.position === 'absolute' || style.position === 'fixed') return false;
 
             const rect = el.getBoundingClientRect();
-            const clipsX = style.overflowX !== 'visible';
-            const clipsY = style.overflowY !== 'visible';
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            const contentRect = range.getBoundingClientRect();
-            const tolerance = Math.max(4, (parseFloat(style.fontSize) || 16) * 0.22);
-            const boxOverflow =
-                (clipsY && (contentRect.top < rect.top - tolerance || contentRect.bottom > rect.bottom + tolerance)) ||
-                (clipsX && (contentRect.left < rect.left - tolerance || contentRect.right > rect.right + tolerance));
+            const boundaryRect = boundary.getBoundingClientRect();
+            const boxOverflow = scrollBoxOverflows(el, style);
             const boundaryOverflow =
                 rect.left < boundaryRect.left - 2 ||
                 rect.top < boundaryRect.top - 2 ||
                 rect.right > boundaryRect.right + 2 ||
                 rect.bottom > boundaryRect.bottom + 2;
 
-            return boxOverflow || boundaryOverflow;
+            let ancestor = el.parentElement;
+            let ancestorOverflow = false;
+            while (ancestor && boundary.contains(ancestor)) {
+                const ancestorStyle = getComputedStyle(ancestor);
+                if (ancestorStyle.overflowX !== 'visible' || ancestorStyle.overflowY !== 'visible') {
+                    const ancestorRect = ancestor.getBoundingClientRect();
+                    ancestorOverflow =
+                        (ancestorStyle.overflowY !== 'visible' && (rect.top < ancestorRect.top - 2 || rect.bottom > ancestorRect.bottom + 2)) ||
+                        (ancestorStyle.overflowX !== 'visible' && (rect.left < ancestorRect.left - 2 || rect.right > ancestorRect.right + 2));
+                    if (ancestorOverflow) break;
+                }
+                if (ancestor === boundary) break;
+                ancestor = ancestor.parentElement;
+            }
+
+            return boxOverflow || boundaryOverflow || ancestorOverflow;
         }
 
         const MAIN_AUTOFIT_SELECTOR = '.slide-header h2, .takeaway-content';
@@ -76,17 +94,9 @@
         ].join(',');
         function bodyOverflows(body) {
             if (!body) return false;
-            const boundaryRect = body.getBoundingClientRect();
-            if (
-                body.scrollHeight > body.clientHeight + 2 ||
-                body.scrollWidth > body.clientWidth + 2
-            ) {
-                return true;
-            }
-
             return Array.from(body.querySelectorAll('*'))
                 .filter(hasLayoutBox)
-                .some(child => elementOverflows(child, boundaryRect));
+                .some(child => elementOverflows(child, body));
         }
 
         function fitTextTargets(container) {
@@ -483,9 +493,11 @@
         function stabilizeAfterPaint(container, delay = 0) {
             const run = () => {
                 if (container) {
-                    stabilizeSlideContainer(container, { preserveEditedText: true });
+                    stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
                 } else {
-                    autoFitAllSlides({ preserveEditedText: true });
+                    document.querySelectorAll('.slide-container, .center-layout').forEach(item => {
+                        stabilizeSlideContainerShrinkOnly(item, { preserveEditedText: true });
+                    });
                 }
                 Reveal.layout();
             };

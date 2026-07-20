@@ -1,6 +1,6 @@
 <!-- 레이아웃: 풀 블리드 이미지 (동기부여/결과물 임팩트) -->
 <section data-background-image="{{IMAGE_SRC}}" data-background-size="cover" data-background-position="center">
-    <div class="center-layout" style="background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(2px); height: 100%; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white;">
+    <div class="center-layout {{#if IMAGE_REVEAL}}fullbleed-click-reveal{{/if}}"{{#if IMAGE_REVEAL}} role="button" tabindex="0" aria-label="이미지 전체 보기"{{/if}} style="background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(2px); height: 100%; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white;">
         {{#if STEPPER_ITEMS}}
         <div class="stepper-container" style="position: absolute; top: 40px; margin-bottom: 0; justify-content: center; width: 100%;">
             {{STEPPER_ITEMS}}

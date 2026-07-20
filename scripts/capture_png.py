@@ -96,6 +96,12 @@ async def prepare_static_slide(page, index):
             arrow.setAttribute('points', '-16,-10 6,0 -16,10');
             arrow.setAttribute('transform', `translate(${endX}, ${endY}) rotate(${angle})`);
         });
+
+        const container = slide.querySelector('.slide-container, .center-layout');
+        if (container && typeof window.stabilizeSlideContainerShrinkOnly === 'function') {
+            window.stabilizeSlideContainerShrinkOnly(container, { preserveEditedText: true });
+            Reveal.layout();
+        }
     }""", index)
 
 
@@ -121,6 +127,41 @@ async def audit_slide(page, index):
             target: el?.dataset?.editId || el?.className || el?.tagName || 'slide',
             detail
         });
+        const hasDirectText = el => Array.from(el.childNodes).some(node =>
+            node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+        );
+        const scrollBoxOverflows = (el, style = getComputedStyle(el)) => {
+            const fontSize = parseFloat(style.fontSize) || 16;
+            const verticalTolerance = Math.max(4, fontSize * 0.65);
+            const horizontalTolerance = Math.max(3, fontSize * 0.18);
+            return (
+                (style.overflowY !== 'visible' && el.scrollHeight > el.clientHeight + verticalTolerance) ||
+                (style.overflowX !== 'visible' && el.scrollWidth > el.clientWidth + horizontalTolerance)
+            );
+        };
+        const clippingAncestor = el => {
+            const contentBox = el.getBoundingClientRect();
+            let current = el;
+            while (current && root.contains(current)) {
+                const style = getComputedStyle(current);
+                const clipsX = style.overflowX !== 'visible';
+                const clipsY = style.overflowY !== 'visible';
+                if (clipsX || clipsY) {
+                    const box = current.getBoundingClientRect();
+                    const ownOverflow = current === el && scrollBoxOverflows(el, style);
+                    const ancestorOverflow = current !== el && (
+                        (clipsY && (contentBox.top < box.top - 2 || contentBox.bottom > box.bottom + 2)) ||
+                        (clipsX && (contentBox.left < box.left - 2 || contentBox.right > box.right + 2))
+                    );
+                    if (ownOverflow || ancestorOverflow) {
+                        return current;
+                    }
+                }
+                if (current === root) break;
+                current = current.parentElement;
+            }
+            return null;
+        };
 
         if (root.classList.contains('worksheet-page')) {
             const body = root.querySelector('.worksheet-page-body');
@@ -130,24 +171,22 @@ async def audit_slide(page, index):
             return { slide: index + 1, layout, issues };
         }
 
-        root.querySelectorAll('[data-edit-id]').forEach(el => {
-            if (!visible(el) || el.closest('aside.notes')) return;
+        const textTargets = Array.from(root.querySelectorAll('*')).filter(el =>
+            visible(el) &&
+            hasDirectText(el) &&
+            !el.closest('aside.notes') &&
+            !el.matches('script, style')
+        );
+
+        textTargets.forEach(el => {
             const box = el.getBoundingClientRect();
             const style = getComputedStyle(el);
             const fontSize = parseFloat(style.fontSize) || 0;
             const lineHeight = parseFloat(style.lineHeight);
-            const range = document.createRange();
-            range.selectNodeContents(el);
-            const textBox = range.getBoundingClientRect();
-            const clipsX = style.overflowX !== 'visible';
-            const clipsY = style.overflowY !== 'visible';
-            const tolerance = Math.max(4, fontSize * 0.22);
-
-            if (
-                (clipsY && (textBox.top < box.top - tolerance || textBox.bottom > box.bottom + tolerance)) ||
-                (clipsX && (textBox.left < box.left - tolerance || textBox.right > box.right + tolerance))
-            ) {
-                add('error', 'text-overflow', el, `${el.clientWidth}x${el.clientHeight} 안에서 텍스트가 잘립니다.`);
+            const clipper = clippingAncestor(el);
+            if (clipper && !el.closest('.ox-reveal-answer')) {
+                const clipperName = clipper.dataset.editId || clipper.className || clipper.tagName;
+                add('error', 'text-overflow', el, `${clipperName} 영역에서 텍스트가 잘립니다.`);
             }
             if (box.left < rootBox.left - 2 || box.top < rootBox.top - 2 || box.right > rootBox.right + 2 || box.bottom > rootBox.bottom + 2) {
                 add('error', 'off-slide', el, '텍스트가 슬라이드 영역을 벗어났습니다.');
@@ -155,7 +194,24 @@ async def audit_slide(page, index):
             if (fontSize && fontSize < 18) {
                 add('error', 'small-text', el, `글자 크기 ${fontSize.toFixed(1)}px`);
             }
-            if (fontSize && Number.isFinite(lineHeight) && !el.matches('.ox-header-marker')) {
+            const compactFixedUi = el.closest([
+                '.roadmap-num',
+                '.timeline-marker',
+                '.stepper-step',
+                '.option-marker',
+                '.step-num',
+                '.ox-marker',
+                '.ox-header-marker',
+                '.ox-reveal-answer',
+                '.placeholder-label',
+                '.summary-emoji',
+                '.activity-timer',
+                '.activity-think-question > span',
+                '.cloze-word',
+                '.reveal-table th',
+                '.reveal-table td'
+            ].join(','));
+            if (fontSize && Number.isFinite(lineHeight) && !compactFixedUi) {
                 const ratio = lineHeight / fontSize;
                 if (ratio < 1.05 || ratio > 1.8) {
                     add('warning', 'line-height', el, `line-height 비율 ${ratio.toFixed(2)}`);
@@ -163,7 +219,7 @@ async def audit_slide(page, index):
             }
         });
 
-        root.querySelectorAll('.roadmap-num, .timeline-marker, .option-marker, .step-num, .ox-reveal-answer').forEach(el => {
+        root.querySelectorAll('.roadmap-num, .timeline-marker, .option-marker, .step-num').forEach(el => {
             if (!visible(el)) return;
             const box = el.getBoundingClientRect();
             if (Math.abs(box.width - box.height) > 2) {
@@ -177,7 +233,20 @@ async def audit_slide(page, index):
         const hasGeometryError = issues.some(issue =>
             issue.severity === 'error' && ['text-overflow', 'off-slide', 'shape-distorted'].includes(issue.code)
         );
-        const rootOverflows = root.scrollHeight > root.clientHeight + 2 || root.scrollWidth > root.clientWidth + 2;
+        const rootOverflows = Array.from(root.children).some(child => {
+            if (!visible(child) || child.matches('aside.notes')) return false;
+            const box = child.getBoundingClientRect();
+            return box.left < rootBox.left - 2 || box.top < rootBox.top - 2 ||
+                box.right > rootBox.right + 2 || box.bottom > rootBox.bottom + 2;
+        });
+        if (rootOverflows) {
+            add(
+                'error',
+                'layout-overflow',
+                root,
+                '슬라이드의 직접 콘텐츠가 루트 영역을 초과합니다.'
+            );
+        }
         if (
             (root.dataset.autofitFailed === 'true' || root.classList.contains('autofit-failed')) &&
             (hasGeometryError || rootOverflows)

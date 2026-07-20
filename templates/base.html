@@ -563,6 +563,9 @@
         const word = event.target.closest('.js-cloze-word:not(.is-used)');
         if (!word) return;
 
+        event.preventDefault();
+        event.stopPropagation();
+
         const slide = word.closest('section');
         const target = slide?.querySelector(`.js-cloze-target[data-word="${CSS.escape(word.dataset.word)}"]:not(.is-filled)`);
         if (!target) return;
@@ -584,14 +587,34 @@
         document.body.appendChild(ghost);
         word.classList.add('is-used');
 
-        ghost.animate([
-            { transform: 'translate(0, 0)', opacity: 1 },
-            { transform: `translate(${end.left - start.left}px, ${end.top - start.top}px)`, opacity: 0.2 }
-        ], { duration: 420, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' }).finished.then(() => {
+        let completed = false;
+        const complete = () => {
+            if (completed) return;
+            completed = true;
             target.textContent = word.textContent;
             target.classList.add('is-filled');
             ghost.remove();
-        });
+        };
+        const animation = ghost.animate([
+            { transform: 'translate(0, 0)', opacity: 1 },
+            { transform: `translate(${end.left - start.left}px, ${end.top - start.top}px)`, opacity: 0.2 }
+        ], { duration: 420, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+        animation.finished.then(complete, complete);
+        setTimeout(complete, 500);
+    });
+
+    document.addEventListener('click', event => {
+        const overlay = event.target.closest('.fullbleed-click-reveal:not(.is-revealed)');
+        if (!overlay) return;
+        overlay.classList.add('is-revealed');
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const overlay = document.activeElement?.closest('.fullbleed-click-reveal:not(.is-revealed)');
+        if (!overlay) return;
+        event.preventDefault();
+        overlay.classList.add('is-revealed');
     });
 </script>
 
