@@ -102,7 +102,9 @@
 ### 9-4. 레이아웃별 데이터 스키마 표준 키 명세
 에이전트가 `slide_plan.json`을 작성할 때 템플릿 렌더러가 올바르게 인식하도록 아래 레이아웃별 고유 키 매핑을 엄격히 준수해야 합니다. 임의로 키를 축약하거나 변경해서는 안 됩니다.
 1. **`stats` (통계/수치)**:
-   - **`STAT_ITEMS`** (`STATS_ITEMS` 금지) ➔ 각 항목은 `{"value": "100%", "label": "라벨"}` 형태의 배열
+   - **`STAT_ITEMS`** (`STATS_ITEMS` 금지) ➔ 각 항목은 `value`, `label`, `kind`를 사용합니다.
+   - `kind`는 `ratio`, `rank`, `count`, `comparison` 중 하나입니다. 게이지는 `ratio`와 `comparison`에만 사용하며, `comparison`은 비교 기준을 나타내는 `percentage`를 함께 지정합니다.
+   - `kind`를 생략하면 `%`·점수는 `ratio`, `위`·순위 라벨은 `rank`, 나머지는 `count`로 추론합니다. 순위와 단순 인원 수에 임의 게이지를 붙이지 않습니다.
 2. **`quiz` (퀴즈/질문)**:
    - **`QUESTION`** (`QUIZ_QUESTION` 금지) ➔ 질문 내용 문자열
    - **`QUIZ_OPTIONS`** ➔ 보기 배열. 각 항목은 객체 또는 단순 문자열 (예: `["O", "X"]` 또는 `[{"text": "보기1"}, {"text": "보기2"}]`)
@@ -129,5 +131,8 @@
    - **`BULLET_ITEMS`** ➔ 좌측 실습 단계 리스트
    - **`TIP`** / **`WARNING`** / **`DURATION`** ➔ 보조 안내 팁, 경고, 예상 소요 시간
    - **`RESULT_TEXT`** ➔ `hands_on`에서 예상 결과 캡션
+9. **활동 문항 (`activities[].worksheet_block`)**:
+   - `ox_check`는 문제판에서 시작해 클릭마다 한 문항의 큰 O/X와 해설을 집중 공개합니다. 학생용에는 해설을 넣지 않고, 교사용은 한 페이지에 최대 4문항을 배치합니다.
+   - `cloze_word_bank.word_bank`는 인쇄물과 슬라이드가 공유하는 고정 표시 순서입니다. `sentences[].answer` 순서와 다르게 섞어 저장하며 실행 중 재무작위화하지 않습니다.
 
 

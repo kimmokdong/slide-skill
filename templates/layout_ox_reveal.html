@@ -4,8 +4,11 @@
         <div class="slide-header">
             <h2 data-edit-id="TITLE">{{TITLE}}</h2>
         </div>
-        <div class="slide-body ox-reveal-list {{OX_REVEAL_DENSITY_CLASS}}">
-            {{OX_REVEAL_ITEMS}}
+        <div class="slide-body ox-reveal-overview {{OX_REVEAL_DENSITY_CLASS}} js-ox-reveal" data-ox-step="0">
+            {{OX_OVERVIEW_ITEMS}}
+        </div>
+        <div class="ox-focus-layer" aria-hidden="true">
+            {{OX_FOCUS_ITEMS}}
         </div>
         {{BOTTOM_TAKEAWAY_HTML}}
     </div>

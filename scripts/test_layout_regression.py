@@ -32,11 +32,13 @@ def representative_plan():
             'items': [
                 {'statement': '공용 컴퓨터에서는 사용 후 로그아웃합니다.', 'answer': 'O', 'explanation': '계정을 보호할 수 있습니다.'},
                 {'statement': '비밀번호는 친구와 공유해도 됩니다.', 'answer': 'X', 'explanation': '비밀번호는 본인만 알아야 합니다.'},
+                {'statement': '출처가 분명하지 않은 링크는 바로 열지 않습니다.', 'answer': 'O', 'explanation': '보낸 사람과 주소를 먼저 확인합니다.'},
+                {'statement': '친구 사진은 허락 없이 온라인에 올려도 됩니다.', 'answer': 'X', 'explanation': '사진을 올리기 전에 당사자의 동의를 받습니다.'},
             ],
         }),
         activity('cloze', {
             'block_type': 'cloze_word_bank', 'title': '핵심어 빈칸 채우기',
-            'word_bank': ['설계', '검증'],
+            'word_bank': ['검증', '설계'],
             'sentences': [
                 {'text': '큰 흐름을 [설계]합니다.', 'answer': '설계'},
                 {'text': 'AI가 만든 결과를 [검증]합니다.', 'answer': '검증'},
@@ -143,25 +145,22 @@ def representative_plan():
             {'label': '결과 검증', 'desc': '사용자 관점에서 다시 확인합니다.'},
         ]},
         {'page_type': 'slide', 'layout': 'activity_instruction', 'TITLE': '활동 준비', 'INSTRUCTION': '학습지 1번을 읽고 짝과 답을 비교하세요.', 'WORKSHEET_REF': '학생용 활동지 1쪽', 'TIMER_MINUTES': 3, 'THINK_QUESTION': '답을 고른 근거를 한 문장으로 설명할 수 있나요?'},
-        {'page_type': 'slide', 'layout': 'activity_prompt', 'TITLE': '학습지 문항 확인', 'WORKSHEET_BLOCK': activities[0]['worksheet_block']},
         {'page_type': 'slide', 'layout': 'share_prompt', 'TITLE': '생각을 나눠 봅시다', 'INSTRUCTION': '짝의 설명에서 새롭게 알게 된 점을 찾으세요.', 'QUESTIONS': ['어떤 근거가 가장 설득력 있었나요?', '내 생각과 달랐던 점은 무엇인가요?']},
         {'page_type': 'slide', 'layout': 'video_hook', 'TITLE': '영상에서 특징 찾기', 'EMBED_URL': 'about:blank', 'PURPOSE': '영상 속 장면에서 문제 상황을 찾아봅시다.', 'STUDENT_TASK': '눈에 띄는 특징을 한 문장으로 적습니다.'},
         {'page_type': 'slide', 'layout': 'video_link_card', 'TITLE': '관련 영상 더 보기', 'WATCH_URL': 'https://www.youtube.com/', 'THUMBNAIL_URL': image_b, 'PURPOSE': '다른 사례와 비교해 봅시다.', 'STUDENT_TASK': '공통점과 차이점을 하나씩 찾습니다.'},
     ]
     pages.extend({'page_type': 'slide', 'layout': 'activity', 'ACTIVITY_REF': item['id']} for item in activities)
     pages.extend([
-        {'page_type': 'worksheet', 'ACTIVITY_REFS': ['ox', 'cloze', 'matching']},
-        {'page_type': 'worksheet', 'ACTIVITY_REFS': ['table', 'short']},
+        {'page_type': 'worksheet', 'ACTIVITY_REFS': ['ox', 'cloze', 'matching', 'table', 'short']},
         {'page_type': 'worksheet', 'BLOCKS': [{'block_type': 'reflection_checklist', 'title': '스스로 점검하기', 'items': [
             {'text': '문제와 해결 방법을 설명할 수 있나요?'}, {'text': '친구의 의견을 듣고 화면을 고쳤나요?'},
         ]}]},
-        {'page_type': 'answer_key', 'ACTIVITY_REFS': ['ox', 'cloze', 'matching']},
-        {'page_type': 'answer_key', 'ACTIVITY_REFS': ['table', 'short']},
+        {'page_type': 'answer_key', 'ACTIVITY_REFS': ['ox', 'cloze', 'matching', 'table', 'short']},
     ])
 
     covered = {page['layout'] for page in pages if page.get('page_type') == 'slide' and page.get('layout') != 'activity'}
     covered.update(ACTIVITY_LAYOUT_BY_BLOCK.values())
-    missing = set(REQUIRED_LAYOUT_FIELDS) - covered
+    missing = set(REQUIRED_LAYOUT_FIELDS) - covered - {'activity_prompt'}
     if missing:
         raise AssertionError(f'대표 회귀 페이지 누락: {sorted(missing)}')
     return {'meta': {'title': 'Slide layout regression'}, 'activities': activities, 'pages': pages}

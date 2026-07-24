@@ -100,9 +100,13 @@ description: 사용자의 거친 아이디어나 시나리오 텍스트를 기�
 
 **단일 활동 슬라이드 원칙**: `activity_prompt`와 유형별 `*_reveal`을 별도 페이지로 작성하지 않습니다. 활동 데이터는 최상위 `activities[].worksheet_block`에 한 번만 정의하고, 발표 슬라이드는 `ACTIVITY_REF`, 활동지와 정답지는 `ACTIVITY_REFS`로 참조합니다. 별도의 활동 안내가 꼭 필요한 수업만 `activity_instruction`을 추가합니다. `reflection_checklist`는 정답이 없으므로 기본적으로 수업 슬라이드와 정답지에 넣지 않습니다.
 
-**빈칸 채우기 상호작용**: `cloze_word_bank` 활동은 보기 단어를 클릭하면 같은 `data-word`의 빈칸으로 이동시키는 수업용 확인 화면으로 렌더링됩니다. `word_bank` 배열과 `sentences`의 `{ "text": "문장 [정답]", "answer": "정답" }` 형식을 함께 사용합니다. OX 형식 데이터나 보기 없는 빈칸 화면은 빌드 검증에서 실패시킵니다.
+**빈칸 채우기 상호작용**: `cloze_word_bank`는 단어를 고르는 방식이 아니라 슬라이드 아무 곳이나 클릭할 때마다 문장 순서대로 다음 정답 단어가 보기에서 해당 빈칸으로 이동합니다. `word_bank`는 학생용 활동지와 슬라이드가 공유하는 표시 순서이며 반드시 정답 순서와 다르게 섞어 저장합니다. 실행할 때 다시 무작위화하지 않습니다. 빈칸은 정답 길이만큼 폭을 미리 확보합니다.
+
+**OX 집중 공개**: `ox_check` 활동 슬라이드는 처음에 큰 문제판만 보여 줍니다. 클릭할 때마다 1번부터 `문제 + 큰 O/X + 해설` 집중 화면을 한 문항씩 표시하고, 마지막 클릭에는 전체 정답 요약으로 돌아옵니다. 카드 안에 모든 해설을 상시 배치하지 않습니다.
 
 **교사용 정답지 완전성**: `answer_key` 페이지가 있으면 학생용 학습지의 `ox_check`, `cloze_word_bank`, `matching_lines`, `table_fill`, `short_answer` 문항 유형별 수를 모두 포함해야 한다. `reflection_checklist`는 정답지가 필요 없다.
+
+**인쇄 페이지 분할**: 학생용은 최대 2개 활동 블록씩 나눕니다. 교사용 OX 정답은 한 페이지에 최대 4문항을 배치하고, 5문항부터 4개 단위로 블록 내부를 자동 분할합니다. 제목에 `(현재/전체)`를 붙이고 활동 번호와 OX 문항 번호를 이어 갑니다.
 
 ### 0-B. 초기 파일 생성
 수집한 답변은 프로젝트 폴더의 세 파일로 반드시 먼저 고정합니다.
@@ -274,7 +278,7 @@ user_input → content_blueprint → activities(SSOT) → pages(refs) → slide 
 {
   "block_type": "cloze_word_bank",
   "title": "빈칸 채우기",
-  "word_bank": ["단어1", "단어2"],
+  "word_bank": ["단어2", "단어1"],
   "sentences": [
     {"text": "이것은 [단어1] 입니다.", "answer": "단어1"}
   ]
@@ -521,10 +525,12 @@ user_input → content_blueprint → activities(SSOT) → pages(refs) → slide 
       "type": "stats",
       "TITLE": "핵심 수치 하이라이트",
       "STAT_ITEMS": [
-        {"value": "95%", "label": "교사 만족도"},
-        {"value": "12만명", "label": "누적 참여 학생 수"}
+        {"value": "95%", "label": "교사 만족도", "kind": "ratio"},
+        {"value": "1위", "label": "선호 순위", "kind": "rank"},
+        {"value": "12만명", "label": "누적 참여 학생 수", "kind": "count"},
+        {"value": "2배", "label": "전년 대비", "kind": "comparison", "percentage": 80}
       ],
-      "SPEAKER_NOTES": "통계 레이아웃은 STAT_ITEMS 배열(value, label)을 반드시 사용합니다."
+      "SPEAKER_NOTES": "stats는 값의 의미에 맞는 kind를 사용합니다."
     },
     {
       "type": "quiz",
@@ -576,7 +582,7 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `ROADMAP_ITEMS` | `label`, `desc` | `step`, `title`, `body` |
 | `MATRIX_ITEMS` | `icon`, `label`, `desc` | `body` |
 | `TIMELINE_ITEMS` | `date`, `title`, `desc` | `body` |
-| `STAT_ITEMS` | `value`, `label`, `percentage` | `number`, `text` |
+| `STAT_ITEMS` | `value`, `label`, `kind` (`ratio`, `rank`, `count`, `comparison`), 비교형의 `percentage` | `number`, `text` |
 | `QUIZ_OPTIONS` | `text` + `ANSWER_INDEX` | `correct`만 의존 |
 | `O_ITEMS`, `X_ITEMS` | 문자열 또는 `{ "text": "..." }` | `{ "body": "..." }` |
 | `activity` | `ACTIVITY_REF` | `WORKSHEET_BLOCK`, `ITEMS`, `PAIRS`, `HEADERS`, `ROWS` 직접 중복 |
@@ -594,7 +600,7 @@ AI가 `slide_plan.json`을 생성할 때 템플릿과 파이썬 스크립트에�
 | `quiz` | 객관식 퀴즈 | `TITLE`, `QUESTION`, `QUIZ_OPTIONS` (text) | `ANSWER_INDEX`, `SPEAKER_NOTES` |
 | `quote` | 명언, 핵심 인용구 | `QUOTE_TEXT` | `QUOTE_SOURCE`, `SPEAKER_NOTES` |
 | `diagram` | Mermaid 등 도식 | `TITLE`, `DIAGRAM_SRC` | `DIAGRAM_CAPTION`, `SPEAKER_NOTES` |
-| `stats` | 핵심 통계 수치 하이라이트 | `TITLE`, `STAT_ITEMS` (value, label) | `SPEAKER_NOTES` |
+| `stats` | 비율·순위·규모·비교 수치 하이라이트 | `TITLE`, `STAT_ITEMS` (`value`, `label`, `kind`) | 비교형 `percentage`, `SPEAKER_NOTES` |
 | `summary` | 핵심 요약 리스트 | `TITLE`, `SUMMARY_ITEMS` (`title`, `desc` 권장. 문자열도 허용) | `BOTTOM_TAKEAWAY`, `SPEAKER_NOTES` |
 | `closing` | 마무리 및 행동 유도 | `TITLE`, `MESSAGE` | `CTA`, `BULLET_ITEMS`, `SPEAKER_NOTES` |
 | `tutorial` | UI 스텝퍼 포함 튜토리얼 | `TITLE`, `STEP_NUMBER`, `STEPPER_ITEMS` (label, state) | `BULLET_ITEMS`, `TIP`, `WARNING`, `IMAGE_SRC`, `SPEAKER_NOTES` |
@@ -663,6 +669,8 @@ python "{스킬폴더}/scripts/capture_png.py" "output/index.html" "output/captu
 # 2. 캡처된 이미지들을 와이드 PPTX로 묶어서 생성
 python "{스킬폴더}/scripts/export_image_pptx.py" "output/captures" "output/presentation.pptx"
 ```
+
+`export_image_pptx.py`는 같은 캡처 폴더의 `qa-report.json`이 존재하고 오류가 0건일 때만 PPTX를 생성합니다. 캡처가 일부 남아 있어도 QA가 실패했거나 보고서가 없으면 내보내기를 우회하지 않습니다.
 
 완성되면 사용자에게 HTML 프리뷰 링크와 PPTX 파일 경로를 안내하며 작업을 마칩니다.
 

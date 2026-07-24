@@ -559,16 +559,63 @@
         }
     });
 
+    function advanceOxReveal(slide) {
+        const overview = slide?.querySelector('.js-ox-reveal');
+        const layer = slide?.querySelector('.ox-focus-layer');
+        const items = Array.from(layer?.querySelectorAll('.ox-focus-item') || []);
+        if (!overview || !layer || !items.length) return false;
+
+        const step = Number(overview.dataset.oxStep || 0);
+        if (step < items.length) {
+            items.forEach((item, index) => {
+                const active = index === step;
+                item.classList.toggle('is-active', active);
+                item.setAttribute('aria-hidden', String(!active));
+            });
+            layer.classList.add('is-active');
+            layer.setAttribute('aria-hidden', 'false');
+            overview.dataset.oxStep = String(step + 1);
+            return true;
+        }
+        if (step === items.length) {
+            layer.classList.remove('is-active');
+            layer.setAttribute('aria-hidden', 'true');
+            items.forEach(item => item.classList.remove('is-active'));
+            overview.classList.add('is-complete');
+            overview.querySelectorAll('.ox-overview-answer').forEach(answer => answer.setAttribute('aria-hidden', 'false'));
+            overview.dataset.oxStep = String(step + 1);
+            return true;
+        }
+        return false;
+    }
+
     document.addEventListener('click', event => {
-        const word = event.target.closest('.js-cloze-word:not(.is-used)');
+        if (!(event.target instanceof Element) || event.target.closest('[contenteditable="true"]')) return;
+        const slide = event.target.closest('section');
+        if (!advanceOxReveal(slide)) return;
+        event.preventDefault();
+        event.stopPropagation();
+    }, true);
+
+    document.addEventListener('keydown', event => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        const slide = Reveal.getCurrentSlide();
+        if (!advanceOxReveal(slide)) return;
+        event.preventDefault();
+        event.stopPropagation();
+    }, true);
+
+    document.addEventListener('click', event => {
+        if (!(event.target instanceof Element) || event.target.closest('[contenteditable="true"]')) return;
+        const slide = event.target.closest('section');
+        const target = slide?.querySelector('.js-cloze-target:not(.is-filled)');
+        if (!target) return;
+        const word = Array.from(slide.querySelectorAll('.js-cloze-word:not(.is-used)'))
+            .find(item => item.dataset.word === target.dataset.word);
         if (!word) return;
 
         event.preventDefault();
         event.stopPropagation();
-
-        const slide = word.closest('section');
-        const target = slide?.querySelector(`.js-cloze-target[data-word="${CSS.escape(word.dataset.word)}"]:not(.is-filled)`);
-        if (!target) return;
 
         const start = word.getBoundingClientRect();
         const end = target.getBoundingClientRect();
@@ -594,6 +641,9 @@
             target.textContent = word.textContent;
             target.classList.add('is-filled');
             ghost.remove();
+            if (typeof window.stabilizeSlideContainerShrinkOnly === 'function') {
+                window.stabilizeSlideContainerShrinkOnly(slide.querySelector('.slide-container'), { preserveEditedText: true });
+            }
         };
         const animation = ghost.animate([
             { transform: 'translate(0, 0)', opacity: 1 },
@@ -601,7 +651,7 @@
         ], { duration: 420, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
         animation.finished.then(complete, complete);
         setTimeout(complete, 500);
-    });
+    }, true);
 
     document.addEventListener('click', event => {
         const overlay = event.target.closest('.fullbleed-click-reveal:not(.is-revealed)');

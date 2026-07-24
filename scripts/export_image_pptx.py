@@ -8,6 +8,20 @@
 
 import sys
 import os
+import json
+
+
+def assert_qa_passed(image_dir: str) -> None:
+    report_path = os.path.join(image_dir, 'qa-report.json')
+    if not os.path.isfile(report_path):
+        raise RuntimeError(f'QA 보고서가 없습니다. capture_png.py를 먼저 실행하세요: {report_path}')
+    with open(report_path, 'r', encoding='utf-8') as report_file:
+        report = json.load(report_file)
+    errors = report.get('summary', {}).get('errors')
+    if errors is None:
+        raise RuntimeError(f'QA 보고서 형식이 올바르지 않습니다: {report_path}')
+    if errors:
+        raise RuntimeError(f'QA 오류 {errors}건이 남아 있어 PPTX 내보내기를 중단합니다: {report_path}')
 
 def export_image_pptx(image_dir: str, output_pptx: str) -> None:
     try:
@@ -21,6 +35,8 @@ def export_image_pptx(image_dir: str, output_pptx: str) -> None:
     if not os.path.exists(image_dir):
         print(f"오류: 이미지 디렉토리를 찾을 수 없습니다: {image_dir}")
         sys.exit(1)
+
+    assert_qa_passed(image_dir)
 
     # 16:9 와이드 프레젠테이션 생성
     prs = Presentation()

@@ -2,8 +2,10 @@ import json
 import re
 import unittest
 from pathlib import Path
+from unittest.mock import mock_open, patch
 
 from build_html import (
+    infer_stat_kind,
     load_theme,
     normalize_pages,
     normalize_slide_data,
@@ -12,6 +14,7 @@ from build_html import (
     validate_pages,
 )
 from dev_server import apply_text_edits
+from export_image_pptx import assert_qa_passed
 from init_lesson_project import build_plan
 
 
@@ -126,7 +129,8 @@ class BuildHtmlContractTest(unittest.TestCase):
         self.assertEqual(pages[1]['blocks'][0]['items'][0]['answer'], 'O')
         self.assertEqual(pages[2]['blocks'][0]['items'][0]['answer'], 'O')
         self.assertIn('data-edit-id="$root.activities[0].worksheet_block.items[0].statement"', html)
-        self.assertIn('ox-reveal-answer fragment', html)
+        self.assertIn('js-ox-reveal', html)
+        self.assertIn('ox-focus-layer', html)
 
     def test_unknown_activity_reference_fails(self):
         with self.assertRaisesRegex(ValueError, '존재하지 않는 ACTIVITY_REF'):
@@ -215,7 +219,7 @@ class BuildHtmlContractTest(unittest.TestCase):
         self.assertIn('referrerpolicy="strict-origin-when-cross-origin"', html)
         self.assertNotIn('video-student-task', html)
 
-    def test_activity_reveals_cloze_words_and_uses_merged_ox_answer_panel(self):
+    def test_activity_reveals_cloze_words_and_uses_ox_focus_panel(self):
         cloze_html = render_slide({
             'layout': 'activity',
             'WORKSHEET_BLOCK': {
@@ -234,8 +238,131 @@ class BuildHtmlContractTest(unittest.TestCase):
 
         self.assertIn('js-cloze-word', cloze_html)
         self.assertIn('js-cloze-target', cloze_html)
-        self.assertIn('class="ox-reveal-copy"', ox_html)
-        self.assertIn('class="ox-reveal-answer fragment"', ox_html)
+        self.assertNotIn('<button type="button" class="cloze-word', cloze_html)
+        self.assertIn('--cloze-answer-width:', cloze_html)
+        self.assertIn('class="ox-overview-card"', ox_html)
+        self.assertIn('class="ox-focus-item"', ox_html)
+        self.assertEqual(ox_html.count('해설'), 1)
+
+    def test_stats_choose_semantic_visuals(self):
+        html = render_slide({
+            'layout': 'stats',
+            'TITLE': '핵심 수치',
+            'STAT_ITEMS': [
+                {'value': '50%', 'label': '비율'},
+                {'value': '1위', 'label': '순위'},
+                {'value': '4,000명+', 'label': '참여 인원'},
+                {'value': '2배', 'label': '전년 대비', 'kind': 'comparison', 'percentage': 80},
+            ],
+        })
+
+        self.assertEqual(html.count('stat-gauge-container'), 2)
+        self.assertIn('stat-kind-ratio', html)
+        self.assertIn('stat-kind-rank', html)
+        self.assertIn('stat-kind-count', html)
+        self.assertIn('stat-kind-comparison', html)
+        self.assertIn('stat-value-long', html)
+        self.assertEqual(infer_stat_kind({'value': '1위', 'label': '안전'}), 'rank')
+        with self.assertRaisesRegex(ValueError, 'comparison에는 percentage'):
+            validate_pages([{
+                'page_type': 'slide', 'layout': 'stats', 'TITLE': '비교',
+                'STAT_ITEMS': [{'value': '2배', 'label': '증가', 'kind': 'comparison'}],
+            }])
+
+    def test_roadmap_removes_redundant_step_prefix(self):
+        html = render_slide({
+            'layout': 'roadmap',
+            'TITLE': '절차',
+            'ROADMAP_ITEMS': [{'label': '1단계: 준비운동', 'desc': '몸을 풉니다.'}],
+        })
+
+        self.assertNotIn('1단계:', html)
+        self.assertIn('roadmap-roomy', html)
+
+    def test_ox_reveal_rejects_decorated_answer(self):
+        with self.assertRaisesRegex(ValueError, 'O 또는 X'):
+            validate_pages([{
+                'page_type': 'slide',
+                'layout': 'ox_reveal',
+                'TITLE': '정답',
+                'ITEMS': [{'statement': '문장', 'answer': 'O (정답)'}],
+            }])
+
+    def test_canonical_print_pages_split_two_blocks_at_a_time(self):
+        activities = [{
+            'id': f'a{i}',
+            'worksheet_block': {
+                'block_type': 'short_answer',
+                'title': f'문항 {i}',
+                'sample_answer': '답',
+            },
+        } for i in range(1, 5)]
+        pages = normalize_pages({
+            'activities': activities,
+            'pages': [
+                *[{'page_type': 'slide', 'layout': 'activity', 'ACTIVITY_REF': f'a{i}'} for i in range(1, 5)],
+                {'page_type': 'worksheet', 'title': '활동지', 'ACTIVITY_REFS': [f'a{i}' for i in range(1, 5)]},
+                {'page_type': 'answer_key', 'title': '정답지', 'ACTIVITY_REFS': [f'a{i}' for i in range(1, 5)]},
+            ],
+        })
+
+        print_pages = [page for page in pages if page['page_type'] != 'slide']
+        self.assertEqual([page['page_type'] for page in print_pages], ['worksheet', 'worksheet', 'answer_key', 'answer_key'])
+        self.assertEqual([page['start_q_idx'] for page in print_pages], [1, 3, 1, 3])
+        self.assertEqual([len(page['blocks']) for page in print_pages], [2, 2, 2, 2])
+
+    def test_answer_key_ox_keeps_four_items_on_one_page(self):
+        activity = {
+            'id': 'ox',
+            'worksheet_block': {
+                'block_type': 'ox_check',
+                'title': '안전 OX',
+                'items': [
+                    {'statement': f'문장 {i}', 'answer': 'O', 'explanation': f'해설 {i}'}
+                    for i in range(1, 5)
+                ],
+            },
+        }
+        pages = normalize_pages({
+            'activities': [activity],
+            'pages': [
+                {'page_type': 'slide', 'layout': 'activity', 'ACTIVITY_REF': 'ox'},
+                {'page_type': 'worksheet', 'ACTIVITY_REFS': ['ox']},
+                {'page_type': 'answer_key', 'ACTIVITY_REFS': ['ox']},
+            ],
+        })
+        answer_pages = [page for page in pages if page['page_type'] == 'answer_key']
+
+        self.assertEqual(len(answer_pages), 1)
+        self.assertEqual(len(answer_pages[0]['blocks'][0]['items']), 4)
+        html = render_worksheet_block(answer_pages[0]['blocks'][0], 0, 1, answer_key=True)
+        self.assertIn('answer-key-ox-list', html)
+        self.assertIn('answer-key-ox-badge', html)
+        self.assertIn('answer-key-ox-compact', html)
+
+    def test_activities_reject_direct_reveal_and_answerable_blocks(self):
+        activity = {'id': 'a1', 'worksheet_block': {'block_type': 'short_answer', 'sample_answer': '답'}}
+        with self.assertRaisesRegex(ValueError, 'layout="activity"'):
+            normalize_pages({
+                'activities': [activity],
+                'pages': [{'page_type': 'slide', 'layout': 'sample_answer_reveal', 'TITLE': '답', 'SAMPLE_ANSWER': '답'}],
+            })
+        with self.assertRaisesRegex(ValueError, 'ACTIVITY_REFS'):
+            normalize_pages({
+                'activities': [activity],
+                'pages': [{'page_type': 'worksheet', 'BLOCKS': [activity['worksheet_block']]}],
+            })
+
+    def test_image_export_requires_clean_qa_report(self):
+        with patch('export_image_pptx.os.path.isfile', return_value=False):
+            with self.assertRaisesRegex(RuntimeError, 'QA 보고서가 없습니다'):
+                assert_qa_passed('captures')
+        with patch('export_image_pptx.os.path.isfile', return_value=True):
+            with patch('builtins.open', mock_open(read_data=json.dumps({'summary': {'errors': 1}}))):
+                with self.assertRaisesRegex(RuntimeError, 'QA 오류 1건'):
+                    assert_qa_passed('captures')
+            with patch('builtins.open', mock_open(read_data=json.dumps({'summary': {'errors': 0}}))):
+                assert_qa_passed('captures')
 
     def test_fullbleed_image_reveal_is_optional(self):
         html = render_slide({
@@ -269,6 +396,19 @@ class BuildHtmlContractTest(unittest.TestCase):
                 'layout': 'cloze_reveal',
                 'TITLE': '빈칸',
                 'ITEMS': [{'text': '빈칸 [정답]', 'answer': '정답'}],
+            }])
+
+    def test_cloze_word_bank_must_not_follow_answer_order(self):
+        with self.assertRaisesRegex(ValueError, '정답 순서와 다르게'):
+            validate_pages([{
+                'page_type': 'slide',
+                'layout': 'cloze_reveal',
+                'TITLE': '빈칸',
+                'WORD_BANK': ['첫째', '둘째'],
+                'ITEMS': [
+                    {'text': '1 [첫째]', 'answer': '첫째'},
+                    {'text': '2 [둘째]', 'answer': '둘째'},
+                ],
             }])
 
     def test_answer_key_requires_matching_block(self):

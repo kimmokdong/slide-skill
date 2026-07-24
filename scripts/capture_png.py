@@ -76,6 +76,17 @@ async def prepare_static_slide(page, index):
         });
         slide.querySelectorAll('.js-cloze-word').forEach(word => word.classList.add('is-used'));
 
+        const oxOverview = slide.querySelector('.js-ox-reveal');
+        const oxLayer = slide.querySelector('.ox-focus-layer');
+        if (oxOverview) {
+            oxOverview.classList.add('is-complete');
+            oxOverview.querySelectorAll('.ox-overview-answer').forEach(answer => answer.setAttribute('aria-hidden', 'false'));
+        }
+        if (oxLayer) {
+            oxLayer.classList.remove('is-active');
+            oxLayer.setAttribute('aria-hidden', 'true');
+        }
+
         slide.querySelectorAll('.js-match-anim').forEach(group => {
             const start = slide.querySelector(group.dataset.start);
             const end = slide.querySelector(group.dataset.end);
@@ -184,6 +195,8 @@ async def audit_slide(page, index):
             const fontSize = parseFloat(style.fontSize) || 0;
             const lineHeight = parseFloat(style.lineHeight);
             const clipper = clippingAncestor(el);
+            // O/X 정답은 입력 게이트에서 한 글자로 제한하며, 일부 한글 글꼴의 영문 글리프 여유는
+            // 실제 잘림이 없어도 부모 overflow로 보고되므로 일반 텍스트 clipping 검사에서 제외합니다.
             if (clipper && !el.closest('.ox-reveal-answer')) {
                 const clipperName = clipper.dataset.editId || clipper.className || clipper.tagName;
                 add('error', 'text-overflow', el, `${clipperName} 영역에서 텍스트가 잘립니다.`);

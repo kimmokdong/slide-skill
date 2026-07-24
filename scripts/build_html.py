@@ -343,7 +343,7 @@ def extract_percentage(value_str: str) -> int:
         match = re.search(r'([\d\.]+)', value_str)
         if match:
             try:
-                return int(float(match.group(1)))
+                return max(0, min(100, int(float(match.group(1)))))
             except ValueError:
                 pass
     if '점' in value_str:
@@ -352,11 +352,11 @@ def extract_percentage(value_str: str) -> int:
             try:
                 val = float(match.group(1))
                 if val <= 5.0:
-                    return int((val / 5.0) * 100)
+                    return max(0, min(100, int((val / 5.0) * 100)))
                 elif val <= 10.0:
-                    return int((val / 10.0) * 100)
+                    return max(0, min(100, int((val / 10.0) * 100)))
                 elif val <= 100.0:
-                    return int(val)
+                    return max(0, min(100, int(val)))
             except ValueError:
                 pass
     match = re.search(r'([\d\.]+)', value_str)
@@ -376,6 +376,21 @@ def extract_percentage(value_str: str) -> int:
         except ValueError:
             pass
     return 0
+
+
+def infer_stat_kind(item: dict) -> str:
+    """통계 값의 의미에 맞는 표현 방식을 고릅니다."""
+    explicit = str(item.get('kind', '')).strip().lower()
+    if explicit in {'ratio', 'rank', 'count', 'comparison'}:
+        return explicit
+
+    value = str(item.get('value', '')).strip()
+    label = str(item.get('label', '')).strip()
+    if re.search(r'\d\s*위(?:\D|$)', value) or '순위' in label:
+        return 'rank'
+    if '%' in value or '점' in value:
+        return 'ratio'
+    return 'count'
 
 def editable_attrs(edit_id: str) -> str:
     """Return stable attributes used by browser-side direct editing."""
@@ -530,6 +545,16 @@ def validate_pages(pages: list) -> None:
             answer_index = data.get('ANSWER_INDEX')
             if type(answer_index) is not int or not isinstance(options, list) or not 0 <= answer_index < len(options):
                 errors.append(f'{index + 1}번(quiz): ANSWER_INDEX 또는 correct=true 정답 1개 필요')
+        elif layout == 'stats':
+            for item_index, item in enumerate(data.get('STAT_ITEMS', [])):
+                if not isinstance(item, dict):
+                    errors.append(f'{index + 1}번(stats): STAT_ITEMS[{item_index}]는 객체여야 함')
+                    continue
+                kind = str(item.get('kind', '')).strip().lower()
+                if kind and kind not in {'ratio', 'rank', 'count', 'comparison'}:
+                    errors.append(f'{index + 1}번(stats): STAT_ITEMS[{item_index}].kind가 올바르지 않음')
+                if kind == 'comparison' and item.get('percentage') is None:
+                    errors.append(f'{index + 1}번(stats): comparison에는 percentage가 필요함')
         elif layout == 'ox_reveal':
             items = data.get('ITEMS', [])
             if not isinstance(items, list):
@@ -538,6 +563,8 @@ def validate_pages(pages: list) -> None:
             for item_index, item in enumerate(items):
                 if not isinstance(item, dict) or not item.get('answer'):
                     errors.append(f'{index + 1}번(ox_reveal): ITEMS[{item_index}].answer 누락')
+                elif str(item.get('answer')).strip().upper() not in {'O', 'X'}:
+                    errors.append(f'{index + 1}번(ox_reveal): ITEMS[{item_index}].answer는 O 또는 X여야 함')
         elif layout == 'matching_reveal' and not isinstance(data.get('PAIRS'), list):
             errors.append(f'{index + 1}번(matching_reveal): PAIRS는 배열이어야 함')
         elif layout == 'cloze_reveal':
@@ -550,6 +577,12 @@ def validate_pages(pages: list) -> None:
                 for item in items
             ):
                 errors.append(f'{index + 1}번(cloze_reveal): ITEMS는 [정답]이 포함된 text 객체 배열이어야 함')
+            else:
+                answers = [str(item.get('answer', '')).strip() for item in items]
+                if any(answer and answer not in [str(word).strip() for word in word_bank] for answer in answers):
+                    errors.append(f'{index + 1}번(cloze_reveal): 모든 정답은 WORD_BANK에 있어야 함')
+                if len(answers) > 1 and [str(word).strip() for word in word_bank] == answers:
+                    errors.append(f'{index + 1}번(cloze_reveal): WORD_BANK 순서를 정답 순서와 다르게 섞어야 함')
 
     answerable_types = {'ox_check', 'short_answer', 'cloze_word_bank', 'matching_lines', 'table_fill'}
     worksheet_counts = {}
@@ -673,15 +706,26 @@ def process_list(items, tag='li', class_name='', edit_key='', default_marker='O'
             elif tag == 'stat-item':
                 value_str = item.get('value', '')
                 label_str = item.get('label', '')
-                percentage = extract_percentage(value_str)
-                # 수치가 0%인 텍스트인 경우, 클릭 시 100% 차오르게 기본 타겟을 100으로 설정
-                target_percent = percentage if percentage > 0 else 100
-                result.append(f'''<div class="card stat-card-button" onclick="clickStatCard(this, {target_percent})" style="text-align: center; display: flex; flex-direction: column; justify-content: space-between; padding: 1.2em 1em; cursor: pointer; transition: all 0.2s ease; flex: 1; max-width: 350px; min-width: 220px;">
-                    <div class="stat-number"{editable_attrs(item_edit_id + ".value")} style="color: var(--color-accent); font-size: 1.8em; font-weight: 900; line-height: 1.1; margin-bottom: 0.1em;">{value_str}</div>
-                    <div class="stat-label"{editable_attrs(item_edit_id + ".label")} style="font-size: 0.8em; color: var(--color-text-secondary); font-weight: 500; margin-bottom: 0.6em; word-break: keep-all;">{label_str}</div>
-                    <div class="stat-gauge-container" style="background: rgba(0,0,0,0.05); border-radius: 4px; height: 8px; overflow: hidden; width: 100%; margin-top: auto;">
-                        <div class="stat-gauge-bar" data-target-width="{percentage}%" style="background: var(--color-gradient); height: 100%; width: 0%; border-radius: 4px; transition: width 1.2s cubic-bezier(0.1, 0.8, 0.3, 1);"></div>
-                    </div>
+                kind = infer_stat_kind(item)
+                value_length = len(str(value_str).replace(' ', ''))
+                value_size_class = ' stat-value-long' if value_length >= 7 else (' stat-value-medium' if value_length >= 5 else '')
+                percentage = item.get('percentage')
+                if percentage is None:
+                    percentage = extract_percentage(str(value_str))
+                try:
+                    percentage = max(0, min(100, int(float(percentage))))
+                except (TypeError, ValueError):
+                    percentage = 0
+                has_gauge = kind in {'ratio', 'comparison'}
+                click_attr = f' onclick="clickStatCard(this, {percentage})"' if has_gauge else ''
+                interactive_class = ' stat-card-button' if has_gauge else ''
+                gauge_html = f'''<div class="stat-gauge-container">
+                    <div class="stat-gauge-bar" data-target-width="{percentage}%"></div>
+                </div>''' if has_gauge else ('<div class="stat-kind-label">순위</div>' if kind == 'rank' else '')
+                result.append(f'''<div class="card stat-card{interactive_class} stat-kind-{kind}"{click_attr}>
+                    <div class="stat-number{value_size_class}"{editable_attrs(item_edit_id + ".value")}>{value_str}</div>
+                    <div class="stat-label"{editable_attrs(item_edit_id + ".label")}>{label_str}</div>
+                    {gauge_html}
                 </div>''')
             elif tag == 'quiz-option':
                 result.append(f'<div class="quiz-option card"{editable_attrs(item_edit_id + ".text")}>{item.get("text", "")}</div>')
@@ -725,11 +769,12 @@ def tag_page_section(html: str, page_type: str, page_index: int) -> str:
     return re.sub(r'<section\b', f'<section{attrs}', html, count=1)
 
 
-def render_ox_reveal_items(items, prefix='ITEMS') -> str:
+def render_ox_reveal_items(items, prefix='ITEMS') -> tuple[str, str]:
     if not isinstance(items, list):
-        return ''
+        return '', ''
 
-    rows = []
+    overview = []
+    focus = []
     for index, item in enumerate(items):
         if isinstance(item, dict):
             statement = item.get('statement', item.get('text', ''))
@@ -740,21 +785,19 @@ def render_ox_reveal_items(items, prefix='ITEMS') -> str:
             answer = ''
             explanation = ''
 
-        explanation_html = ''
-        if explanation:
-            explanation_key = 'explanation' if isinstance(item, dict) and item.get('explanation') else 'reason'
-            explanation_html = f'<div class="ox-reveal-explanation fragment"{editable_attrs(f"{prefix}[{index}].{explanation_key}")}>{explanation}</div>'
-
         statement_key = 'statement' if isinstance(item, dict) and 'statement' in item else 'text'
-
-        rows.append(f'''<div class="ox-reveal-row">
-            <div class="ox-reveal-copy">
-                <div class="ox-reveal-statement"><span class="ox-reveal-num">{index + 1}</span><span{editable_attrs(f"{prefix}[{index}].{statement_key}")}>{statement}</span></div>
-                {explanation_html}
-            </div>
-            <div class="ox-reveal-answer fragment"{editable_attrs(f"{prefix}[{index}].answer")}>{answer}</div>
+        overview.append(f'''<div class="ox-overview-card">
+            <span class="ox-overview-num">{index + 1}</span>
+            <div class="ox-overview-statement"{editable_attrs(f"{prefix}[{index}].{statement_key}")}>{statement}</div>
+            <div class="ox-overview-answer" aria-hidden="true">{answer}</div>
         </div>''')
-    return '\n'.join(rows)
+        focus.append(f'''<div class="ox-focus-item" data-ox-index="{index}" aria-hidden="true">
+            <div class="ox-focus-kicker">문제 {index + 1}</div>
+            <div class="ox-focus-statement">{statement}</div>
+            <div class="ox-focus-result">{answer}</div>
+            <div class="ox-focus-explanation">{explanation}</div>
+        </div>''')
+    return '\n'.join(overview), '\n'.join(focus)
 
 
 def render_answer_key_block(block: dict, block_index: int, q_idx: int, prefix: str) -> str:
@@ -841,19 +884,29 @@ def render_worksheet_block(block: dict, block_index: int, q_idx: int, answer_key
     if block_type == 'ox_check':
         items = block.get('items', [])
         item_rows = []
+        item_start = int(block.get('_item_start', 0) or 0)
         for item_index, item in enumerate(items):
             statement = item.get('statement', item.get('text', '')) if isinstance(item, dict) else str(item)
             answer = item.get('answer', '') if isinstance(item, dict) else ''
             explanation = item.get('explanation', '') if isinstance(item, dict) else ''
             if answer_key:
-                right = f'<strong>{answer}</strong>{f" - {explanation}" if explanation else ""}'
+                item_rows.append(f'''<div class="answer-key-ox-item">
+                    <div class="answer-key-ox-badge">{answer}</div>
+                    <div class="answer-key-ox-copy">
+                        <div class="answer-key-ox-statement"><span>{item_start + item_index + 1}.</span> {statement}</div>
+                        <div class="answer-key-ox-explanation">{explanation}</div>
+                    </div>
+                </div>''')
             else:
                 right = '<span class="worksheet-ox-choice">O</span><span class="worksheet-ox-choice">X</span>'
-            item_rows.append(f'''<li>
-                <span class="worksheet-question"{editable_attrs(f"{prefix}.items[{item_index}].statement")}>{statement}</span>
-                <span class="worksheet-answer-slot">{right}</span>
-            </li>''')
-        return f'<div class="worksheet-block worksheet-block-ox">{header}<ol>{''.join(item_rows)}</ol></div>'
+                item_rows.append(f'''<li>
+                    <span class="worksheet-question"{editable_attrs(f"{prefix}.items[{item_index}].statement")}>{statement}</span>
+                    <span class="worksheet-answer-slot">{right}</span>
+                </li>''')
+        body_class = ' answer-key-ox-block' if answer_key else ''
+        compact_class = ' answer-key-ox-compact' if len(items) >= 3 else ''
+        list_html = f'<div class="answer-key-ox-list{compact_class}" style="--answer-key-ox-count:{max(1, len(items))}">{"".join(item_rows)}</div>' if answer_key else f'<ol>{"".join(item_rows)}</ol>'
+        return f'<div class="worksheet-block worksheet-block-ox{body_class}">{header}{list_html}</div>'
 
     if block_type == 'short_answer':
         lines = int(block.get('answer_lines', 2) or 2)
@@ -1021,8 +1074,8 @@ def render_slide(slide_data: dict) -> str:
 
     if slide_type == 'ox_reveal':
         items = data.get('ITEMS', [])
-        data['OX_REVEAL_DENSITY_CLASS'] = 'ox-reveal-grid' if len(items) >= 5 else 'ox-reveal-stack'
-        data['OX_REVEAL_ITEMS'] = render_ox_reveal_items(items, data.get('ITEM_EDIT_PREFIX', 'ITEMS'))
+        data['OX_REVEAL_DENSITY_CLASS'] = 'ox-reveal-grid' if len(items) >= 4 else 'ox-reveal-stack'
+        data['OX_OVERVIEW_ITEMS'], data['OX_FOCUS_ITEMS'] = render_ox_reveal_items(items, data.get('ITEM_EDIT_PREFIX', 'ITEMS'))
 
     if slide_type == 'sample_answer_reveal':
         data['PROMPT'] = data.get('PROMPT', data.get('prompt', ''))
@@ -1035,7 +1088,7 @@ def render_slide(slide_data: dict) -> str:
         word_bank_prefix = data.get('WORD_BANK_EDIT_PREFIX', 'WORD_BANK')
         item_prefix = data.get('ITEM_EDIT_PREFIX', 'ITEMS')
         data['WORD_BANK_HTML'] = ''.join(
-            f'<button type="button" class="cloze-word cloze-wb-word js-cloze-word"{editable_attrs(f"{word_bank_prefix}[{i}]")} data-word="{escape(str(w), quote=True)}">{escape(str(w))}</button>'
+            f'<span class="cloze-word cloze-wb-word js-cloze-word"{editable_attrs(f"{word_bank_prefix}[{i}]")} data-word="{escape(str(w), quote=True)}">{escape(str(w))}</span>'
             for i, w in enumerate(wb)
         )
         items = data.get('ITEMS', data.get('sentences', []))
@@ -1049,7 +1102,8 @@ def render_slide(slide_data: dict) -> str:
                 if not word:
                     return match.group(0)
                 word_attr = escape(str(word), quote=True)
-                return f'<span class="cloze-blank-reveal js-cloze-target" data-word="{word_attr}"></span>'
+                width_em = max(3.5, min(10, len(str(word)) + 1.5))
+                return f'<span class="cloze-blank-reveal js-cloze-target" data-word="{word_attr}" style="--cloze-answer-width:{width_em}em"></span>'
 
             text_html = re.sub(r'\[([^\]]*)\]', render_cloze_blank, text_val)
             rows.append(f'<div class="cloze-reveal-row"{editable_attrs(f"{item_prefix}[{i}].text")}>{text_html}</div>')
@@ -1192,11 +1246,24 @@ def render_slide(slide_data: dict) -> str:
     # 신규: 로드맵 아이템
     if 'ROADMAP_ITEMS' in data:
         roadmap_items = data['ROADMAP_ITEMS']
+        max_text_len = max((
+            len(str(item)) if not isinstance(item, dict)
+            else len(str(get_first_value(item, ['label', 'title', 'text'], '')))
+                + len(str(get_first_value(item, ['desc', 'body', 'description'], '')))
+            for item in roadmap_items
+        ), default=0)
+        if len(roadmap_items) <= 3 and max_text_len <= 26:
+            data['ROADMAP_DENSITY_CLASS'] = 'roadmap-roomy'
+        elif len(roadmap_items) <= 4 and max_text_len <= 52:
+            data['ROADMAP_DENSITY_CLASS'] = 'roadmap-balanced'
+        else:
+            data['ROADMAP_DENSITY_CLASS'] = 'roadmap-dense'
         roadmap_html_parts = []
         for i, item in enumerate(roadmap_items):
             if isinstance(item, dict):
                 number = item.get('step', i + 1)
                 label = get_first_value(item, ['label', 'title', 'text'], f'Step {i+1}')
+                label = re.sub(r'^\s*\d+\s*단계\s*[:：.\-]?\s*', '', str(label))
                 desc = get_first_value(item, ['desc', 'body', 'description'], '')
                 label_key = next((key for key in ('label', 'title', 'text') if item.get(key)), 'label')
                 desc_key = next((key for key in ('desc', 'body', 'description') if item.get(key)), 'desc')
@@ -1209,9 +1276,10 @@ def render_slide(slide_data: dict) -> str:
                     </div>
                 </div>''')
             else:
+                display_label = re.sub(r'^\s*\d+\s*단계\s*[:：.\-]?\s*', '', str(item))
                 roadmap_html_parts.append(f'''<div class="roadmap-step">
                     <div class="roadmap-num">{i+1}</div>
-                    <div class="roadmap-label"{editable_attrs(f"ROADMAP_ITEMS[{i}]")}>{item}</div>
+                    <div class="roadmap-label"{editable_attrs(f"ROADMAP_ITEMS[{i}]")}>{display_label}</div>
                 </div>''')
             if i < len(roadmap_items) - 1:
                 roadmap_html_parts.append('<div class="roadmap-connector"></div>')
@@ -1249,7 +1317,7 @@ def render_slide(slide_data: dict) -> str:
     html = render_conditionals(html, data)
 
     # 단순 치환
-    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'OX_REVEAL_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML', 'CLOZE_REVEAL_ITEMS', 'MATCHING_REVEAL_ITEMS', 'TABLE_REVEAL_HTML', 'WORD_BANK_HTML', 'SHARE_QUESTIONS_HTML', 'WORKSHEET_PREVIEW_HTML'}
+    html_keys = {'QUIZ_OPTIONS', 'ROADMAP_ITEMS', 'STEPPER_ITEMS', 'TIMELINE_ITEMS', 'MATRIX_ITEMS', 'BULLET_ITEMS', 'LEFT_ITEMS', 'RIGHT_ITEMS', 'SUMMARY_ITEMS', 'STAT_ITEMS', 'O_ITEMS', 'X_ITEMS', 'OX_OVERVIEW_ITEMS', 'OX_FOCUS_ITEMS', 'BOTTOM_TAKEAWAY_HTML', 'SECTION_HEADER_HTML', 'CLOZE_REVEAL_ITEMS', 'MATCHING_REVEAL_ITEMS', 'TABLE_REVEAL_HTML', 'WORD_BANK_HTML', 'SHARE_QUESTIONS_HTML', 'WORKSHEET_PREVIEW_HTML'}
     for key, value in data.items():
         if isinstance(value, str) and key not in html_keys:
             value = value.replace('\n', '<br>')
@@ -1311,6 +1379,8 @@ def resolve_activity_pages(plan: dict, pages: list) -> list:
     answer_key_refs = set()
     has_answer_key_refs = False
     resolved_pages = []
+    legacy_activity_layouts = {'activity_prompt', *ACTIVITY_LAYOUT_BY_BLOCK.values()}
+    answerable_types = set(ACTIVITY_LAYOUT_BY_BLOCK)
 
     def resolve_block(activity_id):
         if activity_id not in catalog:
@@ -1328,6 +1398,20 @@ def resolve_activity_pages(plan: dict, pages: list) -> list:
         page_type = page.get('page_type', 'slide')
         layout = page.get('layout', page.get('type', 'title'))
 
+        if page_type == 'slide' and layout in legacy_activity_layouts:
+            raise ValueError(
+                f'pages[{page_index}]는 activities와 직접 {layout} 레이아웃을 함께 사용할 수 없습니다. '
+                'layout="activity"와 ACTIVITY_REF를 사용하세요.'
+            )
+
+        if page_type in {'worksheet', 'answer_key'} and 'ACTIVITY_REFS' not in page:
+            direct_blocks = page.get('blocks', page.get('BLOCKS', []))
+            if any(isinstance(block, dict) and block.get('block_type') in answerable_types for block in direct_blocks):
+                raise ValueError(
+                    f'pages[{page_index}]는 activities와 정답형 BLOCKS를 직접 함께 사용할 수 없습니다. '
+                    'ACTIVITY_REFS를 사용하세요.'
+                )
+
         if page_type == 'slide' and layout == 'activity':
             activity_id = page.get('ACTIVITY_REF')
             if activity_id:
@@ -1342,7 +1426,7 @@ def resolve_activity_pages(plan: dict, pages: list) -> list:
                 page['WORKSHEET_REF'] = page.get('WORKSHEET_REF') or activity.get('worksheet_ref', '')
                 page['TIMER_MINUTES'] = page.get('TIMER_MINUTES') or format_minutes(activity.get('work_time_minutes', ''))
                 slide_counts[activity_id] = slide_counts.get(activity_id, 0) + 1
-            elif not isinstance(page.get('WORKSHEET_BLOCK'), dict):
+            else:
                 raise ValueError(f'pages[{page_index}] activity에 ACTIVITY_REF가 누락되었습니다.')
 
         if page_type in {'worksheet', 'answer_key'} and 'ACTIVITY_REFS' in page:
@@ -1378,9 +1462,67 @@ def resolve_activity_pages(plan: dict, pages: list) -> list:
     return resolved_pages
 
 
+def paginate_print_pages(pages: list, max_blocks: int = 2) -> list:
+    """인쇄 페이지를 읽기 좋은 문항 수로 나누고 문항 번호를 이어 줍니다."""
+    paginated = []
+    for page in pages:
+        page_type = page.get('page_type', 'slide')
+        blocks = page.get('blocks', page.get('BLOCKS', []))
+        if page_type not in {'worksheet', 'answer_key'} or not isinstance(blocks, list):
+            paginated.append(page)
+            continue
+
+        entries = []
+        q_idx = page.get('start_q_idx', 1)
+        for block in blocks:
+            if page_type == 'answer_key' and isinstance(block, dict) and block.get('block_type') == 'ox_check':
+                items = block.get('items', [])
+                for item_start in range(0, len(items), 4):
+                    chunk = deepcopy(block)
+                    chunk['items'] = items[item_start:item_start + 4]
+                    chunk['_item_start'] = item_start
+                    entries.append((chunk, q_idx, max_blocks))
+                q_idx += 1
+            else:
+                entries.append((block, q_idx, 1))
+                if isinstance(block, dict) and block.get('block_type') != 'header':
+                    q_idx += 1
+
+        chunks = []
+        current = []
+        weight = 0
+        for block, block_q_idx, block_weight in entries:
+            if current and weight + block_weight > max_blocks:
+                chunks.append(current)
+                current = []
+                weight = 0
+            current.append((block, block_q_idx))
+            weight += block_weight
+            if weight >= max_blocks:
+                chunks.append(current)
+                current = []
+                weight = 0
+        if current:
+            chunks.append(current)
+
+        if len(chunks) <= 1:
+            paginated.append(page)
+            continue
+
+        base_title = page.get('title', page.get('TITLE', '정답지' if page_type == 'answer_key' else '학습지'))
+        for index, chunk in enumerate(chunks):
+            split_page = deepcopy(page)
+            split_page.pop('BLOCKS', None)
+            split_page['blocks'] = [block for block, _ in chunk]
+            split_page['title'] = f'{base_title} ({index + 1}/{len(chunks)})'
+            split_page['start_q_idx'] = chunk[0][1]
+            paginated.append(split_page)
+    return paginated
+
+
 def normalize_pages(plan: dict) -> list:
     if isinstance(plan.get('pages'), list) and plan['pages']:
-        return resolve_activity_pages(plan, plan['pages'])
+        return paginate_print_pages(resolve_activity_pages(plan, plan['pages']))
     pages = [
         {**deepcopy(slide), 'page_type': 'slide', 'size': '16:9', 'layout': slide.get('layout', slide.get('type', 'title'))}
         for slide in plan.get('slides', [])
@@ -1450,23 +1592,7 @@ def normalize_pages(plan: dict) -> list:
 
     if worksheet_blocks:
         lesson_title = plan.get('meta', {}).get('title', '학습지')
-        chunks = []
-        n = len(worksheet_blocks)
-        idx = 0
-        while n > 0:
-            if n == 4:
-                chunks.append(worksheet_blocks[idx:idx+2])
-                chunks.append(worksheet_blocks[idx+2:idx+4])
-                break
-            elif n == 5:
-                chunks.append(worksheet_blocks[idx:idx+3])
-                chunks.append(worksheet_blocks[idx+3:idx+5])
-                break
-            else:
-                take = min(3, n)
-                chunks.append(worksheet_blocks[idx:idx+take])
-                idx += take
-                n -= take
+        chunks = [worksheet_blocks[index:index + 2] for index in range(0, len(worksheet_blocks), 2)]
                 
         total_pages = len(chunks)
         q_idx = 1
