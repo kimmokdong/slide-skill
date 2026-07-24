@@ -11,3 +11,8 @@ desktop.ini
 # 보안 및 환경변수 설정 파일
 .env
 youtube_api_key.txt
+
+# Python cache
+__pycache__/
+*.pyc
+
